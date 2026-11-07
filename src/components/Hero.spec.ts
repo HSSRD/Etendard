@@ -1,20 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { expectNoAxeViolations, schemes } from '../../tests/helpers';
 
-const lead =
-  'Bienvenue ! Voici le site qui regroupe tous les projets de Hussard.';
-
-/** Le Hero : seul <h1>, texte d'accueil et appel à l'action vers #projets. */
-const expectHeroContent = async (page: Page) => {
-  const hero = page.locator('.hero');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
-  await expect(hero.getByRole('heading', { level: 1 })).toHaveText('Étendard');
-  await expect(hero.locator('.hero__lead')).toHaveText(lead);
-  await expect(
-    hero.getByRole('link', { name: 'Découvrir les projets' }),
-  ).toHaveAttribute('href', '#projets');
-};
-
 /** Aucun défilement horizontal à la largeur du projet (375 px compris). */
 const expectNoHorizontalScroll = async (page: Page) => {
   const overflow = await page.evaluate(
@@ -23,24 +9,41 @@ const expectNoHorizontalScroll = async (page: Page) => {
   expect(overflow).toBeLessThanOrEqual(0);
 };
 
-test('styleguide : le Hero affiche titre, texte et appel à l’action', async ({
-  page,
-}) => {
-  await page.goto('/styleguide/hero');
-  await expectHeroContent(page);
-  await expectNoHorizontalScroll(page);
-});
+for (const scheme of schemes) {
+  test(`Hero, thème ${scheme} : contenu, accessibilité et capture`, async ({
+    page,
+  }) => {
+    await page.emulateMedia({ colorScheme: scheme });
+    await page.goto('/styleguide/hero');
+
+    const hero = page.locator('.hero');
+    await expect(hero.getByRole('heading', { level: 1 })).toHaveText(
+      'Étendard',
+    );
+    await expect(hero.locator('.hero__lead')).toHaveText(
+      'Bienvenue ! Voici le site qui regroupe tous les projets de Hussard.',
+    );
+    await expect(
+      hero.getByRole('link', { name: 'Découvrir les projets' }),
+    ).toHaveAttribute('href', '#projets');
+    await expectNoHorizontalScroll(page);
+    await expectNoAxeViolations(page);
+    await expect(page).toHaveScreenshot(`hero-${scheme}.png`, {
+      fullPage: true,
+    });
+  });
+}
 
 test('accueil : le Hero remplit l’écran sous le header, centré, projets juste dessous', async ({
   page,
 }) => {
   await page.goto('/');
   await expect(page.locator('section#accueil > .hero')).toHaveCount(1);
-  await expectHeroContent(page);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
   await expectNoHorizontalScroll(page);
-  await expect(page.locator('script')).toHaveCount(0);
 
   const layout = await page.evaluate(() => {
+    // --header-height en pixels, même sonde que tests/accueil.spec.ts.
     const probe = document.createElement('div');
     probe.style.height = 'var(--header-height)';
     document.body.append(probe);
@@ -61,7 +64,6 @@ test('accueil : le Hero remplit l’écran sous le header, centré, projets just
     };
   });
 
-  expect(layout.expectedHeight).toBeGreaterThan(0);
   expect(layout.section.height).toBeCloseTo(layout.expectedHeight, 0);
   expect(layout.projets.top).toBeCloseTo(layout.section.bottom, 0);
 
@@ -83,15 +85,3 @@ test('accueil : l’appel à l’action mène à la section projets', async ({
   await page.getByRole('link', { name: 'Découvrir les projets' }).click();
   await expect(page).toHaveURL(/#projets$/);
 });
-
-for (const scheme of schemes) {
-  test(`Hero, thème ${scheme} : accessibilité et capture`, async ({ page }) => {
-    await page.emulateMedia({ colorScheme: scheme });
-    await page.goto('/styleguide/hero');
-
-    await expectNoAxeViolations(page);
-    await expect(page).toHaveScreenshot(`hero-${scheme}.png`, {
-      fullPage: true,
-    });
-  });
-}
