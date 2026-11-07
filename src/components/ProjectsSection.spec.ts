@@ -46,7 +46,7 @@ test('aucune adresse, aucun port ni lien vers les repos privés', async ({
 
   await expect(section.locator('a')).toHaveCount(0);
   expect(await section.innerText()).not.toMatch(
-    /https?:|www\.|github|\d+\.\d+\.\d+\.\d+|:\d{2,5}/i,
+    /https?:|www\.|github|\.local\b|\.ts\.net|\d+\.\d+\.\d+\.\d+|:\d{2,5}|\bport\b/i,
   );
 });
 

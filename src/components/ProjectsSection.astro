@@ -1,19 +1,24 @@
 ---
-// Section « Projets » de la one page (ticket #14) : Hussard, puis une carte par sous-unité.
+// Section « Projets » de la one page (ticket #14) : chaque projet racine (Hussard), puis une
+// carte par sous-unité.
 import { getProjects } from '../lib/projects';
 import ProjectCard from './ProjectCard.astro';
 
-const { root, units } = await getProjects();
+const groups = await getProjects();
 ---
 
 <div class="projects-section">
   <h2>Projets</h2>
-  <ProjectCard project={root} intro />
-  <div class="projects-section__units">
-    {units.map((unit) => (
-      <ProjectCard project={unit} />
-    ))}
-  </div>
+  {groups.map(({ root, units }) => (
+    <>
+      <ProjectCard project={root} intro />
+      <div class="projects-section__units">
+        {units.map((unit) => (
+          <ProjectCard project={unit} />
+        ))}
+      </div>
+    </>
+  ))}
 </div>
 
 <style>
@@ -28,8 +33,10 @@ const { root, units } = await getProjects();
   .projects-section__units {
     display: grid;
     gap: var(--space-5);
+  }
 
-    @media (width >= 768px) {
+  @media (width >= 768px) {
+    .projects-section__units {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }

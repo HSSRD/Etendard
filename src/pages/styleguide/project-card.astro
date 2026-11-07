@@ -4,15 +4,18 @@ import ProjectCard from '../../components/ProjectCard.astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getProjects } from '../../lib/projects';
 
-const { root, units } = await getProjects();
-const states = [
-  { label: 'Présentation (intro)', project: root, intro: true },
+const states = (await getProjects()).flatMap(({ root, units }) => [
+  {
+    label: `Présentation (intro) ${root.data.title}`,
+    project: root,
+    intro: true,
+  },
   ...units.map((project) => ({
     label: `Carte ${project.data.title}`,
     project,
     intro: false,
   })),
-];
+]);
 ---
 
 <BaseLayout
