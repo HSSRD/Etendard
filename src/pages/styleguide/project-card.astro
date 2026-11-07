@@ -1,0 +1,48 @@
+---
+// ProjectCard dans chacun de ses états : une fiche de sous-unité par section (ticket #14).
+import { getEntry } from 'astro:content';
+import ProjectCard from '../../components/ProjectCard.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const states = await Promise.all(
+  ['overwatch', 'sentry'].map(async (id) => {
+    const project = await getEntry('projects', id);
+    if (!project) throw new Error(`Fiche ${id} introuvable.`);
+    return project;
+  }),
+);
+---
+
+<BaseLayout
+  title="ProjectCard — Styleguide — Étendard"
+  description="Composant ProjectCard d’Étendard : la carte d’un projet."
+>
+  <meta slot="head" name="robots" content="noindex" />
+  <div class="styleguide-project-card">
+    <h1>ProjectCard</h1>
+    {states.map((project) => (
+      <section
+        class="styleguide-project-card__state"
+        aria-labelledby={`etat-${project.id}`}
+      >
+        <h2 id={`etat-${project.id}`}>Fiche {project.data.title}</h2>
+        <ProjectCard project={project} />
+      </section>
+    ))}
+  </div>
+</BaseLayout>
+
+<style>
+  .styleguide-project-card {
+    display: grid;
+    gap: var(--space-6);
+    margin: 0 auto;
+    max-width: var(--content-max-width);
+    padding: var(--space-6) var(--space-4);
+  }
+
+  .styleguide-project-card__state {
+    display: grid;
+    gap: var(--space-4);
+  }
+</style>

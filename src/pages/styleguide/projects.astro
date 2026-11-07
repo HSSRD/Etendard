@@ -1,0 +1,16 @@
+---
+// ProjectsSection telle qu'insérée dans la one page (ticket #14).
+import ProjectsSection from '../../components/ProjectsSection.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+
+<BaseLayout
+  title="ProjectsSection — Styleguide — Étendard"
+  description="Composant ProjectsSection d’Étendard : la section des projets."
+>
+  <meta slot="head" name="robots" content="noindex" />
+  <h1>ProjectsSection</h1>
+  <section id="projets">
+    <ProjectsSection />
+  </section>
+</BaseLayout>
