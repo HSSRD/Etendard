@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import Hero from '../components/Hero.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 ---
@@ -10,9 +11,9 @@ import SiteHeader from '../components/SiteHeader.astro';
 >
   <SiteHeader slot="header" />
 
-  {/* Section d'accueil : Hero, ticket #13. Titre provisoire. */}
+  {/* Section d'accueil : Hero, ticket #13. */}
   <section id="accueil">
-    <h1>Étendard</h1>
+    <Hero />
   </section>
 
   {/* Section projets : ProjectsSection, ticket #14. Titre provisoire. */}
