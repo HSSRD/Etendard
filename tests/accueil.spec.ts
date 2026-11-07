@@ -64,6 +64,12 @@ test('les ancres défilent en douceur et s’arrêtent sous le header', async ({
 
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(page.locator('html')).toHaveCSS('scroll-behavior', 'auto');
+  const durations = await page.evaluate(() =>
+    ['--duration-fast', '--duration-base'].map((token) =>
+      getComputedStyle(document.documentElement).getPropertyValue(token),
+    ),
+  );
+  expect(durations).toEqual(['0s', '0s']);
 });
 
 for (const scheme of schemes) {

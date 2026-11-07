@@ -11,6 +11,12 @@
     margin: 0;
   }
 
+  /* Pas de grossissement automatique du texte (iOS en paysage), zoom intact. */
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
   body {
     overflow-wrap: break-word;
   }

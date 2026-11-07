@@ -9,11 +9,15 @@ import '../styles/global.css';
 interface Props {
   title: string;
   description: string;
-  /** Pages hors index des moteurs de recherche (styleguide). */
+  /** Page hors index des moteurs de recherche : par défaut, tout le styleguide. */
   noindex?: boolean;
 }
 
-const { title, description, noindex = false } = Astro.props;
+const {
+  title,
+  description,
+  noindex = Astro.url.pathname.startsWith('/styleguide'),
+} = Astro.props;
 ---
 
 <!doctype html>

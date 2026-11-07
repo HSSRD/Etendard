@@ -10,7 +10,7 @@ import tseslint from 'typescript-eslint';
 // « / » s'écrit \x2F : les sélecteurs ESLint (esquery) ne l'acceptent pas tel quel.
 // Couvre `../pages`, `../../src/pages`, `@/pages` et la forme Vite `/src/pages`.
 const pagePattern = String.raw`^((\.\.\x2F)+(src\x2F)?|@\x2F|\x2Fsrc\x2F)pages(\x2F|$)`;
-const pageMessage = 'Un composant n’importe jamais une page.';
+const pageMessage = 'Un composant ou un layout n’importe jamais une page.';
 
 // Pas d'accès à l'environnement Node dans src/ : utilise import.meta.env.
 const nodeImports = ['process', 'node:process', 'buffer', 'node:buffer'].map(
@@ -62,7 +62,7 @@ export default defineConfig(
     languageOptions: { globals: globals.node },
   },
   {
-    files: ['src/components/**'],
+    files: ['src/components/**', 'src/layouts/**'],
     ignores: ['**/*.spec.ts', '**/*.test.ts'],
     rules: {
       'no-restricted-imports': [
