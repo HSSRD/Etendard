@@ -12,10 +12,12 @@ const { year = new Date().getFullYear() } = Astro.props;
   <div class="site-footer__inner">
     <p class="site-footer__tagline">Étendard, la vitrine des projets HSSRD</p>
     <p>© {year} HSSRD</p>
-    <p class="site-footer__links">
+    <p>
       <a href="https://github.com/HSSRD/Etendard" rel="noopener">
         Code source sur GitHub
       </a>
+    </p>
+    <p>
       <a href="#accueil">Retour en haut</a>
     </p>
   </div>
@@ -42,10 +44,5 @@ const { year = new Date().getFullYear() } = Astro.props;
 
   .site-footer__tagline {
     color: var(--color-text);
-  }
-
-  /* Les liens se rangent dans le flex de __inner, comme les autres lignes. */
-  .site-footer__links {
-    display: contents;
   }
 </style>
