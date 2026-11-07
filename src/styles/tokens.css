@@ -68,6 +68,14 @@
     color-scheme: light dark;
   }
 
+  /* Mouvement réduit : les transitions des composants deviennent instantanées. */
+  @media (prefers-reduced-motion: reduce) {
+    :root {
+      --duration-fast: 0s;
+      --duration-base: 0s;
+    }
+  }
+
   [data-theme='light'] {
     color-scheme: light;
   }

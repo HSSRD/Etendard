@@ -12,7 +12,8 @@
 
   /* Un conteneur [data-theme] reprend fond et texte de son thème. */
   body,
-  [data-theme] {
+  [data-theme='light'],
+  [data-theme='dark'] {
     background-color: var(--color-background);
     color: var(--color-text);
   }
