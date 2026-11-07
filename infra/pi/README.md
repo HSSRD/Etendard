@@ -2,6 +2,8 @@
 
 Prépare le Pi au déploiement décrit dans les ADR 0002 et 0006 (ticket #4). Le workflow `deploy.yml` viendra avec #5. Ces fichiers seront repris dans `HSSRD/infra` (Ansible).
 
+Ce qui est en place et pourquoi : [FONCTIONNEMENT.md](FONCTIONNEMENT.md). Ce README ne donne que les étapes.
+
 | Fichier | Rôle |
 | --- | --- |
 | `install.sh` | Installation root, idempotente : Caddy, utilisateur `deploy`, `/srv/etendard`, `etendard-receive`, clé à commande forcée |
