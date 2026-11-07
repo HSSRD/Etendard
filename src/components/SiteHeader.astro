@@ -1,0 +1,72 @@
+---
+// En-tête collant de la one page : nom du site et navigation par ancres (ticket #11).
+const links = [
+  { href: '#accueil', label: 'Accueil' },
+  { href: '#projets', label: 'Projets' },
+];
+---
+
+<header class="site-header">
+  <div class="site-header__inner">
+    <a class="site-header__brand" href="#accueil">
+      Étendard
+    </a>
+    <nav aria-label="Navigation principale">
+      <ul class="site-header__list">
+        {links.map((link) => (
+          <li>
+            <a class="site-header__link" href={link.href}>
+              {link.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<style>
+  .site-header {
+    background-color: var(--color-surface);
+    border-bottom-color: var(--color-border);
+    border-bottom-style: solid;
+    border-bottom-width: var(--border-width);
+    height: var(--header-height);
+    position: sticky;
+    top: 0;
+    z-index: var(--z-index-header);
+  }
+
+  .site-header__inner {
+    align-items: center;
+    display: flex;
+    gap: var(--space-4);
+    height: 100%;
+    justify-content: space-between;
+    margin: 0 auto;
+    max-width: var(--content-max-width);
+    padding: 0 var(--space-4);
+  }
+
+  .site-header__brand,
+  .site-header__link {
+    color: var(--color-text);
+    text-decoration-line: none;
+
+    &:hover {
+      text-decoration-line: underline;
+    }
+  }
+
+  .site-header__brand {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-bold);
+  }
+
+  .site-header__list {
+    display: flex;
+    gap: var(--space-5);
+    list-style: none;
+    padding: 0;
+  }
+</style>

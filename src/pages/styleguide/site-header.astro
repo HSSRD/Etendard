@@ -1,0 +1,27 @@
+---
+// SiteHeader (ticket #11) : un seul état ; les sections factices permettent de tester
+// le défilement vers les ancres #accueil et #projets sous le header collant.
+import SiteHeader from '../../components/SiteHeader.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+
+<BaseLayout
+  title="SiteHeader — Styleguide — Étendard"
+  description="Styleguide d’Étendard : en-tête collant et navigation par ancres."
+>
+  <meta slot="head" name="robots" content="noindex" />
+  <SiteHeader slot="header" />
+  <section id="accueil" class="site-header-demo">
+    <h1>SiteHeader</h1>
+  </section>
+  <section id="projets" class="site-header-demo">
+    <h2>Projets</h2>
+  </section>
+</BaseLayout>
+
+<style>
+  .site-header-demo {
+    min-height: var(--min-height-below-header);
+    padding: var(--space-6) var(--space-4);
+  }
+</style>
