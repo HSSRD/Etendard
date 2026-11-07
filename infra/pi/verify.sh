@@ -93,8 +93,12 @@ mode_ssh() {
   check "sans commande : etendard-receive attend une archive" 'archive vide' "${ssh[@]}" "deploy@$host" </dev/null
   check "commande arbitraire refusée" 'commande refusée : id' "${ssh[@]}" "deploy@$host" id </dev/null
   check "enchaînement refusé" 'commande refusée' "${ssh[@]}" "deploy@$host" 'status; cat /etc/passwd' </dev/null
-  check "terminal refusé" 'commande refusée : bash' "${ssh[@]}" -tt "deploy@$host" bash </dev/null
-  check "sous-système sftp refusé" 'commande refusée' "${ssh[@]}" -s "deploy@$host" sftp </dev/null
+  # sshd ne relaie pas toujours stderr (sous-système, PTY refusé) : on prouve le refus par ses effets.
+  check "terminal refusé" 'PTY allocation request failed' "${ssh[@]}" -tt "deploy@$host" bash </dev/null
+  refute "aucune commande exécutée, même avec -tt" 'SHELL_OUVERT' "${ssh[@]}" -tt "deploy@$host" 'echo SHELL_OUVERT' </dev/null
+  echo pwd > "$d/sftp-batch"
+  refute "aucune session sftp" 'Remote working directory' \
+    sftp -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=10 -b "$d/sftp-batch" "deploy@$host"
   check "redirection de port refusée" 'prohibited|refused|failed' "${ssh[@]}" -W 127.0.0.1:8080 "deploy@$host" </dev/null
 
   title "Critère 5 — réception, status, rollback"
