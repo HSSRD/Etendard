@@ -48,7 +48,7 @@ mode_pi() {
 
   title "Critère 2 — utilisateur deploy"
   check "utilisateur deploy, sans groupe secondaire" '^uid=[0-9]+\(deploy\) gid=[0-9]+\(deploy\) groups=[0-9]+\(deploy\)$' id deploy
-  check "aucun mot de passe valide (champ « * »)" '^deploy:\*:' sh -c "getent shadow deploy | cut -d: -f1,2"
+  check "aucun mot de passe valide (champ « * »)" '^deploy:\*$' sh -c "getent shadow deploy | cut -d: -f1,2"
   check "aucun droit sudo" 'not allowed to run sudo' sudo -l -U deploy
   check "une seule clé, à commande forcée" '^1 command="/usr/local/bin/etendard-receive",restrict ssh-ed25519 [^ ]+ github-deploy$' \
     sh -c 'f=~deploy/.ssh/authorized_keys; printf "%s %s\n" "$(grep -c . $f)" "$(cat $f)"'
