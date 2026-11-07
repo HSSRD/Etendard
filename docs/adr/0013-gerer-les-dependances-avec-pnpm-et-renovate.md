@@ -29,5 +29,5 @@ Les agents ajoutent facilement des dépendances et importent des paquets non dé
 
 - **Contradiction avec le merge humain (0010)** : 0010 fait du merge humain « le seul contrôle avant la production ». Le merge automatique de Renovate en est une exception : du code tiers part en production sans relecture. Flo doit l'accepter explicitement comme exception, ou passer Renovate en PR simples.
 - **Chaîne d'approvisionnement** : le site est public et le build exécute les scripts des dépendances. Un délai minimal avant adoption d'une version (`minimumReleaseAge` côté Renovate et côté pnpm) réduit le risque d'un paquet compromis puis retiré.
-- **Paquets à exclure du merge automatique** : `astro` (Container API instable même en correctif, 0003), Playwright (invalide les captures de référence), et les paquets aux `peerDependencies` serrées (TypeScript, 0001 ; Stylelint, 0004).
+- **Paquets à exclure du merge automatique** : Playwright (une montée de version invalide les captures de référence, 0003) et les paquets aux `peerDependencies` serrées (TypeScript, 0001 ; Stylelint, 0004).
 - **Protection de `main`** : si une relecture est exigée, Renovate ne peut pas merger seul ; à concilier avec 0011.
