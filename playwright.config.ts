@@ -1,7 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// Port par défaut d'astro preview.
-const baseURL = 'http://localhost:4321';
+// Port distinct de celui d'astro dev (4321) : les tests ne visent jamais le serveur de dev.
+const port = 4322;
+const baseURL = `http://localhost:${port}`;
 
 /**
  * Les captures ne sont fiables que dans l'image Docker officielle de Playwright (ADR 0003),
@@ -27,10 +28,9 @@ export default defineConfig({
   })),
   webServer: {
     // Build dédié avec le styleguide, séparé de dist/ qui est publié.
-    command:
-      'astro build --outDir dist-styleguide && astro preview --outDir dist-styleguide',
+    command: `astro build --outDir dist-styleguide && astro preview --outDir dist-styleguide --port ${port}`,
     env: { STYLEGUIDE: '1' },
     url: baseURL,
-    reuseExistingServer: !process.env['CI'],
+    reuseExistingServer: false,
   },
 });
