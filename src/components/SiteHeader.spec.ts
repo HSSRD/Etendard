@@ -1,5 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
-import { expectNoAxeViolations, schemes } from '../../tests/helpers';
+import {
+  expectNoAxeViolations,
+  schemes,
+  themeBackground,
+} from '../../tests/helpers';
 
 const pages = ['/styleguide/site-header', '/'];
 
@@ -102,11 +106,40 @@ test('chaque lien du header a un focus visible au clavier', async ({
   }
 });
 
+test('avec un texte agrandi à 200 %, le header passe à la ligne sans défilement horizontal', async ({
+  page,
+}) => {
+  await page.goto('/styleguide/site-header');
+  await page.addStyleTag({ content: 'html { font-size: 200%; }' });
+  const overflow = await page.evaluate(() => {
+    const root = document.documentElement;
+    return root.scrollWidth - root.clientWidth;
+  });
+  expect(overflow).toBeLessThanOrEqual(0);
+  for (const link of await header(page).getByRole('link').all()) {
+    await expect(link).toBeInViewport({ ratio: 1 });
+  }
+});
+
+test('un lien du header se souligne au survol', async ({ page }) => {
+  await page.goto('/styleguide/site-header');
+  const link = nav(page).getByRole('link', { name: 'Projets' });
+  await expect(link).toHaveCSS('text-decoration-line', 'none');
+  await link.hover();
+  await expect(link).toHaveCSS('text-decoration-line', 'underline');
+  await expect(header(page)).toHaveScreenshot('site-header-survol.png');
+});
+
 for (const scheme of schemes) {
   test(`thème ${scheme} : accessibilité et capture`, async ({ page }) => {
     await page.emulateMedia({ colorScheme: scheme });
     await page.goto('/styleguide/site-header');
 
+    // Même fond que la page, donc que <meta name="theme-color"> : pas de couture sous la barre du navigateur.
+    await expect(header(page)).toHaveCSS(
+      'background-color',
+      await themeBackground(page, scheme),
+    );
     await expectNoAxeViolations(page);
     await expect(header(page)).toHaveScreenshot(`site-header-${scheme}.png`);
   });
