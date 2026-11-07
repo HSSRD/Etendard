@@ -10,35 +10,24 @@ set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 pass=0 fail=0
 
-# check <description> <motif attendu (grep -E)> <commande...>
-check() {
-  local desc="$1" pattern="$2"; shift 2
-  local out
+# probe <attendu|interdit> <description> <motif grep -E> <commande...> :
+# affiche la commande, sa sortie et le verdict.
+probe() {
+  local want="$1" desc="$2" pattern="$3"; shift 3
+  local out found=interdit
   echo "\$ $*"
   out="$("$@" 2>&1)"
   [ -n "$out" ] && sed 's/^/  /' <<<"$out"
-  if grep -Eq -- "$pattern" <<<"$out"; then
+  grep -Eq -- "$pattern" <<<"$out" && found=attendu
+  if [ "$found" = "$want" ]; then
     pass=$((pass + 1)); echo "  ✅ $desc"
   else
-    fail=$((fail + 1)); echo "  ❌ $desc (attendu : /$pattern/)"
+    fail=$((fail + 1)); echo "  ❌ $desc (motif $want : /$pattern/)"
   fi
   echo
 }
-
-# refute <description> <motif interdit> <commande...>
-refute() {
-  local desc="$1" pattern="$2"; shift 2
-  local out
-  echo "\$ $*"
-  out="$("$@" 2>&1)"
-  [ -n "$out" ] && sed 's/^/  /' <<<"$out"
-  if grep -Eq -- "$pattern" <<<"$out"; then
-    fail=$((fail + 1)); echo "  ❌ $desc (trouvé : /$pattern/)"
-  else
-    pass=$((pass + 1)); echo "  ✅ $desc"
-  fi
-  echo
-}
+check() { probe attendu "$@"; }
+refute() { probe interdit "$@"; }
 
 title() { printf '\n### %s\n\n' "$*"; }
 

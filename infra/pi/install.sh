@@ -33,7 +33,7 @@ fi
 
 # --- Utilisateur deploy ------------------------------------------------------
 step "Utilisateur deploy (sans mot de passe, sans sudo, sans groupe secondaire)"
-id deploy >/dev/null 2>&1 || useradd --create-home --user-group --shell /bin/sh deploy
+id deploy >/dev/null 2>&1 || useradd --create-home --user-group deploy
 # Shell /bin/sh obligatoire : sshd lance la commande forcée par le shell de l'utilisateur.
 # Mot de passe « * » : aucun mot de passe valide, sans verrouiller le compte pour la clé.
 usermod --password '*' --shell /bin/sh -G '' deploy
@@ -53,13 +53,13 @@ sha256sum /usr/local/bin/etendard-receive
 # --- Clé de déploiement à commande forcée -------------------------------------
 step "Clé de déploiement (authorized_keys à commande forcée)"
 # .ssh et authorized_keys appartiennent à root : deploy ne peut pas les modifier.
+ak="$deploy_home/.ssh/authorized_keys"
 install -d -o root -g root -m 755 "$deploy_home/.ssh"
-printf 'command="/usr/local/bin/etendard-receive",restrict %s %s github-deploy\n' "$key_type" "$key_b64" \
-  > "$deploy_home/.ssh/authorized_keys.new"
-chown root:root "$deploy_home/.ssh/authorized_keys.new"
-chmod 644 "$deploy_home/.ssh/authorized_keys.new"
-mv -f "$deploy_home/.ssh/authorized_keys.new" "$deploy_home/.ssh/authorized_keys"
-ssh-keygen -l -f "$deploy_home/.ssh/authorized_keys"
+printf 'command="/usr/local/bin/etendard-receive",restrict %s %s github-deploy\n' "$key_type" "$key_b64" > "$ak.new"
+chown root:root "$ak.new"
+chmod 644 "$ak.new"
+mv -f "$ak.new" "$ak"
+ssh-keygen -l -f "$ak"
 
 # --- Caddy -------------------------------------------------------------------
 step "Configuration de Caddy (/etc/caddy/Caddyfile)"

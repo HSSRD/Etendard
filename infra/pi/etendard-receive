@@ -17,7 +17,7 @@ KEEP=5
 die() { echo "etendard-receive: $*" >&2; exit 1; }
 
 current_sha() {
-  [ -L "$CURRENT" ] || return 0
+  [ -L "$CURRENT" ] || die "aucune version servie"
   basename "$(readlink "$CURRENT")"
 }
 
@@ -48,7 +48,6 @@ receive() {
   # Contrôle de l'archive avant toute extraction.
   names="$(tar -tzf "$archive")" || die "archive illisible"
   types="$(tar -tvzf "$archive" | cut -c1)"
-  [ -n "$names" ] || die "archive sans fichier"
   if grep -q '^/' <<<"$names"; then die "chemin absolu refusé"; fi
   if grep -Eq '(^|/)\.\.(/|$)' <<<"$names"; then die "chemin contenant .. refusé"; fi
   if grep -q '[^d-]' <<<"$types"; then die "seuls les fichiers et dossiers sont acceptés (lien ou fichier spécial refusé)"; fi
@@ -70,9 +69,8 @@ receive() {
   touch "$RELEASES/$sha"   # date de publication, utilisée par rollback et le ménage
   switch_to "$sha"
 
-  current="$sha"
   releases_by_date | tail -n +$((KEEP + 1)) | while read -r old; do
-    [ "$old" = "$current" ] || rm -rf "${RELEASES:?}/$old"
+    [ "$old" = "$sha" ] || rm -rf "${RELEASES:?}/$old"
   done
   echo "version $sha publiée"
 }
@@ -80,7 +78,6 @@ receive() {
 rollback() {
   lock
   current="$(current_sha)"
-  [ -n "$current" ] || die "aucune version servie"
   previous="$(releases_by_date | grep -A1 -x "$current" | sed -n 2p)" || true
   [ -n "$previous" ] || die "aucune version antérieure à $current"
   switch_to "$previous"
@@ -88,9 +85,7 @@ rollback() {
 }
 
 status() {
-  current="$(current_sha)"
-  [ -n "$current" ] || die "aucune version servie"
-  echo "$current"
+  current_sha
 }
 
 case "${SSH_ORIGINAL_COMMAND:-}" in

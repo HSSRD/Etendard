@@ -11,14 +11,20 @@ trap 'rm -rf "$WORK"' EXIT
 export MSYS=winsymlinks:sys   # bash de Git : vrais liens symboliques au lieu de copies
 export ETENDARD_ROOT="$WORK/srv"
 
-# Le bash de Git n'a pas flock : substitut qui simule un verrou libre ou pris.
-# Le vrai verrou est vérifié sur le Pi par verify.sh.
-if ! command -v flock >/dev/null || [ -n "${MSYSTEM:-}" ]; then
+# hold_lock / release_lock : un autre déploiement tient le verrou.
+# Le bash de Git n'a pas flock : un substitut simule alors un verrou pris tant
+# qu'un fichier témoin existe. Sous Linux, le vrai flock est utilisé.
+if command -v flock >/dev/null; then
+  hold_lock() { flock "$ETENDARD_ROOT/.lock" sleep 2 & sleep 0.5; }
+  release_lock() { wait; }
+else
   mkdir "$WORK/bin"
-  printf '#!/bin/sh\n[ -z "$FAKE_FLOCK_BUSY" ]\n' > "$WORK/bin/flock"
+  printf '#!/bin/sh\n[ ! -e "$ETENDARD_ROOT/.lock.held" ]\n' > "$WORK/bin/flock"
   chmod +x "$WORK/bin/flock"
   export PATH="$WORK/bin:$PATH"
-  FAKE_FLOCK=1
+  hold_lock() { touch "$ETENDARD_ROOT/.lock.held"; }
+  release_lock() { rm -f "$ETENDARD_ROOT/.lock.held"; }
+  echo "note - flock simulé (bash de Git) ; le vrai verrou est testé sur le Pi par verify.sh"
 fi
 
 pass=0 fail=0
@@ -98,36 +104,36 @@ expect_refused "entrée vide" /dev/null "archive vide"
 printf 'pas une archive' > "$WORK/bad.tar.gz"
 expect_refused "fichier non gzip" "$WORK/bad.tar.gz" "illisible"
 
-mk() { mkdir -p "$WORK/$1"; }
-mk p1; echo 1234567 > "$WORK/p1/version.txt"; echo x > "$WORK/p1/f"
+mkdir -p "$WORK/p1"; echo 1234567 > "$WORK/p1/version.txt"; echo x > "$WORK/p1/f"
 tar -czf "$WORK/abs.tar.gz" -P -C "$WORK/p1" version.txt "$WORK/p1/f"
 expect_refused "chemin absolu" "$WORK/abs.tar.gz" "chemin absolu"
 
 tar -czf "$WORK/dotdot.tar.gz" -P -C "$WORK/p1" version.txt ../p1/f
 expect_refused "chemin avec .." "$WORK/dotdot.tar.gz" "\.\."
 
-mk p2; echo 1234567 > "$WORK/p2/version.txt"; ln -s /etc/passwd "$WORK/p2/lien"
+mkdir -p "$WORK/p2"; echo 1234567 > "$WORK/p2/version.txt"; ln -s /etc/passwd "$WORK/p2/lien"
 tar -czf "$WORK/symlink.tar.gz" -C "$WORK/p2" .
 expect_refused "lien symbolique" "$WORK/symlink.tar.gz" "lien ou fichier spécial"
 
-mk p3; echo 1234567 > "$WORK/p3/version.txt"; echo x > "$WORK/p3/a"; ln "$WORK/p3/a" "$WORK/p3/b"
+mkdir -p "$WORK/p3"; echo 1234567 > "$WORK/p3/version.txt"; echo x > "$WORK/p3/a"; ln "$WORK/p3/a" "$WORK/p3/b"
 tar -czf "$WORK/hardlink.tar.gz" -C "$WORK/p3" .
 expect_refused "lien physique" "$WORK/hardlink.tar.gz" "lien ou fichier spécial"
 
-mk p4; echo x > "$WORK/p4/index.html"
+mkdir -p "$WORK/p4"; echo x > "$WORK/p4/index.html"
 tar -czf "$WORK/nover.tar.gz" -C "$WORK/p4" .
 expect_refused "version.txt absent" "$WORK/nover.tar.gz" "version.txt absent"
 
+n=0
 for bad in "ABCDEF1" "123456" "../../etc" "g123456" "$(printf 'a%.0s' {1..41})" "1234567 x"; do
-  d="$WORK/sha-$RANDOM"; mkdir -p "$d"; printf '%s\n' "$bad" > "$d/version.txt"
-  tar -czf "$d.tar.gz" -C "$d" .
-  expect_refused "SHA invalide « $bad »" "$d.tar.gz" "SHA invalide"
+  n=$((n + 1)); site "sha$n" "$bad"
+  expect_refused "SHA invalide « $bad »" "$WORK/sha$n.tar.gz" "SHA invalide"
 done
 
-FAKE_FLOCK_BUSY=1 expect_refused "déploiement concurrent (verrou pris)" "$WORK/v2.tar.gz" "autre déploiement"
-if [ -n "${FAKE_FLOCK:-}" ]; then echo "note - flock simulé ici ; le vrai verrou est testé sur le Pi par verify.sh"; fi
-FAKE_FLOCK_BUSY=1 run rollback && ko "rollback avec verrou pris" || ok "rollback refusé avec verrou pris"
-FAKE_FLOCK_BUSY=1 run status && ok "status fonctionne pendant un déploiement" || ko "status pendant un déploiement : $out"
+hold_lock
+expect_refused "déploiement concurrent (verrou pris)" "$WORK/v2.tar.gz" "autre déploiement"
+run rollback && ko "rollback avec verrou pris" || ok "rollback refusé avec verrou pris"
+run status && ok "status fonctionne pendant un déploiement" || ko "status pendant un déploiement : $out"
+release_lock
 
 echo
 echo "$pass réussis, $fail échoués"
