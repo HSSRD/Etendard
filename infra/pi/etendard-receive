@@ -1,0 +1,96 @@
+#!/bin/bash
+# Reçoit et publie une version du site Étendard (ADR 0006).
+# Seule commande autorisée pour la clé de déploiement (authorized_keys :
+# command="/usr/local/bin/etendard-receive",restrict). L'action vient de
+# SSH_ORIGINAL_COMMAND :
+#   (vide)    lit une archive .tar.gz sur l'entrée standard et la publie
+#   rollback  revient à la version précédente
+#   status    affiche le SHA servi
+set -euo pipefail
+umask 022
+
+ROOT="${ETENDARD_ROOT:-/srv/etendard}"   # surchargé uniquement par les tests
+RELEASES="$ROOT/releases"
+CURRENT="$ROOT/current"
+KEEP=5
+
+die() { echo "etendard-receive: $*" >&2; exit 1; }
+
+current_sha() {
+  [ -L "$CURRENT" ] || die "aucune version servie"
+  basename "$(readlink "$CURRENT")"
+}
+
+# Versions publiées, de la plus récente à la plus ancienne (date de publication).
+releases_by_date() {
+  find "$RELEASES" -mindepth 1 -maxdepth 1 -type d ! -name '.*' -printf '%T@ %f\n' \
+    | sort -rn | cut -d' ' -f2
+}
+
+switch_to() {
+  ln -sfn "releases/$1" "$CURRENT.tmp"
+  mv -T "$CURRENT.tmp" "$CURRENT"   # rename(2) : bascule atomique
+}
+
+lock() {
+  exec 9>"$ROOT/.lock"
+  flock -n 9 || die "un autre déploiement est en cours"
+}
+
+receive() {
+  lock
+  incoming="$(mktemp -d "$RELEASES/.incoming.XXXXXX")"
+  trap 'rm -rf "$incoming"' EXIT
+  archive="$incoming/site.tar.gz"
+  cat > "$archive"
+  [ -s "$archive" ] || die "archive vide (attendu : un .tar.gz sur l'entrée standard)"
+
+  # Contrôle de l'archive avant toute extraction.
+  names="$(tar -tzf "$archive")" || die "archive illisible"
+  types="$(tar -tvzf "$archive" | cut -c1)"
+  if grep -q '^/' <<<"$names"; then die "chemin absolu refusé"; fi
+  if grep -Eq '(^|/)\.\.(/|$)' <<<"$names"; then die "chemin contenant .. refusé"; fi
+  if grep -q '[^d-]' <<<"$types"; then die "seuls les fichiers et dossiers sont acceptés (lien ou fichier spécial refusé)"; fi
+
+  site="$incoming/site"
+  mkdir "$site"
+  tar -xzf "$archive" -C "$site" --no-same-owner --no-same-permissions
+  chmod -R u=rwX,go=rX "$site"
+
+  [ -f "$site/version.txt" ] || die "version.txt absent à la racine de l'archive"
+  sha="$(head -n1 "$site/version.txt" | tr -d '\r\n')"
+  [[ "$sha" =~ ^[0-9a-f]{7,40}$ ]] || die "SHA invalide dans version.txt"
+
+  if [ -d "$RELEASES/$sha" ]; then
+    echo "version $sha déjà présente, réactivée"
+  else
+    mv -T "$site" "$RELEASES/$sha"
+  fi
+  touch "$RELEASES/$sha"   # date de publication, utilisée par rollback et le ménage
+  switch_to "$sha"
+
+  releases_by_date | tail -n +$((KEEP + 1)) | while read -r old; do
+    [ "$old" = "$sha" ] || rm -rf "${RELEASES:?}/$old"
+  done
+  echo "version $sha publiée"
+}
+
+rollback() {
+  lock
+  current="$(current_sha)"
+  previous="$(releases_by_date | grep -A1 -x "$current" | sed -n 2p)" || true
+  [ -n "$previous" ] || die "aucune version antérieure à $current"
+  switch_to "$previous"
+  echo "retour à la version $previous (depuis $current)"
+}
+
+status() {
+  current_sha
+}
+
+case "${SSH_ORIGINAL_COMMAND:-}" in
+  "") receive ;;
+  rollback) rollback ;;
+  status) status ;;
+  *) die "commande refusée : ${SSH_ORIGINAL_COMMAND}" ;;
+esac

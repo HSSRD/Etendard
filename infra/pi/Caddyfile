@@ -1,0 +1,13 @@
+# Étendard sur le Pi (ADR 0002). Installé dans /etc/caddy/Caddyfile par install.sh.
+{
+	# Aucune autre écoute que 127.0.0.1:8080 : ni API d'admin (:2019), ni HTTPS automatique (:80/:443).
+	# Conséquence : appliquer un changement par « systemctl restart caddy » (reload passe par l'API d'admin).
+	admin off
+	auto_https off
+}
+
+http://:8080 {
+	bind 127.0.0.1
+	root * /srv/etendard/current
+	file_server
+}

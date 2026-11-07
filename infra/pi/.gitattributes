@@ -1,0 +1,2 @@
+# Scripts exécutés sur le Pi : fins de ligne LF même sous Windows (core.autocrlf).
+* text eol=lf

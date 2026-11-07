@@ -1,0 +1,129 @@
+# Pi `florasp` : ce qui est en place et pourquoi
+
+Ce document explique la préparation du Pi faite au ticket #4 (PR #7). Pour l'installer ou la refaire, suis le [README](README.md). Les décisions de fond sont dans les ADR [0002](../../docs/adr/0002-heberger-sur-le-pi-avec-caddy-et-cloudflare-tunnel.md) (hébergement) et [0006](../../docs/adr/0006-deployer-via-tailscale-et-ssh-a-commande-forcee.md) (déploiement).
+
+## Le but
+
+À chaque merge sur `main`, GitHub Actions doit déposer la nouvelle version du site sur le Pi. Ce dépôt passe par le workflow `deploy.yml` de #5. Deux contraintes :
+
+- **la CI ne doit jamais avoir de terminal sur le Pi.** Le repo est public : un workflow compromis ne doit rien pouvoir faire d'autre que livrer le site ;
+- **le Pi héberge aussi Sentry** (caméra, ports 5000 et 8000). La CI ne doit pas pouvoir l'atteindre.
+
+## Le trajet d'un déploiement
+
+```
+GitHub Actions (nœud éphémère tag:ci)
+   │  Tailscale : tag:ci ne joint que florasp, port 22
+   ▼
+sshd du Pi ── clé github-deploy ──▶ commande forcée : /usr/local/bin/etendard-receive
+                                       │  contrôle l'archive, l'extrait dans releases/<sha>/
+                                       │  bascule le lien current
+                                       ▼
+                         /srv/etendard/current ──▶ Caddy (127.0.0.1:8080)
+```
+
+Pour l'instant, personne d'autre que le Pi ne voit le site. Flo le consulte par un tunnel SSH : `ssh -L 8080:127.0.0.1:8080 flo@192.168.1.41`, puis http://localhost:8080. La publication sur Internet viendra avec Cloudflare Tunnel, dans un autre ticket.
+
+## Quatre protections, chacune utile si une autre lâche
+
+| Protection | Ce qu'elle empêche | Où |
+|---|---|---|
+| **Tailscale** : `tag:ci` ne joint que `florasp:22` | une machine de CI qui atteindrait Sentry, tes autres appareils ou un autre port | `tailscale-policy.hujson` |
+| **Clé à commande forcée** : `command="…etendard-receive",restrict` | un terminal, une autre commande, sftp, un tunnel | `~deploy/.ssh/authorized_keys` |
+| **Utilisateur `deploy`** : sans mot de passe, sans sudo, sans groupe | toute action hors de `/srv/etendard` | `install.sh` |
+| **`etendard-receive`** : contrôle de l'archive avant extraction | qu'une archive piégée écrive hors de son dossier ou fasse servir un fichier du système | `etendard-receive` |
+
+## Les éléments, un par un
+
+### Caddy, le serveur web
+
+Caddy lit les fichiers de `/srv/etendard/current` et les renvoie au navigateur. Le site Astro est statique : ni Node ni base de données à faire tourner, juste des fichiers à servir.
+
+- **Il écoute sur `127.0.0.1:8080` uniquement.** Ni le réseau local ni le tailnet ne le joignent. Plus tard, Cloudflare Tunnel se branchera sur cette même adresse, sans ouvrir de port sur la box.
+- **`admin off` et `auto_https off`.** Par défaut, Caddy ouvre aussi une API d'administration (port 2019) et des écoutes sur les ports 80 et 443. Ces options les suppriment. En contrepartie, un changement de configuration s'applique par `systemctl restart caddy` : `reload` ne fonctionne plus.
+- **Le paquet vient du dépôt apt officiel de Caddy.** Le `Caddyfile` est écrit *avant* l'installation, pour que Caddy ne démarre jamais avec la configuration par défaut du paquet (qui écoute sur le port 80 de toutes les interfaces).
+
+### L'utilisateur `deploy`
+
+- **Mot de passe `*`** : aucun mot de passe ne peut correspondre, mais la connexion par clé reste possible. Avec `!`, `sshd` pourrait considérer le compte comme verrouillé, et la clé serait refusée.
+- **Shell `/bin/sh`** : `sshd` lance la commande forcée par le shell de l'utilisateur. Avec `nologin`, elle ne s'exécuterait jamais.
+- **Aucun groupe secondaire et aucun sudo** : il ne peut écrire que dans `/srv/etendard`, qui lui appartient.
+
+### La clé de déploiement
+
+Elle s'appelle `github-deploy`. La clé privée est sur le PC de Flo et ira dans les secrets GitHub de l'environnement `production` avec #5. Côté Pi, `authorized_keys` contient une seule ligne :
+
+```
+command="/usr/local/bin/etendard-receive",restrict ssh-ed25519 AAAA… github-deploy
+```
+
+- `command=` : quoi que demande le client, c'est `etendard-receive` qui s'exécute. Ce que le client a demandé arrive dans la variable `SSH_ORIGINAL_COMMAND`.
+- `restrict` : pas de terminal, pas de redirection de port, pas d'agent SSH, pas d'X11.
+- Le fichier et le dossier `.ssh` **appartiennent à root** : `deploy` ne peut pas s'ajouter une autre clé.
+
+### `etendard-receive`, la seule porte d'entrée
+
+Le script n'accepte que trois demandes. Tout le reste est refusé.
+
+| Demande | Effet |
+|---|---|
+| aucune, archive sur l'entrée standard : `ssh deploy@florasp < site.tar.gz` | publie une nouvelle version |
+| `rollback` | revient à la version publiée juste avant celle servie |
+| `status` | affiche le SHA servi |
+
+Une publication se déroule ainsi :
+
+1. **Verrou `flock`.** Si un déploiement est déjà en cours, la demande est refusée tout de suite, ce qui évite que deux merges rapprochés se mélangent. `status` reste possible pendant ce temps.
+2. **Contrôle de l'archive, avant toute extraction.** Le script refuse :
+   - un chemin absolu ;
+   - un `..` ;
+   - un lien symbolique, un lien physique ou un fichier spécial.
+
+   Un lien pourrait faire servir `/etc/passwd` par Caddy. Un `..` permettrait d'écrire hors du dossier.
+3. **Extraction**, avec des droits remis à plat : lecture pour tous, écriture pour `deploy` seul.
+4. **Lecture de `version.txt`**, validé par `^[0-9a-f]{7,40}$`, c'est-à-dire un SHA git. Ce SHA devient le nom du dossier `releases/<sha>`, d'où cette rigueur.
+5. **Bascule atomique** : le lien `current.tmp` est renommé en `current`. Caddy sert l'ancienne version ou la nouvelle, jamais un état intermédiaire.
+6. **Ménage** : les 5 versions les plus récentes sont gardées, et celle qui est servie n'est jamais supprimée.
+
+En cas d'erreur, rien ne change : le dossier temporaire est supprimé et `current` ne bouge pas.
+
+L'ordre des versions repose sur leur date de publication, c'est-à-dire la date de modification du dossier, que le script met à jour. Ne modifie donc pas les dossiers de `releases/` à la main.
+
+### Tailscale
+
+**État constaté au départ :**
+- la politique était celle par défaut, où tout le monde joint tout ;
+- de nombreux nœuds `github-runnervm…` traînaient dans le tailnet. Ils venaient des workflows de **Sentry et d'Overwatch** et pouvaient joindre Sentry.
+
+**Ce qui a été fait :**
+- **Nœuds supprimés.**
+- **Tailscale SSH coupé sur le Pi** (`RunSSH: false`). Sinon, il répondrait lui-même sur le port 22 du tailnet, sans lire `authorized_keys` : la commande forcée serait contournée.
+- **Politique** :
+  - tes appareils gardent l'accès complet, comme avant ;
+  - `tag:ci` ne joint que `florasp`, et seulement en `tcp:22`.
+- **Tests dans la politique.** La console refuse d'enregistrer si l'un d'eux échoue :
+  - `tag:ci` est refusé sur 5000, 8000, 8080, 80 et 443 ;
+  - `Florianrcht@github` garde 22, 5000 et 8000.
+- **Client OAuth `GitHubAction`**, avec une seule portée, `auth_keys`, et le tag `tag:ci`. Même s'il fuit, il ne peut créer que des machines `tag:ci`, donc limitées au port 22 du Pi. `tailscale/github-action` crée avec lui des nœuds éphémères, retirés du tailnet après chaque job.
+
+Le dépôt contient une version générique de la politique, avec des valeurs `À_REMPLACER`. La version complétée (IP du Pi, identifiant de Flo) n'existe que dans la console.
+
+## Comment on sait que ça marche
+
+- **`test/etendard-receive.test.sh`** : 38 tests locaux, sur des archives saines et piégées. Ils n'ont pas besoin du Pi.
+- **`verify.sh pi`**, sur le Pi, et **`verify.sh ssh`**, depuis le PC : ils rejouent les critères du ticket et affichent ✅ ou ❌. Le 2026-11-07, le bilan était de 20/0 et 21/0. Les sorties complètes sont dans le ticket #4.
+- **Tests Tailscale** : ils sont rejoués par la console à chaque modification de la politique.
+
+Relance `verify.sh` après toute intervention sur le Pi : mise à jour système, réinstallation, changement de configuration SSH.
+
+## Ce qui reste à faire, hors de ce ticket
+
+- **#5, `deploy.yml`** : construire l'archive avec `version.txt`, rejoindre le tailnet avec le client OAuth, l'envoyer à `deploy@florasp`, faire un test de fumée, puis `rollback` en cas d'échec.
+- **Runners de Sentry et d'Overwatch** : s'ils rejoignent encore le tailnet avec une clé sans tag, Tailscale les traite comme tes appareils, avec un accès complet. Il faudra leur donner un tag dédié, avec ses propres règles.
+- **Durcissement du Pi, avant toute publication** (ADR 0002) :
+  - désactiver la connexion SSH par mot de passe ;
+  - installer un pare-feu et les mises à jour automatiques ;
+  - corriger Sentry, qui écoute sur toutes les interfaces ;
+  - retirer CUPS, Avahi et le bureau ;
+  - à terme, réinstaller un Pi dédié.
+- **Ansible** : ces fichiers seront repris dans `HSSRD/infra`.
