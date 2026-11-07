@@ -36,7 +36,15 @@ test('la one page rend le footer après <main>, avec l’année du build', async
 }) => {
   await page.goto('/');
   const footer = page.locator('main#contenu + footer.site-footer');
-  await expect(footer).toContainText(`© ${new Date().getFullYear()} HSSRD`);
+  // Build et test peuvent encadrer le passage à la nouvelle année.
+  const year = new Date().getFullYear();
+  await expect(footer).toContainText(
+    new RegExp(`© (${year - 1}|${year}) HSSRD`),
+  );
+
+  await footer.getByRole('link', { name: 'Retour en haut' }).click();
+  await expect(page).toHaveURL(/#accueil$/);
+  await expect(page.locator('#accueil')).toBeInViewport();
 });
 
 for (const scheme of schemes) {
