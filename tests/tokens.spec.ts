@@ -5,6 +5,10 @@ test('la page des tokens montre chaque thème', async ({ page }) => {
   await page.goto('/styleguide/tokens');
 
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tokens');
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
+    'content',
+    'noindex',
+  );
   for (const scheme of schemes) {
     const panel = page.locator(`section[data-theme="${scheme}"]`);
     await expect(panel).toHaveCSS(

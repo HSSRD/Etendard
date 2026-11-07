@@ -19,6 +19,7 @@ test('la page d’accueil pose la structure de la one page', async ({ page }) =>
   await expect(main.locator('section#accueil h1')).toHaveText('Étendard');
   await expect(main.locator('section#projets h2')).toHaveText('Projets');
   await expect(page.locator('script')).toHaveCount(0);
+  await expect(page.locator('meta[name="robots"]')).toHaveCount(0);
 });
 
 test('le lien d’évitement apparaît au clavier et mène au contenu', async ({
