@@ -1,0 +1,8 @@
+pnpm-lock.yaml
+dist/
+.astro/
+test-results/
+playwright-report/
+# Contenu figé ou hors périmètre de l’outillage : non reformaté.
+docs/adr/
+infra/

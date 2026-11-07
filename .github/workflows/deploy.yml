@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       rollback:
-        description: "Revenir à la version précédente au lieu de déployer"
+        description: 'Revenir à la version précédente au lieu de déployer'
         type: boolean
         default: false
 
@@ -24,6 +24,10 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
+    # pnpm verify lance Playwright : même image que ci.yml (ADR 0003).
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      options: --ipc=host
     outputs:
       sha256: ${{ steps.archive.outputs.sha256 }}
     steps:
@@ -36,7 +40,7 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm build
+      - run: pnpm verify
       - name: Créer l'archive
         id: archive
         run: |
