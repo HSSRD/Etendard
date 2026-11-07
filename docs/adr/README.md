@@ -16,7 +16,7 @@ Avant toute modification structurelle, lire les ADR acceptés et ne jamais les c
 | 0004 | [Écrire le CSS en natif avec des design tokens, BEM et un Stylelint strict](0004-ecrire-le-css-en-natif-avec-tokens-et-bem.md) | Proposé |
 | 0005 | [Faire de `pnpm verify` la définition unique de « terminé »](0005-faire-de-pnpm-verify-la-definition-de-termine.md) | Proposé |
 | 0006 | [Déployer par GitHub Actions, Tailscale et SSH à commande forcée, avec rollback automatique](0006-deployer-via-tailscale-et-ssh-a-commande-forcee.md) | Proposé |
-| 0007 | [Prévisualiser chaque PR sur Cloudflare Pages](0007-previsualiser-les-pr-sur-cloudflare-pages.md) | Proposé |
+| 0007 | [Prévisualiser chaque PR sur Cloudflare Workers](0007-previsualiser-les-pr-sur-cloudflare-workers.md) | Proposé |
 | 0008 | [Identifier les agents par la GitHub App `hssrd-bot`, sans permission `workflows`](0008-identifier-les-agents-par-une-github-app-sans-permission-workflows.md) | Proposé |
 | 0009 | [Suivre les tâches dans GitHub Issues avec des formulaires et des étiquettes](0009-suivre-les-taches-dans-github-issues.md) | Proposé |
 | 0010 | [Enchaîner les agents dans GitHub Actions, du ticket au merge humain](0010-enchainer-les-agents-dans-github-actions.md) | Proposé |
