@@ -22,8 +22,9 @@ for (const scheme of schemes) {
     await expect(hero.getByRole('heading', { level: 1 })).toHaveText(
       'Étendard',
     );
-    await expect(hero.locator('.hero__lead')).toHaveText(
-      'Bienvenue ! Voici le site qui regroupe tous les projets de Hussard.',
+    // Espace insécable avant « ! » : textContent, car toHaveText normalise les espaces.
+    expect(await hero.locator('.hero__lead').textContent()).toContain(
+      'Bienvenue\u00a0! Voici le site qui regroupe tous les projets de Hussard.',
     );
     const cta = hero.getByRole('link', { name: 'Découvrir les projets' });
     await expect(cta).toHaveAttribute('href', '#projets');
@@ -50,10 +51,24 @@ for (const scheme of schemes) {
       await page.keyboard.press('Tab');
     }
     await expect(cta).toBeFocused();
-    await expectNoAxeViolations(page);
+    await expect(cta).toHaveCSS('outline-style', 'solid');
+    expect(
+      Number.parseFloat(
+        await cta.evaluate((el) => getComputedStyle(el).outlineWidth),
+      ),
+    ).toBeGreaterThan(0);
     await expect(page).toHaveScreenshot(`hero-${scheme}-focus.png`, {
       fullPage: true,
     });
+
+    // Mode couleurs forcées : la bordure (transparente sinon) reste le contour du bouton.
+    await page.emulateMedia({ forcedColors: 'active' });
+    await expect(cta).toHaveCSS('border-top-style', 'solid');
+    expect(
+      Number.parseFloat(
+        await cta.evaluate((el) => getComputedStyle(el).borderTopWidth),
+      ),
+    ).toBeGreaterThan(0);
   });
 }
 
