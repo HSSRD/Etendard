@@ -52,11 +52,7 @@ for (const scheme of schemes) {
     }
     await expect(cta).toBeFocused();
     await expect(cta).toHaveCSS('outline-style', 'solid');
-    expect(
-      Number.parseFloat(
-        await cta.evaluate((el) => getComputedStyle(el).outlineWidth),
-      ),
-    ).toBeGreaterThan(0);
+    await expect(cta).toHaveCSS('outline-width', /^[1-9]/);
     await expect(page).toHaveScreenshot(`hero-${scheme}-focus.png`, {
       fullPage: true,
     });
@@ -64,11 +60,7 @@ for (const scheme of schemes) {
     // Mode couleurs forcées : la bordure (transparente sinon) reste le contour du bouton.
     await page.emulateMedia({ forcedColors: 'active' });
     await expect(cta).toHaveCSS('border-top-style', 'solid');
-    expect(
-      Number.parseFloat(
-        await cta.evaluate((el) => getComputedStyle(el).borderTopWidth),
-      ),
-    ).toBeGreaterThan(0);
+    await expect(cta).toHaveCSS('border-top-width', /^[1-9]/);
   });
 }
 
