@@ -26,7 +26,7 @@ Enchaînement : ticket d'une ligne (`idee`) → **agent rédacteur** (structure 
 - La PR contient `Fixes #N`, les critères cochés avec leur test et une section « Ce que la relecture a retiré ».
 - Échec de CI : l'agent lit les erreurs (`gh run view --log-failed`), corrige, puis pose `bloque` après N tentatives.
 - Captures et vidéos produites **par la CI** (proposition de Claude, contraire à l'idée initiale de Flo : à confirmer), converties en GIF, publiées avec la prévisualisation de la PR (0007) et affichées avant / après / différence dans un commentaire mis à jour.
-- **Le merge reste toujours humain.** Jamais de merge automatique sur une PR d'agent.
+- **Le merge reste toujours humain.** Jamais de merge automatique sur une PR d'agent. Seule exception : les mises à jour mineures de dépendances par Renovate (0013).
 
 ## Alternatives écartées
 
