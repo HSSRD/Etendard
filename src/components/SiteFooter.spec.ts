@@ -34,6 +34,8 @@ test('le footer affiche l’éditeur, l’année et ses liens, sans débordement
 test('sur la one page, le footer suit <main> et « Retour en haut » remonte à l’accueil', async ({
   page,
 }) => {
+  // Défilement instantané : le défilement doux est déjà testé par accueil.spec.ts.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
   const footer = page.locator('main#contenu + footer.site-footer');
   // Année du build ; la précédente n'est admise que le 1er janvier (build lancé la veille).
