@@ -1,7 +1,7 @@
 ---
 // Structure commune des pages (ticket #10). Emplacements :
 // - slot « header » : rendu avant <main> (SiteHeader, ticket #11) ;
-// - slot par défaut : contenu de <main id="contenu"> ;
+// - slot par défaut : contenu de <main id="contenu" tabindex="-1"> ;
 // - slot « footer » : rendu après <main> (SiteFooter, ticket #12) ;
 // - slot « head » : balises supplémentaires du <head>.
 import '../styles/global.css';
@@ -20,7 +20,7 @@ const { title, description } = Astro.props;
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
-    <!-- Mêmes valeurs que --color-background dans tokens.css (vérifié par les tests Playwright). -->
+    {/* Mêmes valeurs que --color-background dans tokens.css (vérifié par les tests Playwright). */}
     <meta
       name="theme-color"
       media="(prefers-color-scheme: light)"
@@ -56,10 +56,10 @@ const { title, description } = Astro.props;
     position: absolute;
     top: var(--space-2);
     z-index: var(--z-index-skip-link);
+  }
 
-    &:not(:focus) {
-      opacity: 0;
-      pointer-events: none;
-    }
+  .base-layout__skip-link:not(:focus) {
+    opacity: 0;
+    pointer-events: none;
   }
 </style>

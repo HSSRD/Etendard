@@ -12,9 +12,7 @@ test('la page des tokens montre chaque thème', async ({ page }) => {
       await themeBackground(page, scheme),
     );
     await expect(panel.locator('.tokens__swatch')).toHaveCount(7);
-    await expect(panel.locator('[class*="tokens__font-size--"]')).toHaveCount(
-      6,
-    );
+    await expect(panel.locator('.tokens__font-size')).toHaveCount(6);
     await expect(panel.locator('.tokens__bar')).toHaveCount(9);
   }
 });

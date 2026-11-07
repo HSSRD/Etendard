@@ -32,6 +32,7 @@ test('le lien d’évitement apparaît au clavier et mène au contenu', async ({
   await page.keyboard.press('Tab');
   await expect(skipLink).toBeFocused();
   await expect(skipLink).toHaveCSS('opacity', '1');
+  await expect(page).toHaveScreenshot('lien-evitement.png');
 
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/#contenu$/);

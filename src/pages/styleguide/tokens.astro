@@ -50,7 +50,7 @@ const spaces = [1, 2, 3, 4, 5, 6, 7, 8, 9];
           {['background', 'surface'].map((ground) => (
             <li class={`tokens__ground tokens__ground--${ground}`}>
               {texts.map((text) => (
-                <p class={`tokens__text--${text}`}>
+                <p class={`tokens__text tokens__text--${text}`}>
                   --color-{text} sur --color-{ground}
                 </p>
               ))}
@@ -63,7 +63,7 @@ const spaces = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
         <h3>Échelle typographique</h3>
         {fontSizes.map((size) => (
-          <p class={`tokens__font-size--${size}`}>
+          <p class={`tokens__font-size tokens__font-size--${size}`}>
             --font-size-{size} : Étendard
           </p>
         ))}
