@@ -44,9 +44,8 @@ const { year = new Date().getFullYear() } = Astro.props;
     color: var(--color-text);
   }
 
+  /* Les liens se rangent dans le flex de __inner, comme les autres lignes. */
   .site-footer__links {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2) var(--space-5);
+    display: contents;
   }
 </style>
