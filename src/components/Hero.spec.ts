@@ -23,7 +23,7 @@ for (const scheme of schemes) {
       'Étendard',
     );
     // Espace insécable avant « ! » : textContent, car toHaveText normalise les espaces.
-    expect(await hero.locator('.hero__lead').textContent()).toContain(
+    expect((await hero.locator('.hero__lead').textContent())?.trim()).toBe(
       'Bienvenue\u00a0! Voici le site qui regroupe tous les projets de Hussard.',
     );
     const cta = hero.getByRole('link', { name: 'Découvrir les projets' });
@@ -34,7 +34,8 @@ for (const scheme of schemes) {
       fullPage: true,
     });
 
-    // État survol (pointeur fin) : le CTA se souligne.
+    // État survol (appareils qui survolent) : le CTA, non souligné au repos, se souligne.
+    await expect(cta).toHaveCSS('text-decoration-line', 'none');
     await cta.hover();
     await expect(cta).toHaveCSS('text-decoration-line', 'underline');
     await expect(page).toHaveScreenshot(`hero-${scheme}-hover.png`, {
@@ -53,6 +54,8 @@ for (const scheme of schemes) {
     await expect(cta).toBeFocused();
     await expect(cta).toHaveCSS('outline-style', 'solid');
     await expect(cta).toHaveCSS('outline-width', /^[1-9]/);
+    // Contour de la couleur du fond du bouton : le décalage le rend distinct.
+    await expect(cta).toHaveCSS('outline-offset', /^[1-9]/);
     await expect(page).toHaveScreenshot(`hero-${scheme}-focus.png`, {
       fullPage: true,
     });
@@ -61,8 +64,17 @@ for (const scheme of schemes) {
     await page.emulateMedia({ forcedColors: 'active' });
     await expect(cta).toHaveCSS('border-top-style', 'solid');
     await expect(cta).toHaveCSS('border-top-width', /^[1-9]/);
+    await expect(cta).not.toHaveCSS('border-top-color', 'rgba(0, 0, 0, 0)');
   });
 }
+
+test('l’index du styleguide mène à la page du Hero', async ({ page }) => {
+  await page.goto('/styleguide');
+  await expect(page.getByRole('link', { name: 'Hero' })).toHaveAttribute(
+    'href',
+    '/styleguide/hero',
+  );
+});
 
 test('accueil : le Hero remplit l’écran sous le header, centré, et mène aux projets', async ({
   page,

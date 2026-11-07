@@ -26,6 +26,7 @@
   .hero__lead {
     color: var(--color-text-muted);
     font-size: var(--font-size-lg);
+    text-wrap: balance;
   }
 
   /* Bordure transparente : seul contour du bouton en mode couleurs forcées. */
@@ -41,7 +42,7 @@
     text-decoration-line: none;
   }
 
-  @media (any-hover: hover) {
+  @media (hover: hover) {
     .hero__cta:hover {
       text-decoration-line: underline;
     }
