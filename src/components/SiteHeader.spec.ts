@@ -7,19 +7,11 @@ const header = (page: Page) => page.locator('body > header.site-header');
 const nav = (page: Page) =>
   page.getByRole('navigation', { name: 'Navigation principale' });
 
-/** --header-height en pixels. */
-const headerHeight = (page: Page) =>
-  page.evaluate(() => {
-    const probe = document.createElement('div');
-    probe.style.height = 'var(--header-height)';
-    document.body.append(probe);
-    const height = probe.getBoundingClientRect().height;
-    probe.remove();
-    return height;
-  });
-
 for (const url of pages) {
-  test(`${url} : nom du site et navigation par ancres`, async ({ page }) => {
+  test(`${url} : nom, navigation par ancres et titre visible sous le header`, async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto(url);
 
     // Inséré dans l'emplacement header du layout, juste avant <main>.
@@ -33,16 +25,9 @@ for (const url of pages) {
     await expect(links.nth(0)).toHaveAttribute('href', '#accueil');
     await expect(links.nth(1)).toHaveAttribute('href', '#projets');
     await expect(page.locator('script')).toHaveCount(0);
-  });
 
-  test(`${url} : un clic sur « Projets » amène le titre sous le header`, async ({
-    page,
-  }) => {
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.goto(url);
-    await nav(page).getByRole('link', { name: 'Projets' }).click();
+    await links.nth(1).click();
     await expect(page).toHaveURL(/#projets$/);
-
     const title = page.locator('#projets h2');
     await expect(title).toBeInViewport();
     const headerBox = await header(page).boundingBox();
@@ -54,7 +39,7 @@ for (const url of pages) {
   });
 }
 
-test('le header reste collé en haut, opaque, à la hauteur du token', async ({
+test('le header colle en haut, opaque, à la hauteur du token, sur une ligne', async ({
   page,
 }) => {
   await page.goto('/styleguide/site-header');
@@ -62,37 +47,44 @@ test('le header reste collé en haut, opaque, à la hauteur du token', async ({
   await expect(header(page)).toHaveCSS('top', '0px');
   // rgb() et non rgba() : fond opaque.
   await expect(header(page)).toHaveCSS('background-color', /^rgb\(/);
-  const height = await headerHeight(page);
-  expect(height).toBeGreaterThan(0);
-  await expect(header(page)).toHaveCSS('height', `${height}px`);
+
+  // Hauteur du token, et chaque lien tient dans le header sans déborder à droite :
+  // un retour à la ligne ferait sortir un lien du header.
+  const layout = await page.evaluate(() => {
+    const probe = document.createElement('div');
+    probe.style.height = 'var(--header-height)';
+    document.body.append(probe);
+    const tokenHeight = probe.getBoundingClientRect().height;
+    probe.remove();
+    const root = document.documentElement;
+    return {
+      tokenHeight,
+      headerHeight: document
+        .querySelector('.site-header')
+        ?.getBoundingClientRect().height,
+      links: [...document.querySelectorAll('.site-header a')].map((link) => {
+        const { bottom, right, top } = link.getBoundingClientRect();
+        return { bottom, right, top };
+      }),
+      scrollWidth: root.scrollWidth,
+      clientWidth: root.clientWidth,
+    };
+  });
+  expect(layout.tokenHeight).toBeGreaterThan(0);
+  expect(layout.headerHeight).toBe(layout.tokenHeight);
+  expect(layout.links).toHaveLength(3);
+  for (const link of layout.links) {
+    expect(link.top).toBeGreaterThanOrEqual(0);
+    expect(link.bottom).toBeLessThanOrEqual(layout.tokenHeight);
+    expect(link.right).toBeLessThanOrEqual(layout.clientWidth);
+  }
+  expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
 
   await page.mouse.wheel(0, 2000);
   await expect
     .poll(() => page.evaluate(() => window.scrollY))
     .toBeGreaterThan(0);
   expect((await header(page).boundingBox())?.y).toBe(0);
-});
-
-test('le nom et les liens tiennent sur une ligne, sans défilement horizontal', async ({
-  page,
-}) => {
-  await page.goto('/styleguide/site-header');
-  const height = await headerHeight(page);
-  for (const link of await header(page).getByRole('link').all()) {
-    const box = await link.boundingBox();
-    expect(box?.y).toBeGreaterThanOrEqual(0);
-    expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(height);
-    expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(
-      page.viewportSize()?.width ?? 0,
-    );
-  }
-  expect(
-    await page.evaluate(
-      () =>
-        document.documentElement.scrollWidth <=
-        document.documentElement.clientWidth,
-    ),
-  ).toBe(true);
 });
 
 test('chaque lien du header a un focus visible au clavier', async ({
