@@ -1,0 +1,48 @@
+// Politique Tailscale du tailnet de Flo (ticket #4, ADR 0006).
+// À coller dans la console : Access controls > Edit file, en suivant tailscale-checklist.md.
+// Avant de coller : remplacer les deux valeurs « À_REMPLACER », et reporter toute règle
+// propre au tailnet actuel (voir l'étape 1 de la checklist). La console refuse
+// d'enregistrer tant qu'une valeur est invalide ou qu'un test du bloc « tests » échoue.
+{
+	"tagOwners": {
+		// Machines éphémères de GitHub Actions, créées par le client OAuth (ou la fédération d'identité).
+		"tag:ci": ["autogroup:admin"],
+	},
+
+	"hosts": {
+		// Adresse Tailscale du Pi : « tailscale ip -4 » sur florasp.
+		"florasp": "À_REMPLACER_IP_TAILSCALE_DE_FLORASP",
+	},
+
+	"grants": [
+		// Appareils de Flo (machines non étiquetées) : accès complet, comme la politique par défaut.
+		{"src": ["autogroup:member"], "dst": ["*"], "ip": ["*"]},
+
+		// CI : uniquement le SSH du Pi, pour la clé à commande forcée de deploy.
+		{"src": ["tag:ci"], "dst": ["florasp"], "ip": ["tcp:22"]},
+	],
+
+	// Tailscale SSH : bloc par défaut, conservé. Il ne concerne pas tag:ci, qui utilise le sshd du Pi.
+	"ssh": [
+		{
+			"action": "check",
+			"src":    ["autogroup:member"],
+			"dst":    ["autogroup:self"],
+			"users":  ["autogroup:nonroot", "root"],
+		},
+	],
+
+	// Vérifiés par la console à chaque enregistrement (critère 7 du ticket #4).
+	"tests": [
+		{
+			"src":    "tag:ci",
+			"accept": ["florasp:22"],
+			"deny":   ["florasp:5000", "florasp:8000", "florasp:8080", "florasp:80", "florasp:443"],
+		},
+		{
+			// Les appareils de Flo gardent leur accès au Pi (SSH et Sentry).
+			"src":    "À_REMPLACER_IDENTIFIANT_TAILSCALE_DE_FLO",
+			"accept": ["florasp:22", "florasp:5000", "florasp:8000"],
+		},
+	],
+}
