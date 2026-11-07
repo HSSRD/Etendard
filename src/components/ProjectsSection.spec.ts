@@ -13,7 +13,7 @@ const headingLevels = (page: Page, selector: string) =>
 test('Projets, puis Hussard, puis Overwatch et Sentry, titres h1 → h2 → h3', async ({
   page,
 }) => {
-  await page.goto('/styleguide/projects');
+  await page.goto('/styleguide/projects-section');
 
   const section = page.locator('section#projets .projects-section');
   await expect(section.getByRole('heading', { level: 2 })).toHaveText(
@@ -41,7 +41,7 @@ test('la one page insère la section dans #projets', async ({ page }) => {
 test('aucune adresse, aucun port ni lien vers les repos privés', async ({
   page,
 }) => {
-  await page.goto('/styleguide/projects');
+  await page.goto('/styleguide/projects-section');
   const section = page.locator('.projects-section');
 
   await expect(section.locator('a')).toHaveCount(0);
@@ -53,7 +53,7 @@ test('aucune adresse, aucun port ni lien vers les repos privés', async ({
 test('les cartes sont côte à côte à partir de 768 px, empilées en dessous', async ({
   page,
 }) => {
-  await page.goto('/styleguide/projects');
+  await page.goto('/styleguide/projects-section');
   const cards = page.locator('.projects-section__units > article');
   const first = await cards.first().boundingBox();
   const second = await cards.nth(1).boundingBox();
@@ -73,10 +73,10 @@ for (const scheme of schemes) {
     page,
   }) => {
     await page.emulateMedia({ colorScheme: scheme });
-    await page.goto('/styleguide/projects');
+    await page.goto('/styleguide/projects-section');
 
     await expectNoAxeViolations(page);
-    await expect(page).toHaveScreenshot(`projects-${scheme}.png`, {
+    await expect(page).toHaveScreenshot(`projects-section-${scheme}.png`, {
       fullPage: true,
     });
   });

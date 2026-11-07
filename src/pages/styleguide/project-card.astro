@@ -1,16 +1,13 @@
 ---
 // ProjectCard dans chacun de ses états (ticket #14) : présentation (intro), puis carte de sous-unité.
-import { getEntries, getEntry } from 'astro:content';
 import ProjectCard from '../../components/ProjectCard.astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getProjects } from '../../lib/projects';
 
-const hussard = await getEntry('projects', 'hussard');
-if (!hussard) throw new Error('Fiche hussard introuvable.');
-const units = await getEntries(hussard.data.units ?? []);
+const { root, units } = await getProjects();
 const states = [
-  { id: 'intro', label: 'Présentation (intro)', project: hussard, intro: true },
+  { label: 'Présentation (intro)', project: root, intro: true },
   ...units.map((project) => ({
-    id: project.id,
     label: `Carte ${project.data.title}`,
     project,
     intro: false,
@@ -25,12 +22,12 @@ const states = [
   <meta slot="head" name="robots" content="noindex" />
   <div class="styleguide-project-card">
     <h1>ProjectCard</h1>
-    {states.map((state) => (
+    {states.map((state, index) => (
       <section
         class="styleguide-project-card__state"
-        aria-labelledby={`etat-${state.id}`}
+        aria-labelledby={`etat-${index}`}
       >
-        <h2 id={`etat-${state.id}`}>{state.label}</h2>
+        <h2 id={`etat-${index}`}>{state.label}</h2>
         <ProjectCard project={state.project} intro={state.intro} />
       </section>
     ))}

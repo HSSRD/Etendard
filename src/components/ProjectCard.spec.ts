@@ -17,7 +17,7 @@ test('chaque carte montre le titre, le résumé et le corps de sa fiche', async 
   ]);
   for (const article of await articles.all()) {
     await expect(article.locator('.project-card__summary')).not.toBeEmpty();
-    await expect(article.locator('.project-card__body p')).not.toBeEmpty();
+    await expect(article.locator('.project-card__body')).not.toBeEmpty();
   }
 });
 
