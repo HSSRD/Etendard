@@ -10,9 +10,14 @@
     }
   }
 
-  body {
+  /* Un conteneur [data-theme] reprend fond et texte de son thème. */
+  body,
+  [data-theme] {
     background-color: var(--color-background);
     color: var(--color-text);
+  }
+
+  body {
     font-family: var(--font-family-sans);
     font-size: var(--font-size-base);
     font-weight: var(--font-weight-regular);

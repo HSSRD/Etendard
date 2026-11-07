@@ -20,7 +20,7 @@ const { title, description } = Astro.props;
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
-    <!-- Mêmes valeurs que --color-background dans tokens.css (vérifié par Vitest). -->
+    <!-- Mêmes valeurs que --color-background dans tokens.css (vérifié par les tests Playwright). -->
     <meta
       name="theme-color"
       media="(prefers-color-scheme: light)"

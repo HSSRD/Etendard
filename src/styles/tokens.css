@@ -13,7 +13,7 @@
     --color-text-muted: light-dark(#525a66, #a3abb8);
     --color-accent: light-dark(#1f5fc4, #7eaaf5);
     --color-border: light-dark(#d4d9e1, #2d333d);
-    --color-focus: light-dark(#1f5fc4, #7eaaf5);
+    --color-focus: var(--color-accent);
     --color-shadow: light-dark(#14171c1f, #00000080);
 
     /* Espacements. */

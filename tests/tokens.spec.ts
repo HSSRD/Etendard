@@ -1,13 +1,16 @@
 import { expect, test } from '@playwright/test';
-import { expectNoAxeViolations, themes } from './axe';
+import { expectNoAxeViolations, schemes, themeBackground } from './helpers';
 
 test('la page des tokens montre chaque thème', async ({ page }) => {
   await page.goto('/styleguide/tokens');
 
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tokens');
-  for (const { scheme, background } of themes) {
+  for (const scheme of schemes) {
     const panel = page.locator(`section[data-theme="${scheme}"]`);
-    await expect(panel).toHaveCSS('background-color', background);
+    await expect(panel).toHaveCSS(
+      'background-color',
+      await themeBackground(page, scheme),
+    );
     await expect(panel.locator('.tokens__swatch')).toHaveCount(7);
     await expect(panel.locator('[class*="tokens__font-size--"]')).toHaveCount(
       6,
@@ -16,7 +19,7 @@ test('la page des tokens montre chaque thème', async ({ page }) => {
   }
 });
 
-for (const { scheme } of themes) {
+for (const scheme of schemes) {
   test(`tokens, thème ${scheme} : accessibilité et capture`, async ({
     page,
   }) => {

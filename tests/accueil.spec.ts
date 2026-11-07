@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { expectNoAxeViolations, themes } from './axe';
+import { expectNoAxeViolations, schemes, themeBackground } from './helpers';
 
 test('la page d’accueil pose la structure de la one page', async ({ page }) => {
   await page.goto('/');
@@ -14,13 +14,6 @@ test('la page d’accueil pose la structure de la one page', async ({ page }) =>
     'content',
     'width=device-width, initial-scale=1',
   );
-  for (const { scheme } of themes) {
-    await expect(
-      page.locator(
-        `meta[name="theme-color"][media="(prefers-color-scheme: ${scheme})"]`,
-      ),
-    ).toHaveAttribute('content', /^#[0-9a-f]{6}$/);
-  }
 
   const main = page.locator('main#contenu');
   await expect(main.locator('section#accueil h1')).toHaveText('Étendard');
@@ -50,6 +43,7 @@ test('les ancres défilent en douceur et s’arrêtent sous le header', async ({
   await page.goto('/');
   await expect(page.locator('html')).toHaveCSS('scroll-behavior', 'smooth');
 
+  // --header-height converti en pixels, comme getComputedStyle le renvoie.
   const headerHeight = await page.evaluate(() => {
     const probe = document.createElement('div');
     probe.style.height = 'var(--header-height)';
@@ -70,14 +64,14 @@ test('les ancres défilent en douceur et s’arrêtent sous le header', async ({
   await expect(page.locator('html')).toHaveCSS('scroll-behavior', 'auto');
 });
 
-for (const { scheme, background } of themes) {
+for (const scheme of schemes) {
   test(`thème ${scheme} : fond, accessibilité et capture`, async ({ page }) => {
     await page.emulateMedia({ colorScheme: scheme });
     await page.goto('/');
 
     await expect(page.locator('body')).toHaveCSS(
       'background-color',
-      background,
+      await themeBackground(page, scheme),
     );
     await expectNoAxeViolations(page);
     await expect(page).toHaveScreenshot(`accueil-${scheme}.png`, {
@@ -89,16 +83,20 @@ for (const { scheme, background } of themes) {
 test('data-theme sur <html> surcharge prefers-color-scheme', async ({
   page,
 }) => {
-  const [light, dark] = themes;
-  await page.emulateMedia({ colorScheme: 'dark' });
   await page.goto('/');
   const html = page.locator('html');
   const body = page.locator('body');
 
-  await html.evaluate((element) => element.setAttribute('data-theme', 'light'));
-  await expect(body).toHaveCSS('background-color', light.background);
-
-  await page.emulateMedia({ colorScheme: 'light' });
-  await html.evaluate((element) => element.setAttribute('data-theme', 'dark'));
-  await expect(body).toHaveCSS('background-color', dark.background);
+  for (const scheme of schemes) {
+    const other = scheme === 'light' ? 'dark' : 'light';
+    await page.emulateMedia({ colorScheme: other });
+    await html.evaluate(
+      (element, theme) => element.setAttribute('data-theme', theme),
+      scheme,
+    );
+    await expect(body).toHaveCSS(
+      'background-color',
+      await themeBackground(page, scheme),
+    );
+  }
 });

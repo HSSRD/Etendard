@@ -1,23 +1,17 @@
 ---
 // Index du styleguide : chaque composant y ajoute un lien vers sa page (ADR 0003).
+import BaseLayout from '../../layouts/BaseLayout.astro';
 ---
 
-<!doctype html>
-<html lang="fr">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="robots" content="noindex" />
-    <title>Styleguide — Étendard</title>
-  </head>
-  <body>
-    <main>
-      <h1>Styleguide</h1>
-      <ul>
-        <li>
-          <a href="/styleguide/tokens">Tokens</a>
-        </li>
-      </ul>
-    </main>
-  </body>
-</html>
+<BaseLayout
+  title="Styleguide — Étendard"
+  description="Styleguide d’Étendard : chaque composant dans chacun de ses états."
+>
+  <meta slot="head" name="robots" content="noindex" />
+  <h1>Styleguide</h1>
+  <ul>
+    <li>
+      <a href="/styleguide/tokens">Tokens</a>
+    </li>
+  </ul>
+</BaseLayout>
