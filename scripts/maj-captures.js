@@ -20,22 +20,37 @@ if (image[2] !== pkg.devDependencies['@playwright/test']) {
 }
 
 const docker = (args, options) => spawnSync('docker', args, options);
-const info = docker(['info', '--format', '{{json .SecurityOptions}}'], {
-  encoding: 'utf8',
-});
+// `{{json .}}` fonctionne avec Docker comme avec Podman (alias docker=podman).
+const info = docker(['info', '--format', '{{json .}}'], { encoding: 'utf8' });
 if (info.error || info.status !== 0) {
   fail(
     'Docker est introuvable ou arrêté. La CI (ci.yml) reste l’arbitre des captures.',
   );
 }
 
+/**
+ * Root du conteneur est-il root de l'hôte ? Non avec Docker rootless, userns-remap,
+ * Docker Desktop (VM) ou Podman rootless : root y est déjà l'utilisateur hôte.
+ */
+const rootIsHostRoot = (() => {
+  const {
+    host,
+    SecurityOptions = [],
+    OperatingSystem = '',
+  } = JSON.parse(info.stdout);
+  if (host) return !host.security?.rootless; // Podman
+  return (
+    !OperatingSystem.includes('Docker Desktop') &&
+    !SecurityOptions.some((option) => /rootless|userns/.test(option))
+  );
+})();
+
 const pnpm = `npx --yes ${pkg.packageManager}`;
 // L'image fournit déjà Node 26 ; on y installe des dépendances compilées pour Linux.
 let script = `${pnpm} install --frozen-lockfile && ${pnpm} exec playwright test --update-snapshots=changed "$@"`;
 
-// Docker « rootful » sous Linux : rend à l'utilisateur les fichiers créés par root.
-// En rootless (ou Podman), root du conteneur est déjà l'utilisateur hôte.
-if (process.getuid && !info.stdout.includes('rootless')) {
+// Sous Linux, rend à l'utilisateur les fichiers créés par root dans le repo monté.
+if (process.getuid && rootIsHostRoot) {
   const owner = `${process.getuid()}:${process.getgid()}`;
   script = `${script}; status=$?; find /work -path /work/node_modules -prune -o -user 0 -exec chown ${owner} {} +; exit $status`;
 }
@@ -53,6 +68,11 @@ const run = docker(
     // node_modules propre au conteneur : celui de l'hôte peut être compilé pour Windows.
     '-v',
     '/work/node_modules',
+    // Caches npm et pnpm conservés d'un lancement à l'autre (volumes nommés).
+    '-v',
+    'etendard-captures-npm:/root/.npm',
+    '-v',
+    'etendard-captures-pnpm:/root/.local/share/pnpm',
     '-w',
     '/work',
     image[1],

@@ -6,9 +6,15 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 // Un composant n'importe jamais une page (ADR 0005). dependency-cruiser ne lit pas
-// les .astro : la règle est imposée ici, imports statiques et dynamiques compris.
-// Pas de « / » dans le motif : les sélecteurs ESLint (esquery) ne l'acceptent pas.
-const pagePattern = String.raw`(^|\W)pages(\W|$)`;
+// les .astro : la règle est imposée ici, pour import, import() et import.meta.glob.
+// « / » s'écrit \x2F : les sélecteurs ESLint (esquery) ne l'acceptent pas tel quel.
+const pagePattern = String.raw`^((\.\.\x2F)+|@\x2F)pages(\x2F|$)`;
+const pageMessage = 'Un composant n’importe jamais une page.';
+
+// Pas d'accès à l'environnement Node dans src/ : utilise import.meta.env.
+const nodeImports = ['process', 'node:process', 'buffer', 'node:buffer'].map(
+  (name) => ({ name, message: 'Utilise import.meta.env.' }),
+);
 
 export default defineConfig(
   {
@@ -41,6 +47,7 @@ export default defineConfig(
         '__dirname',
         '__filename',
       ],
+      'no-restricted-imports': ['error', { paths: nodeImports }],
     },
   },
   {
@@ -55,24 +62,24 @@ export default defineConfig(
   },
   {
     files: ['src/components/**'],
+    ignores: ['**/*.spec.ts', '**/*.test.ts'],
     rules: {
       'no-restricted-imports': [
         'error',
         {
+          paths: nodeImports,
           patterns: [
-            {
-              regex: pagePattern,
-              message: 'Un composant n’importe jamais une page.',
-            },
+            { regex: pagePattern, caseSensitive: true, message: pageMessage },
           ],
         },
       ],
       'no-restricted-syntax': [
         'error',
-        {
-          selector: `ImportExpression[source.value=/${pagePattern}/]`,
-          message: 'Un composant n’importe jamais une page.',
-        },
+        ...[
+          `ImportExpression > Literal[value=/${pagePattern}/]`,
+          `ImportExpression > TemplateLiteral > TemplateElement[value.raw=/${pagePattern}/]`,
+          `CallExpression[callee.property.name='glob'] Literal[value=/${pagePattern}/]`,
+        ].map((selector) => ({ selector, message: pageMessage })),
       ],
     },
   },

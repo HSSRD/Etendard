@@ -16,6 +16,6 @@ const styleguide = {
 export default defineConfig({
   output: 'static',
   integrations: [styleguide],
-  // `astro preview` échoue si son port est pris au lieu d'en changer en silence (tests e2e).
-  vite: { preview: { strictPort: true } },
+  // Tests e2e : `astro preview` échoue si son port est pris au lieu d'en changer en silence.
+  vite: { preview: { strictPort: process.env.E2E_PORT !== undefined } },
 });

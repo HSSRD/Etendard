@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       rollback:
-        description: 'Revenir à la version précédente au lieu de déployer'
+        description: "Revenir à la version précédente au lieu de déployer"
         type: boolean
         default: false
 

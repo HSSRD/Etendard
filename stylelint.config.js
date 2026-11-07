@@ -19,9 +19,12 @@ const strictProperties = [
   'stroke',
   'box-shadow',
   'text-shadow',
-  '/^(margin|padding|inset)/',
+  'background-image',
+  'border-image',
+  '/^(scroll-)?(margin|padding)/',
+  '/^inset/',
   '/^(top|right|bottom|left)$/',
-  '/^(row-|column-)?gap$/',
+  '/^(grid-)?(row-|column-)?gap$/',
   'font-size',
 ];
 
@@ -54,6 +57,8 @@ export default {
           'auto',
           '0',
           '/^url[(]/',
+          // Élément d'une liste de tokens : `var(--a), var(--b)`.
+          '/^var[(]--[\\w-]+[)],$/',
         ],
         // Uniquement var(--…) : un calc() ou un clamp() se définit comme token.
         ignoreFunctions: false,
@@ -62,8 +67,18 @@ export default {
     ],
     // Raccourcis que le plugin ne sait pas développer : longhands obligatoires.
     'property-disallowed-list': [
-      ['font', '/^border-(block|inline)(-start|-end)?$/'],
+      [
+        'font',
+        'text-decoration',
+        '-webkit-text-stroke',
+        '/^border-(block|inline)(-start|-end)?$/',
+      ],
       { message: (p) => `« ${p} » : utilise les propriétés détaillées.` },
+    ],
+    // Pas de valeur de repli dans var() : elle contournerait les tokens.
+    'declaration-property-value-disallowed-list': [
+      { '/.*/': ['/var[(]\\s*--[\\w-]+\\s*,/'] },
+      { message: 'Pas de valeur de repli dans var() : utilise un token.' },
     ],
     'order/order': ['custom-properties', 'declarations'],
     'order/properties-alphabetical-order': true,
