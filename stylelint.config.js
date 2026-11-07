@@ -1,8 +1,11 @@
 // Règles CSS de l'ADR 0004 : BEM imposé, aucune valeur en dur, propriétés ordonnées.
 
-/** `MonBloc.astro` → bloc BEM `.mon-bloc`, éléments `__x`, modificateurs `--y`. */
+/** `MonBloc.astro` → bloc BEM `.mon-bloc` (`HeroCTA.astro` → `.hero-cta`), `__élément`, `--modificateur`. */
 const bemSelector = (fileName) => {
-  const block = fileName.replace(/(?<!^)[A-Z]/g, (c) => `-${c}`).toLowerCase();
+  const block = fileName
+    .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1-$2')
+    .toLowerCase();
   const word = '[a-z0-9]+(?:-[a-z0-9]+)*';
   return new RegExp(
     String.raw`^\.${block}(?:__${word})?(?:--${word})?(?:\[[^\]]+\])*$`,
@@ -34,6 +37,8 @@ export default {
     'plugin/selector-bem-pattern': {
       componentName: '^[A-Z][a-zA-Z0-9]*$',
       componentSelectors: bemSelector,
+      // Variables CSS libres : tokens surchargés ou variables locales au bloc.
+      ignoreCustomProperties: '.*',
       implicitComponents: ['src/components/**/*.astro'],
     },
     'scale-unlimited/declaration-strict-value': [
@@ -48,11 +53,17 @@ export default {
           'none',
           'auto',
           '0',
+          '/^url[(]/',
         ],
         // Uniquement var(--…) : un calc() ou un clamp() se définit comme token.
         ignoreFunctions: false,
         expandShorthand: true,
       },
+    ],
+    // Raccourcis que le plugin ne sait pas développer : longhands obligatoires.
+    'property-disallowed-list': [
+      ['font', '/^border-(block|inline)(-start|-end)?$/'],
+      { message: (p) => `« ${p} » : utilise les propriétés détaillées.` },
     ],
     'order/order': ['custom-properties', 'declarations'],
     'order/properties-alphabetical-order': true,

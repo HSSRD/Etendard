@@ -1,13 +1,18 @@
 import { createServer } from 'node:net';
 import { defineConfig, devices } from '@playwright/test';
 
+const ci = !['', '0', 'false'].includes(process.env['CI'] ?? '');
+
 /**
  * Port libre choisi une fois par lancement, puis hérité par les workers via l'environnement :
- * deux worktrees (ou un `astro dev`) ne partagent jamais le serveur de test.
+ * deux worktrees (ou un `astro dev`) ne partagent jamais le serveur de test. Si le port est
+ * repris pendant le build, `astro preview` échoue (strictPort) au lieu de servir ailleurs.
  */
 const freePort = () =>
   new Promise<number>((resolve, reject) => {
-    const server = createServer().listen(0, () => {
+    const server = createServer();
+    server.once('error', reject);
+    server.listen(0, () => {
       const address = server.address();
       server.close(() =>
         typeof address === 'object' && address
@@ -27,7 +32,7 @@ const baseURL = `http://localhost:${port}`;
  */
 const inPlaywrightImage =
   process.env['PLAYWRIGHT_BROWSERS_PATH'] === '/ms-playwright';
-if (process.env['CI'] && !inPlaywrightImage) {
+if (ci && !inPlaywrightImage) {
   throw new Error('En CI, Playwright doit tourner dans son image Docker.');
 }
 
@@ -35,8 +40,8 @@ const widths = [375, 768, 1280];
 
 export default defineConfig({
   testMatch: ['src/**/*.spec.ts', 'tests/**/*.spec.ts'],
-  forbidOnly: !!process.env['CI'],
-  reporter: process.env['CI'] ? 'github' : 'list',
+  forbidOnly: ci,
+  reporter: ci ? 'github' : 'list',
   ignoreSnapshots: !inPlaywrightImage,
   snapshotPathTemplate:
     '{testDir}/{testFileDir}/__captures__/{testFileName}/{arg}-{projectName}{ext}',
@@ -47,7 +52,7 @@ export default defineConfig({
   })),
   webServer: {
     // Build dédié avec le styleguide, séparé de dist/ qui est publié.
-    command: `astro build --outDir dist-styleguide && astro preview --outDir dist-styleguide --port ${port}`,
+    command: `pnpm exec astro build --outDir dist-styleguide && pnpm exec astro preview --outDir dist-styleguide --port ${port}`,
     env: { STYLEGUIDE: '1' },
     url: baseURL,
     timeout: 300_000,

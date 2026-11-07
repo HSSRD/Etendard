@@ -1,27 +1,53 @@
 // Régénère les captures de référence dans l'image Docker officielle de Playwright,
-// à la version de @playwright/test (ADR 0003). Usage : pnpm captures:maj [fichiers…]
+// exactement celle de la CI (ADR 0003). Usage : pnpm captures:maj [fichiers…]
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
-const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
-const playwright = pkg.devDependencies['@playwright/test'];
-const pnpm = `npx --yes ${pkg.packageManager}`;
+const fail = (message) => {
+  console.error(`captures:maj : ${message}`);
+  process.exit(1);
+};
 
+const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
+const image = readFileSync('.github/workflows/ci.yml', 'utf8').match(
+  /image: (mcr\.microsoft\.com\/playwright:v(\S+?)-noble@sha256:\w+)/,
+);
+if (!image) fail('image Playwright introuvable dans ci.yml.');
+if (image[2] !== pkg.devDependencies['@playwright/test']) {
+  fail(
+    `ci.yml utilise Playwright ${image[2]}, package.json ${pkg.devDependencies['@playwright/test']}.`,
+  );
+}
+
+const docker = (args, options) => spawnSync('docker', args, options);
+const info = docker(['info', '--format', '{{json .SecurityOptions}}'], {
+  encoding: 'utf8',
+});
+if (info.error || info.status !== 0) {
+  fail(
+    'Docker est introuvable ou arrêté. La CI (ci.yml) reste l’arbitre des captures.',
+  );
+}
+
+const pnpm = `npx --yes ${pkg.packageManager}`;
 // L'image fournit déjà Node 26 ; on y installe des dépendances compilées pour Linux.
 let script = `${pnpm} install --frozen-lockfile && ${pnpm} exec playwright test --update-snapshots=changed "$@"`;
 
-// Sous Linux, rend à l'utilisateur courant les fichiers créés par root dans le repo monté.
-if (process.getuid) {
+// Docker « rootful » sous Linux : rend à l'utilisateur les fichiers créés par root.
+// En rootless (ou Podman), root du conteneur est déjà l'utilisateur hôte.
+if (process.getuid && !info.stdout.includes('rootless')) {
   const owner = `${process.getuid()}:${process.getgid()}`;
   script = `${script}; status=$?; find /work -path /work/node_modules -prune -o -user 0 -exec chown ${owner} {} +; exit $status`;
 }
 
-const { status } = spawnSync(
-  'docker',
+const run = docker(
   [
     'run',
     '--rm',
+    '--init',
     '--ipc=host',
+    // Même architecture que la CI : le rendu de Chromium diffère sur arm64.
+    '--platform=linux/amd64',
     '-v',
     `${process.cwd()}:/work`,
     // node_modules propre au conteneur : celui de l'hôte peut être compilé pour Windows.
@@ -29,7 +55,7 @@ const { status } = spawnSync(
     '/work/node_modules',
     '-w',
     '/work',
-    `mcr.microsoft.com/playwright:v${playwright}-noble`,
+    image[1],
     'sh',
     '-c',
     script,
@@ -38,4 +64,5 @@ const { status } = spawnSync(
   ],
   { stdio: 'inherit' },
 );
-process.exit(status ?? 1);
+if (run.error) fail(run.error.message);
+process.exit(run.status ?? 1);
