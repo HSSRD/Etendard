@@ -3,7 +3,7 @@
 ---
 
 <div class="hero">
-  <h1 class="hero__title">Étendard</h1>
+  <h1>Étendard</h1>
   <p class="hero__lead">
     Bienvenue&nbsp;! Voici le site qui regroupe tous les projets de Hussard.
   </p>
@@ -28,16 +28,22 @@
     font-size: var(--font-size-lg);
   }
 
+  /* Bordure transparente : seul contour du bouton en mode couleurs forcées. */
   .hero__cta {
     background-color: var(--color-accent);
+    border-color: transparent;
     border-radius: var(--radius-md);
+    border-style: solid;
+    border-width: var(--border-width);
     color: var(--color-background);
     font-weight: var(--font-weight-bold);
     padding: var(--space-3) var(--space-5);
     text-decoration-line: none;
   }
 
-  .hero__cta:hover {
-    text-decoration-line: underline;
+  @media (hover: hover) {
+    .hero__cta:hover {
+      text-decoration-line: underline;
+    }
   }
 </style>

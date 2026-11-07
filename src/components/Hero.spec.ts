@@ -33,10 +33,24 @@ for (const scheme of schemes) {
       fullPage: true,
     });
 
-    // État focus clavier du CTA.
-    await page.keyboard.press('Tab');
-    await page.keyboard.press('Tab');
+    // État survol (pointeur fin) : le CTA se souligne.
+    await cta.hover();
+    await expect(cta).toHaveCSS('text-decoration-line', 'underline');
+    await expect(page).toHaveScreenshot(`hero-${scheme}-hover.png`, {
+      fullPage: true,
+    });
+    await page.mouse.move(0, 0);
+
+    // État focus clavier : Tab jusqu'au CTA, quel que soit l'ordre des éléments qui le précèdent.
+    for (
+      let i = 0;
+      i < 10 && !(await cta.evaluate((el) => el === document.activeElement));
+      i++
+    ) {
+      await page.keyboard.press('Tab');
+    }
     await expect(cta).toBeFocused();
+    await expectNoAxeViolations(page);
     await expect(page).toHaveScreenshot(`hero-${scheme}-focus.png`, {
       fullPage: true,
     });
@@ -59,16 +73,24 @@ test('accueil : le Hero remplit l’écran sous le header, centré, et mène aux
     const headerHeight = probe.getBoundingClientRect().height;
     probe.remove();
 
-    const box = (selector: string) => {
+    const find = (selector: string) => {
       const element = document.querySelector(selector);
       if (!element) throw new Error(`${selector} introuvable`);
-      return element.getBoundingClientRect();
+      return element;
     };
+    const box = (selector: string) => find(selector).getBoundingClientRect();
+    const heroStyle = getComputedStyle(find('.hero'));
+    const padding = (side: 'Top' | 'Left' | 'Right') =>
+      Number.parseFloat(heroStyle[`padding${side}`]);
     return {
       expectedHeight: window.innerHeight - headerHeight,
       section: box('#accueil'),
       projets: box('#projets'),
-      title: box('.hero__title'),
+      headerHeight,
+      paddingTop: padding('Top'),
+      contentWidth:
+        find('.hero').clientWidth - padding('Left') - padding('Right'),
+      title: box('.hero h1'),
       cta: box('.hero__cta'),
     };
   });
@@ -76,18 +98,29 @@ test('accueil : le Hero remplit l’écran sous le header, centré, et mène aux
   expect(layout.section.height).toBeCloseTo(layout.expectedHeight, 0);
   expect(layout.projets.top).toBeCloseTo(layout.section.bottom, 0);
 
-  // Contenu centré : marges égales de part et d'autre, verticalement et horizontalement.
+  // Contenu centré : espace libre (au-delà du padding) égal au-dessus et en dessous,
+  // CTA à sa largeur naturelle et centré, texte centré.
   const above = layout.title.top - layout.section.top;
   const below = layout.section.bottom - layout.cta.bottom;
-  expect(above).toBeGreaterThan(0);
+  expect(above).toBeGreaterThan(layout.paddingTop + 1);
   expect(above).toBeCloseTo(below, 0);
+  expect(layout.cta.width).toBeLessThan(layout.contentWidth - 1);
   const sectionCenter = layout.section.left + layout.section.width / 2;
   for (const element of [layout.title, layout.cta]) {
     expect(element.left + element.width / 2).toBeCloseTo(sectionCenter, 0);
   }
+  await expect(page.locator('.hero__lead')).toHaveCSS('text-align', 'center');
 
-  // L'appel à l'action mène à la section projets, qui existe et s'affiche.
+  // L'appel à l'action fait défiler jusqu'à #projets, arrêtée sous le header.
+  // La page est allongée pour que le défilement soit possible tant qu'elle est courte.
+  await page
+    .locator('body')
+    .evaluate((body) => body.style.setProperty('padding-bottom', '200vh'));
   await page.getByRole('link', { name: 'Découvrir les projets' }).click();
   await expect(page).toHaveURL(/#projets$/);
-  await expect(page.locator('#projets')).toBeInViewport();
+  await expect
+    .poll(() =>
+      page.locator('#projets').evaluate((el) => el.getBoundingClientRect().top),
+    )
+    .toBeCloseTo(layout.headerHeight, 0);
 });
