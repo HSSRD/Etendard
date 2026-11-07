@@ -47,7 +47,7 @@ test('aucune adresse, aucun port ni lien vers les repos privés', async ({
   await expect(section.locator('a')).toHaveCount(0);
   // Le HTML, pas seulement le texte : une image ou un commentaire ne doit rien divulguer.
   expect(await section.innerHTML()).not.toMatch(
-    /https?:|www\.|github|\.local\b|\.ts\.net|\d+\.\d+\.\d+\.\d+|:\d{2,5}|\bport\s*\d/i,
+    /https?:|www\.|github|\.local\b|\.ts\.net|\d+\.\d+\.\d+\.\d+|\.lan\b|:\d{2,5}|\bport\s*[:=]?\s*\d/i,
   );
 });
 

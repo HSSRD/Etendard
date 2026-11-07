@@ -7,11 +7,10 @@ const fiche = (
   id: string,
   order: number,
   units?: string[],
-  { body = 'Texte.', headings = [] as unknown[] } = {},
+  html = '<p>Texte.</p>',
 ) => ({
   id,
-  body,
-  rendered: { metadata: { headings } },
+  rendered: { html },
   data: { order, units: units?.map((unit) => ({ id: unit })) },
 });
 
@@ -22,12 +21,13 @@ describe('linkProjects', () => {
       fiche('hussard', 1, ['sentry', 'overwatch', 'bis']),
       fiche('overwatch', 1),
       fiche('bis', 1),
-      fiche('vigie', 0),
+      fiche('vigie', 0, ['radar']),
+      fiche('radar', 1),
     ]);
     expect(
       groups.map(({ root, units }) => [root.id, units.map((unit) => unit.id)]),
     ).toEqual([
-      ['vigie', []],
+      ['vigie', ['radar']],
       ['hussard', ['bis', 'overwatch', 'sentry']],
     ]);
   });
@@ -50,13 +50,18 @@ describe('linkProjects', () => {
       'c : référencé deux fois.',
     ],
     [
+      'une fiche reliée à aucun projet',
+      [fiche('a', 1, ['b']), fiche('b', 1), fiche('oubli', 1)],
+      'oubli : absent des units de tout projet.',
+    ],
+    [
       'un corps vide',
-      [fiche('a', 1, [], { body: ' \n' })],
+      [fiche('a', 1, ['b'], '<!-- TODO -->\n<p>&nbsp;</p>'), fiche('b', 1)],
       'a : corps Markdown vide.',
     ],
     [
-      'un titre dans le corps',
-      [fiche('a', 1, [], { headings: [{ depth: 2 }] })],
+      'un titre dans le corps, Markdown ou HTML',
+      [fiche('a', 1, ['b'], '<p>Texte.</p>\n<h2>Titre</h2>'), fiche('b', 1)],
       'a : titre Markdown interdit',
     ],
   ])('refuse %s', (_, projects, message) => {
