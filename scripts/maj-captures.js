@@ -47,7 +47,7 @@ const rootIsHostRoot = (() => {
 
 const pnpm = `npx --yes ${pkg.packageManager}`;
 // L'image fournit déjà Node 26 ; on y installe des dépendances compilées pour Linux.
-let script = `${pnpm} install --frozen-lockfile && ${pnpm} exec playwright test --update-snapshots=changed "$@"`;
+let script = `${pnpm} install --frozen-lockfile --store-dir /pnpm-store && ${pnpm} exec playwright test --update-snapshots=changed "$@"`;
 
 // Sous Linux, rend à l'utilisateur les fichiers créés par root dans le repo monté.
 if (process.getuid && rootIsHostRoot) {
@@ -72,7 +72,7 @@ const run = docker(
     '-v',
     'etendard-captures-npm:/root/.npm',
     '-v',
-    'etendard-captures-pnpm:/root/.local/share/pnpm',
+    'etendard-captures-pnpm:/pnpm-store',
     '-w',
     '/work',
     image[1],
