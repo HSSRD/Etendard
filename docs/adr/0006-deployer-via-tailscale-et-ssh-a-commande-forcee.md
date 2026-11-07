@@ -39,5 +39,7 @@ Côté Pi :
 
 ## Points de vigilance
 
+- **Tailnet déjà utilisé par la CI, constaté sur le Pi** (`florasp`, Tailscale 1.102.2) : `tailscale status` liste de nombreux nœuds `github-runnervm…`, hors ligne depuis 6 à 116 jours. Ces runners ne sont donc pas éphémères, sinon ils auraient été retirés. Ils sont visibles depuis le Pi, ce qui suggère qu'une règle ACL les autorise à l'atteindre, peut-être la règle par défaut « tout autorisé ». Avant 0006 : supprimer ces nœuds, rendre `tag:ci` éphémère, et limiter l'ACL à `tag:ci` → Pi port 22. Sinon, un runner atteint aussi les ports 5000 et 8000 de Sentry (0002).
+- **Mots de passe SSH acceptés, constaté** : le Pi propose `publickey,password`. La clé à commande forcée ne protège que si l'utilisateur `deploy` n'a pas de mot de passe et si `PasswordAuthentication no` est appliqué.
 - **Test de fumée et cache Cloudflare** : `version.txt` est lu à travers Cloudflare. S'il est mis en cache, le test lit l'ancien SHA et déclenche un rollback à tort. Il faut servir `version.txt` avec `Cache-Control: no-store` et vérifier que Cloudflare le respecte.
-- **Authentification Tailscale sans secret long** : `tailscale/github-action` (v4.4.0) accepte un `audience` en plus d'`oauth-client-id` / `oauth-secret`, ce qui suggère une fédération d'identité OIDC. Si elle couvre ce cas, elle évite de stocker un secret OAuth. À confirmer dans la doc Tailscale.
+- **Authentification Tailscale sans secret long** : `tailscale/github-action` (v4.4.0) accepte une entrée `audience` (fédération d'identité, à confirmer dans la doc Tailscale), qui éviterait de stocker un secret OAuth.
