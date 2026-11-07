@@ -47,6 +47,11 @@ test.describe('sans JavaScript', () => {
     expect(headerBox?.y).toBe(0);
     expect(sectionBox?.y).toBeCloseTo(headerBox?.height ?? Infinity, 0);
     await expect(page.locator('#projets h2')).toBeInViewport();
+
+    // Retour en haut par le nom du site.
+    await header(page).getByRole('link', { name: 'Étendard' }).click();
+    await expect(page).toHaveURL(/#accueil$/);
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
   });
 });
 
@@ -124,7 +129,7 @@ test('chaque lien du header a un focus visible au clavier', async ({
   await expect(header(page)).toHaveScreenshot('site-header-focus.png');
 });
 
-test('avec un texte agrandi à 200 %, le header passe à la ligne sans défilement horizontal', async ({
+test('avec un texte agrandi à 200 %, le header ne déborde pas horizontalement', async ({
   page,
 }) => {
   await page.goto('/styleguide/site-header');
@@ -146,19 +151,27 @@ test('avec un texte agrandi à 200 %, le header passe à la ligne sans défileme
   expect(ring).toBeGreaterThan(0);
   const links = await header(page).getByRole('link').all();
   expect(links).toHaveLength(3);
+  const width = await page.evaluate(() => document.documentElement.clientWidth);
   for (const link of links) {
-    await expect(link).toBeInViewport({ ratio: 1 });
-    expect((await link.boundingBox())?.y).toBeGreaterThanOrEqual(ring);
+    const box = await link.boundingBox();
+    expect(box?.y).toBeGreaterThanOrEqual(ring);
+    expect(box?.x).toBeGreaterThanOrEqual(ring);
+    expect((box?.x ?? Infinity) + (box?.width ?? 0)).toBeLessThanOrEqual(
+      width - ring,
+    );
   }
   await expect(header(page)).toHaveScreenshot('site-header-texte-agrandi.png');
 });
 
-test('un lien du header se souligne au survol', async ({ page }) => {
+test('les liens du header se soulignent au survol', async ({ page }) => {
   await page.goto('/styleguide/site-header');
-  const link = nav(page).getByRole('link', { name: 'Projets' });
-  await expect(link).toHaveCSS('text-decoration-line', 'none');
-  await link.hover();
-  await expect(link).toHaveCSS('text-decoration-line', 'underline');
+  // Le dernier survolé (« Projets ») est celui de la capture.
+  for (const name of ['Étendard', 'Projets']) {
+    const link = header(page).getByRole('link', { name, exact: true });
+    await expect(link).toHaveCSS('text-decoration-line', 'none');
+    await link.hover();
+    await expect(link).toHaveCSS('text-decoration-line', 'underline');
+  }
   await expect(header(page)).toHaveScreenshot('site-header-survol.png');
 });
 
