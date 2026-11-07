@@ -4,7 +4,7 @@ Ce document explique la préparation du Pi faite au ticket #4 (PR #7). Pour l'in
 
 ## Le but
 
-À chaque merge sur `main`, GitHub Actions doit déposer la nouvelle version du site sur le Pi. Ce dépôt passe par le workflow `deploy.yml` de #5. Deux contraintes :
+À chaque merge sur `main`, GitHub Actions doit déposer la nouvelle version du site sur le Pi. Ce dépôt passe par le workflow `deploy.yml` de #5, décrit plus bas. Deux contraintes :
 
 - **la CI ne doit jamais avoir de terminal sur le Pi.** Le repo est public : un workflow compromis ne doit rien pouvoir faire d'autre que livrer le site ;
 - **le Pi héberge aussi Sentry** (caméra, ports 5000 et 8000). La CI ne doit pas pouvoir l'atteindre.
@@ -51,7 +51,7 @@ Caddy lit les fichiers de `/srv/etendard/current` et les renvoie au navigateur. 
 
 ### La clé de déploiement
 
-Elle s'appelle `github-deploy`. La clé privée est sur le PC de Flo et ira dans les secrets GitHub de l'environnement `production` avec #5. Côté Pi, `authorized_keys` contient une seule ligne :
+Elle s'appelle `github-deploy`. La clé privée est sur le PC de Flo et dans le secret `DEPLOY_SSH_KEY` de l'environnement `production`. Côté Pi, `authorized_keys` contient une seule ligne :
 
 ```
 command="/usr/local/bin/etendard-receive",restrict ssh-ed25519 AAAA… github-deploy
@@ -108,6 +108,55 @@ L'ordre des versions repose sur leur date de publication, c'est-à-dire la date 
 
 Le dépôt contient une version générique de la politique, avec des valeurs `À_REMPLACER`. La version complétée (IP du Pi, identifiant de Flo) n'existe que dans la console.
 
+## Le workflow `deploy.yml` (#5)
+
+[`deploy.yml`](../../.github/workflows/deploy.yml) se lance à chaque push sur `main`, donc à chaque merge, et à la main par `workflow_dispatch`. `concurrency: production` empêche deux déploiements simultanés : le suivant attend la fin du précédent.
+
+| Job | Ce qu'il fait | Droits |
+|---|---|---|
+| `build` | construit le site et son archive, avec `version.txt` (SHA du commit) | lecture du code |
+| `deploy` | Environment `production` : envoie l'archive au Pi par le tailnet et vérifie la version servie | aucun droit GitHub |
+| `release` | publie la Release `deploy-<sha court>`, seulement si `deploy` a réussi | écriture du code (tags, Releases) |
+| `rollback` | seulement avec l'entrée `rollback` : revient à la version précédente | aucun droit GitHub |
+
+La Release est publiée par un job séparé, après le déploiement : le job `build` exécute les scripts du repo et ne reçoit donc qu'un jeton en lecture.
+
+**Rollback automatique.** Si une étape échoue après la lecture de `status`, le job relit `status`. Il ne lance `rollback` que si la version servie a changé depuis : `rollback` revient à la version publiée avant celle servie, et le lancer alors que rien n'a changé ferait reculer le site d'une version de trop. Le job finit en échec dans tous les cas.
+
+**Rollback manuel.** Actions > deploy > Run workflow, sur `main`, case `rollback` cochée. Ou :
+
+```bash
+gh workflow run deploy.yml -R HSSRD/Etendard --ref main -f rollback=true
+```
+
+Pour revenir ensuite à la dernière version, relance le workflow sans cocher la case : le site est reconstruit depuis `main`, le Pi réactive la version qu'il a déjà, et la Release existante est gardée telle quelle.
+
+**Vérification.** Tant que le site n'est pas public, elle passe par `status` et non par un test HTTPS de `version.txt` (écart temporaire à l'ADR 0006, levé à la mise en ligne).
+
+### Les secrets de l'Environment `production`
+
+L'Environment n'accepte que la branche `main` : un workflow lancé depuis une autre branche n'obtient pas ces secrets.
+
+| Secret | Contenu |
+|---|---|
+| `TS_OAUTH_CLIENT_ID` | identifiant du client OAuth Tailscale `GitHubAction` |
+| `TS_OAUTH_SECRET` | secret de ce client |
+| `DEPLOY_SSH_KEY` | clé privée `github-deploy`, sur le PC de Flo |
+| `DEPLOY_KNOWN_HOSTS` | clé d'hôte du Pi, au nom `florasp` utilisé par le workflow |
+
+Pour les saisir ou les faire tourner, dans le bash de Git :
+
+```bash
+gh secret set TS_OAUTH_CLIENT_ID --env production -R HSSRD/Etendard   # colle la valeur
+gh secret set TS_OAUTH_SECRET    --env production -R HSSRD/Etendard   # colle la valeur
+gh secret set DEPLOY_SSH_KEY     --env production -R HSSRD/Etendard < ~/.ssh/github-deploy
+ssh flo@192.168.1.41 cat /etc/ssh/ssh_host_ed25519_key.pub \
+  | awk '{print "florasp", $1, $2}' \
+  | gh secret set DEPLOY_KNOWN_HOSTS --env production -R HSSRD/Etendard
+```
+
+La clé d'hôte est lue sur le Pi lui-même, par le réseau local, plutôt que par `ssh-keyscan`, qui accepterait la réponse de n'importe quelle machine. Le workflow vérifie l'empreinte (`StrictHostKeyChecking yes`) : si le Pi est réinstallé, il faut refaire la dernière commande.
+
 ## Comment on sait que ça marche
 
 - **`test/etendard-receive.test.sh`** : 38 tests locaux, sur des archives saines et piégées. Ils n'ont pas besoin du Pi.
@@ -118,7 +167,6 @@ Relance `verify.sh` après toute intervention sur le Pi : mise à jour système,
 
 ## Ce qui reste à faire, hors de ce ticket
 
-- **#5, `deploy.yml`** : construire l'archive avec `version.txt`, rejoindre le tailnet avec le client OAuth, l'envoyer à `deploy@florasp`, faire un test de fumée, puis `rollback` en cas d'échec.
 - **Runners de Sentry et d'Overwatch** : s'ils rejoignent encore le tailnet avec une clé sans tag, Tailscale les traite comme tes appareils, avec un accès complet. Il faudra leur donner un tag dédié, avec ses propres règles.
 - **Durcissement du Pi, avant toute publication** (ADR 0002) :
   - désactiver la connexion SSH par mot de passe ;

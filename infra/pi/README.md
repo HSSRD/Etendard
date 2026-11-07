@@ -1,6 +1,6 @@
 # Pi `florasp` : recevoir et servir Étendard
 
-Prépare le Pi au déploiement décrit dans les ADR 0002 et 0006 (ticket #4). Le workflow `deploy.yml` viendra avec #5. Ces fichiers seront repris dans `HSSRD/infra` (Ansible).
+Prépare le Pi au déploiement décrit dans les ADR 0002 et 0006 (ticket #4). Le workflow `deploy.yml` (#5) y dépose le site à chaque merge ; ses secrets se saisissent comme indiqué dans [FONCTIONNEMENT.md](FONCTIONNEMENT.md#les-secrets-de-lenvironment-production). Ces fichiers seront repris dans `HSSRD/infra` (Ansible).
 
 Ce qui est en place et pourquoi : [FONCTIONNEMENT.md](FONCTIONNEMENT.md). Ce README ne donne que les étapes.
 
@@ -16,7 +16,7 @@ Ce qui est en place et pourquoi : [FONCTIONNEMENT.md](FONCTIONNEMENT.md). Ce REA
 ## Ordre des étapes
 
 1. **Tailscale, étapes 1 à 3** de `tailscale-checklist.md` : trouver le workflow des nœuds `github-runnervm…`, les supprimer, vérifier que Tailscale SSH est coupé sur le Pi.
-2. **Sur le PC**, créer la clé de déploiement (la clé privée ira dans les secrets GitHub avec #5) :
+2. **Sur le PC**, créer la clé de déploiement (la clé privée va dans le secret `DEPLOY_SSH_KEY`) :
    ```bash
    ssh-keygen -t ed25519 -N '' -C github-deploy -f ~/.ssh/github-deploy
    ```
