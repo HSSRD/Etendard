@@ -8,7 +8,7 @@ const playwright = pkg.devDependencies['@playwright/test'];
 const pnpm = pkg.packageManager.replace(/^pnpm@/, '');
 
 // L'image fournit déjà Node ; on y installe pnpm et des dépendances compilées pour Linux.
-const script = `npm install --global --silent pnpm@${pnpm} && pnpm install --frozen-lockfile && pnpm exec playwright test --update-snapshots "$@"`;
+const script = `npm install --global --silent pnpm@${pnpm} && pnpm install --frozen-lockfile && pnpm exec playwright test --update-snapshots=changed "$@"`;
 
 const { status } = spawnSync(
   'docker',
