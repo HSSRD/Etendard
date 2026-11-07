@@ -1,17 +1,22 @@
 ---
-const title = 'Étendard';
-const description = 'Vitrine des projets IoT de HSSRD.';
+import BaseLayout from '../layouts/BaseLayout.astro';
 ---
 
-<!doctype html>
-<html lang="fr">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content={description} />
-    <title>{title}</title>
-  </head>
-  <body>
-    <h1>{title}</h1>
-  </body>
-</html>
+<BaseLayout
+  title="Étendard"
+  description="Étendard, le site qui regroupe tous les projets de Hussard."
+>
+  {/* Emplacement header : SiteHeader, ticket #11 (slot="header"). */}
+
+  {/* Section d'accueil : Hero, ticket #13. Titre provisoire. */}
+  <section id="accueil">
+    <h1>Étendard</h1>
+  </section>
+
+  {/* Section projets : ProjectsSection, ticket #14. Titre provisoire. */}
+  <section id="projets">
+    <h2>Projets</h2>
+  </section>
+
+  {/* Emplacement footer : SiteFooter, ticket #12 (slot="footer"). */}
+</BaseLayout>

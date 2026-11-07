@@ -1,0 +1,65 @@
+---
+// Structure commune des pages (ticket #10). Emplacements :
+// - slot « header » : rendu avant <main> (SiteHeader, ticket #11) ;
+// - slot par défaut : contenu de <main id="contenu"> ;
+// - slot « footer » : rendu après <main> (SiteFooter, ticket #12) ;
+// - slot « head » : balises supplémentaires du <head>.
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+---
+
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <!-- Mêmes valeurs que --color-background dans tokens.css (vérifié par Vitest). -->
+    <meta
+      name="theme-color"
+      media="(prefers-color-scheme: light)"
+      content="#f6f7f9"
+    />
+    <meta
+      name="theme-color"
+      media="(prefers-color-scheme: dark)"
+      content="#0e1116"
+    />
+    <title>{title}</title>
+    <slot name="head" />
+  </head>
+  <body>
+    <a class="base-layout__skip-link" href="#contenu">
+      Aller au contenu
+    </a>
+    <slot name="header" />
+    <main id="contenu">
+      <slot />
+    </main>
+    <slot name="footer" />
+  </body>
+</html>
+
+<style>
+  .base-layout__skip-link {
+    background-color: var(--color-surface);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    left: var(--space-2);
+    padding: var(--space-2) var(--space-4);
+    position: absolute;
+    top: var(--space-2);
+    z-index: var(--z-index-skip-link);
+
+    &:not(:focus) {
+      opacity: 0;
+      pointer-events: none;
+    }
+  }
+</style>

@@ -1,0 +1,78 @@
+/*
+ * Design tokens (ADR 0004) : seule source des valeurs visuelles du site.
+ * Couleurs en light-dark() : le thème suit `color-scheme`, donc `prefers-color-scheme`,
+ * sauf surcharge par `data-theme="light"|"dark"` (sur <html> ou sur un conteneur).
+ * Les couleurs de fond sont reprises par les <meta name="theme-color"> de BaseLayout.
+ */
+@layer tokens {
+  :root {
+    /* Couleurs (contrastes WCAG AA vérifiés par axe sur /styleguide/tokens). */
+    --color-background: light-dark(#f6f7f9, #0e1116);
+    --color-surface: light-dark(#ffffff, #171b22);
+    --color-text: light-dark(#14171c, #e7e9ee);
+    --color-text-muted: light-dark(#525a66, #a3abb8);
+    --color-accent: light-dark(#1f5fc4, #7eaaf5);
+    --color-border: light-dark(#d4d9e1, #2d333d);
+    --color-focus: light-dark(#1f5fc4, #7eaaf5);
+    --color-shadow: light-dark(#14171c1f, #00000080);
+
+    /* Espacements. */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.5rem;
+    --space-6: 2rem;
+    --space-7: 3rem;
+    --space-8: 4rem;
+    --space-9: 6rem;
+
+    /* Typographie : police système. */
+    --font-family-sans:
+      system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    --font-family-mono:
+      ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, Consolas, monospace;
+    --font-size-sm: 0.875rem;
+    --font-size-base: 1rem;
+    --font-size-lg: 1.25rem;
+    --font-size-xl: 1.5rem;
+    --font-size-2xl: 2rem;
+    --font-size-3xl: clamp(2.25rem, 1.5rem + 3vw, 3.5rem);
+    --font-weight-regular: 400;
+    --font-weight-bold: 700;
+    --line-height-tight: 1.2;
+    --line-height-base: 1.6;
+
+    /* Formes. */
+    --border-width: 1px;
+    --radius-sm: 0.25rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 1rem;
+    --shadow-sm: 0 1px 2px var(--color-shadow);
+    --shadow-md: 0 4px 12px var(--color-shadow);
+    --focus-width: 3px;
+    --focus-offset: 2px;
+    --underline-offset: 0.15em;
+
+    /* Mouvement. */
+    --duration-fast: 150ms;
+    --duration-base: 250ms;
+
+    /* Mise en page. */
+    --content-max-width: 72rem;
+    --header-height: 4rem;
+    --min-height-below-header: calc(100svh - var(--header-height));
+    --z-index-header: 10;
+    --z-index-skip-link: 20;
+
+    color-scheme: light dark;
+  }
+
+  [data-theme='light'] {
+    color-scheme: light;
+  }
+
+  [data-theme='dark'] {
+    color-scheme: dark;
+  }
+}
