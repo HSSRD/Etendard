@@ -48,6 +48,9 @@ const run = docker(
     'run',
     '--rm',
     '--init',
+    // Ctrl+C arrête tout le conteneur (pnpm, Playwright), pas seulement sh.
+    '-e',
+    'TINI_KILL_PROCESS_GROUP=1',
     '--ipc=host',
     // Même architecture que la CI : le rendu de Chromium diffère sur arm64.
     '--platform=linux/amd64',
