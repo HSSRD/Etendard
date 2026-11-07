@@ -38,15 +38,3 @@ jobs:
           name: playwright
           path: test-results/
           retention-days: 7
-
-  essai-captures:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - run: |
-          printf "import { expect, test } from '@playwright/test';\ntest('capture', async ({ page }) => { await page.goto('/'); await expect(page).toHaveScreenshot('accueil.png'); });\n" > tests/essai.spec.ts
-          node scripts/maj-captures.js tests/essai.spec.ts
-          find tests -name '*.png'
-          docker run --rm --ipc=host -v "$PWD:/work" -w /work mcr.microsoft.com/playwright:v1.64.1-noble sh -c "npm i -g --silent pnpm@12.17.0 && pnpm install --frozen-lockfile && pnpm exec playwright test tests/essai.spec.ts"
