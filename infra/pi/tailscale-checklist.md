@@ -52,11 +52,11 @@ Deux options. Prends la **fédération d'identité** si ta console la propose : 
 - [ ] **Settings > Trust credentials** (ou **OAuth clients**, selon la version de la console) : crée une identité de charge de travail pour l'émetteur GitHub Actions (`https://token.actions.githubusercontent.com`).
 - [ ] Restreins le sujet au déploiement d'Étendard : `repo:HSSRD/Etendard:environment:production`.
 - [ ] Portée : création de clés d'authentification (`auth_keys`, écriture), tag `tag:ci`.
-- [ ] Note l'identifiant du client et l'audience : ils seront utilisés par `deploy.yml` (#5).
+- [ ] Note l'identifiant du client et l'audience. `deploy.yml` (#5) utilise aujourd'hui l'option B : passer à celle-ci demande d'adapter le workflow.
 
 **Option B — client OAuth**
 - [ ] **Settings > OAuth clients > Generate OAuth client** : portée `auth_keys` (écriture), tag `tag:ci`.
-- [ ] Note l'identifiant et le secret dans ton gestionnaire de mots de passe. Ne les mets pas encore dans GitHub : c'est le rôle de #5 (secrets de l'environnement `production`).
+- [ ] Note l'identifiant et le secret dans ton gestionnaire de mots de passe. Saisis-les dans GitHub comme indiqué dans [FONCTIONNEMENT.md](FONCTIONNEMENT.md#les-secrets-de-lenvironment-production).
 
 Dans les deux cas, `tailscale/github-action` crée des nœuds **éphémères** : ils disparaissent du tailnet peu après la fin du job.
 

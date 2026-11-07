@@ -114,10 +114,10 @@ Le dépôt contient une version générique de la politique, avec des valeurs `�
 
 | Job | Ce qu'il fait | Droits |
 |---|---|---|
-| `build` | `pnpm install --frozen-lockfile`, `pnpm build`, écrit le SHA du commit dans `dist/version.txt`, crée `etendard.tar.gz` et `SHA256SUMS` | lecture du code |
-| `deploy` | Environment `production`. Vérifie l'empreinte SHA-256 de l'archive, rejoint le tailnet en nœud éphémère `tag:ci`, lit `status`, envoie l'archive, vérifie que `status` vaut le SHA du commit | aucun droit GitHub |
-| `release` | Publie la Release `deploy-<sha court>` avec l'archive, `SHA256SUMS` et des notes générées. Seulement si `deploy` a réussi | écriture du code (tags, Releases) |
-| `rollback` | Seulement avec l'entrée `rollback` : `ssh deploy@florasp rollback` | aucun droit GitHub |
+| `build` | construit le site et son archive, avec `version.txt` (SHA du commit) | lecture du code |
+| `deploy` | Environment `production` : envoie l'archive au Pi par le tailnet et vérifie la version servie | aucun droit GitHub |
+| `release` | publie la Release `deploy-<sha court>`, seulement si `deploy` a réussi | écriture du code (tags, Releases) |
+| `rollback` | seulement avec l'entrée `rollback` : revient à la version précédente | aucun droit GitHub |
 
 La Release est publiée par un job séparé, après le déploiement : le job `build` exécute les scripts du repo et ne reçoit donc qu'un jeton en lecture.
 
@@ -129,7 +129,7 @@ La Release est publiée par un job séparé, après le déploiement : le job `bu
 gh workflow run deploy.yml -R HSSRD/Etendard --ref main -f rollback=true
 ```
 
-Pour revenir ensuite à la dernière version, relance le workflow sans cocher la case : la version déjà présente sur le Pi est réactivée.
+Pour revenir ensuite à la dernière version, relance le workflow sans cocher la case : le site est reconstruit depuis `main`, le Pi réactive la version qu'il a déjà, et la Release existante est gardée telle quelle.
 
 **Vérification.** Tant que le site n'est pas public, elle passe par `status` et non par un test HTTPS de `version.txt` (écart temporaire à l'ADR 0006, levé à la mise en ligne).
 

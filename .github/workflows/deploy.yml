@@ -13,9 +13,7 @@ on:
         default: false
 
 # Un seul déploiement ou rollback à la fois, sans annuler celui en cours.
-concurrency:
-  group: production
-  cancel-in-progress: false
+concurrency: production
 
 permissions: {}
 
@@ -53,6 +51,7 @@ jobs:
             etendard.tar.gz
             SHA256SUMS
           if-no-files-found: error
+          compression-level: 0 # archive déjà compressée
           retention-days: 7
 
   deploy:
@@ -123,7 +122,7 @@ jobs:
           fi
 
   release:
-    needs: [build, deploy]
+    needs: deploy
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
