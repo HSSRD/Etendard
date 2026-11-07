@@ -53,7 +53,7 @@ export default defineConfig({
   webServer: {
     // Build dédié avec le styleguide, séparé de dist/ qui est publié.
     command: `pnpm exec astro build --outDir dist-styleguide && pnpm exec astro preview --outDir dist-styleguide --port ${port}`,
-    env: { STYLEGUIDE: '1', E2E_PORT: port },
+    env: { STYLEGUIDE: '1' },
     url: baseURL,
     timeout: 300_000,
   },

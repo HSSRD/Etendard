@@ -20,40 +20,28 @@ if (image[2] !== pkg.devDependencies['@playwright/test']) {
 }
 
 const docker = (args, options) => spawnSync('docker', args, options);
-// `{{json .}}` fonctionne avec Docker comme avec Podman (alias docker=podman).
-const info = docker(['info', '--format', '{{json .}}'], { encoding: 'utf8' });
+const info = docker(['info'], { stdio: 'ignore' });
 if (info.error || info.status !== 0) {
   fail(
     'Docker est introuvable ou arrêté. La CI (ci.yml) reste l’arbitre des captures.',
   );
 }
 
-/**
- * Root du conteneur est-il root de l'hôte ? Non avec Docker rootless, userns-remap,
- * Docker Desktop (VM) ou Podman rootless : root y est déjà l'utilisateur hôte.
- */
-const rootIsHostRoot = (() => {
-  const {
-    host,
-    SecurityOptions = [],
-    OperatingSystem = '',
-  } = JSON.parse(info.stdout);
-  if (host) return !host.security?.rootless; // Podman
-  return (
-    !OperatingSystem.includes('Docker Desktop') &&
-    !SecurityOptions.some((option) => /rootless|userns/.test(option))
-  );
-})();
-
 const pnpm = `npx --yes ${pkg.packageManager}`;
+// À la sortie, même interrompue, les fichiers créés par root dans le repo monté reprennent
+// le propriétaire du repo tel que le conteneur le voit (sans effet si c'est déjà root).
 // L'image fournit déjà Node 26 ; on y installe des dépendances compilées pour Linux.
-let script = `${pnpm} install --frozen-lockfile --store-dir /pnpm-store && ${pnpm} exec playwright test --update-snapshots=changed "$@"`;
+const script = [
+  'set -e',
+  'owner=$(stat -c %u:%g /work)',
+  "trap 'find /work -path /work/node_modules -prune -o -user 0 -exec chown $owner {} +' EXIT",
+  "trap 'exit 130' INT TERM",
+  `${pnpm} install --frozen-lockfile --store-dir /pnpm-store`,
+  `${pnpm} exec playwright test --update-snapshots=changed "$@"`,
+].join('\n');
 
-// Sous Linux, rend à l'utilisateur les fichiers créés par root dans le repo monté.
-if (process.getuid && rootIsHostRoot) {
-  const owner = `${process.getuid()}:${process.getgid()}`;
-  script = `${script}; status=$?; find /work -path /work/node_modules -prune -o -user 0 -exec chown ${owner} {} +; exit $status`;
-}
+// Playwright lit les fichiers comme des motifs, avec des « / » (chemins Windows sinon).
+const files = process.argv.slice(2).map((file) => file.replaceAll('\\', '/'));
 
 const run = docker(
   [
@@ -80,7 +68,7 @@ const run = docker(
     '-c',
     script,
     'sh',
-    ...process.argv.slice(2),
+    ...files,
   ],
   { stdio: 'inherit' },
 );

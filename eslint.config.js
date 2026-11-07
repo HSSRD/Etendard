@@ -8,7 +8,8 @@ import tseslint from 'typescript-eslint';
 // Un composant n'importe jamais une page (ADR 0005). dependency-cruiser ne lit pas
 // les .astro : la règle est imposée ici, pour import, import() et import.meta.glob.
 // « / » s'écrit \x2F : les sélecteurs ESLint (esquery) ne l'acceptent pas tel quel.
-const pagePattern = String.raw`^((\.\.\x2F)+|@\x2F)pages(\x2F|$)`;
+// Couvre `../pages`, `../../src/pages`, `@/pages` et la forme Vite `/src/pages`.
+const pagePattern = String.raw`^((\.\.\x2F)+(src\x2F)?|@\x2F|\x2Fsrc\x2F)pages(\x2F|$)`;
 const pageMessage = 'Un composant n’importe jamais une page.';
 
 // Pas d'accès à l'environnement Node dans src/ : utilise import.meta.env.
