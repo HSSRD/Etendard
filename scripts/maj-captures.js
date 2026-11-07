@@ -1,14 +1,14 @@
 // Régénère les captures de référence dans l'image Docker officielle de Playwright,
-// à la version de @playwright/test installée (ADR 0003). Usage : pnpm captures:maj [fichiers…]
+// à la version de @playwright/test (ADR 0003). Usage : pnpm captures:maj [fichiers…]
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
 
-const require = createRequire(import.meta.url);
-const { version } = require('@playwright/test/package.json');
 const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
+const playwright = pkg.devDependencies['@playwright/test'];
 const pnpm = pkg.packageManager.replace(/^pnpm@/, '');
-const node = readFileSync('.nvmrc', 'utf8').trim();
+
+// L'image fournit déjà Node ; on y installe pnpm et des dépendances compilées pour Linux.
+const script = `npm install --global --silent pnpm@${pnpm} && pnpm install --frozen-lockfile && pnpm exec playwright test --update-snapshots "$@"`;
 
 const { status } = spawnSync(
   'docker',
@@ -23,14 +23,11 @@ const { status } = spawnSync(
     '/work/node_modules',
     '-w',
     '/work',
-    '-e',
-    `PNPM_VERSION=${pnpm}`,
-    '-e',
-    `NODE_VERSION=${node}`,
-    `mcr.microsoft.com/playwright:v${version}-noble`,
+    `mcr.microsoft.com/playwright:v${playwright}-noble`,
     'sh',
-    'scripts/captures-docker.sh',
-    '--update-snapshots',
+    '-c',
+    script,
+    'sh',
     ...process.argv.slice(2),
   ],
   { stdio: 'inherit' },
