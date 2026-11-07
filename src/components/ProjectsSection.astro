@@ -10,14 +10,16 @@ const groups = await getProjects();
 <div class="projects-section">
   <h2>Projets</h2>
   {groups.map(({ root, units }) => (
-    <>
+    <div class="projects-section__group">
       <ProjectCard project={root} intro />
-      <div class="projects-section__units">
-        {units.map((unit) => (
-          <ProjectCard project={unit} />
-        ))}
-      </div>
-    </>
+      {units.length > 0 && (
+        <div class="projects-section__units">
+          {units.map((unit) => (
+            <ProjectCard project={unit} />
+          ))}
+        </div>
+      )}
+    </div>
   ))}
 </div>
 
@@ -28,6 +30,11 @@ const groups = await getProjects();
     margin: 0 auto;
     max-width: var(--content-max-width);
     padding: var(--space-8) var(--space-4);
+  }
+
+  .projects-section__group {
+    display: grid;
+    gap: var(--space-6);
   }
 
   .projects-section__units {

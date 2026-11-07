@@ -4,6 +4,11 @@ import { getCollection } from 'astro:content';
 interface ProjectEntry {
   id: string;
   body?: string | undefined;
+  rendered?:
+    | {
+        metadata?: { headings?: unknown[] | undefined; [key: string]: unknown };
+      }
+    | undefined;
   data: { order: number; units?: { id: string }[] | undefined };
 }
 
@@ -23,13 +28,14 @@ export const linkProjects = <P extends ProjectEntry>(projects: P[]) => {
   for (const project of projects) {
     if (!project.body?.trim()) {
       errors.push(`${project.id} : corps Markdown vide.`);
-    } else if (/^#{1,6}\s/m.test(project.body)) {
+    } else if (project.rendered?.metadata?.headings?.length) {
       errors.push(
         `${project.id} : titre Markdown interdit, la carte porte le titre.`,
       );
     }
     for (const { id } of project.data.units ?? []) {
       if (!ids.has(id)) errors.push(`${project.id} : « ${id} » inexistant.`);
+      if (referenced.has(id)) errors.push(`${id} : référencé deux fois.`);
       referenced.add(id);
     }
   }

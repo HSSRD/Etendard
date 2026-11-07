@@ -9,8 +9,17 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
   description="Composant ProjectsSection d’Étendard : la section des projets."
 >
   <meta slot="head" name="robots" content="noindex" />
-  <h1>ProjectsSection</h1>
+  <h1 class="styleguide-projects-section">ProjectsSection</h1>
   <section id="projets">
     <ProjectsSection />
   </section>
 </BaseLayout>
+
+<style>
+  /* Aligné sur le contenu centré de la section. */
+  .styleguide-projects-section {
+    margin: 0 auto;
+    max-width: var(--content-max-width);
+    padding: var(--space-6) var(--space-4) 0;
+  }
+</style>

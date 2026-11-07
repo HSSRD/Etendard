@@ -45,8 +45,9 @@ test('aucune adresse, aucun port ni lien vers les repos privés', async ({
   const section = page.locator('.projects-section');
 
   await expect(section.locator('a')).toHaveCount(0);
-  expect(await section.innerText()).not.toMatch(
-    /https?:|www\.|github|\.local\b|\.ts\.net|\d+\.\d+\.\d+\.\d+|:\d{2,5}|\bport\b/i,
+  // Le HTML, pas seulement le texte : une image ou un commentaire ne doit rien divulguer.
+  expect(await section.innerHTML()).not.toMatch(
+    /https?:|www\.|github|\.local\b|\.ts\.net|\d+\.\d+\.\d+\.\d+|:\d{2,5}|\bport\s*\d/i,
   );
 });
 
@@ -54,7 +55,10 @@ test('les cartes sont côte à côte à partir de 768 px, empilées en dessous',
   page,
 }) => {
   await page.goto('/styleguide/projects-section');
-  const cards = page.locator('.projects-section__units > article');
+  const cards = page
+    .locator('.projects-section__units')
+    .first()
+    .locator(':scope > article');
   const first = await cards.first().boundingBox();
   const second = await cards.nth(1).boundingBox();
   if (!first || !second) throw new Error('deux cartes visibles attendues');
