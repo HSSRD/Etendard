@@ -5,10 +5,16 @@ import { readFileSync } from 'node:fs';
 
 const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
 const playwright = pkg.devDependencies['@playwright/test'];
-const pnpm = pkg.packageManager.replace(/^pnpm@/, '');
+const pnpm = `npx --yes ${pkg.packageManager}`;
 
-// L'image fournit déjà Node ; on y installe pnpm et des dépendances compilées pour Linux.
-const script = `npm install --global --silent pnpm@${pnpm} && pnpm install --frozen-lockfile && pnpm exec playwright test --update-snapshots=changed "$@"`;
+// L'image fournit déjà Node 26 ; on y installe des dépendances compilées pour Linux.
+let script = `${pnpm} install --frozen-lockfile && ${pnpm} exec playwright test --update-snapshots=changed "$@"`;
+
+// Sous Linux, rend à l'utilisateur courant les fichiers créés par root dans le repo monté.
+if (process.getuid) {
+  const owner = `${process.getuid()}:${process.getgid()}`;
+  script = `${script}; status=$?; find /work -path /work/node_modules -prune -o -user 0 -exec chown ${owner} {} +; exit $status`;
+}
 
 const { status } = spawnSync(
   'docker',

@@ -5,13 +5,22 @@ const bemSelector = (fileName) => {
   const block = fileName.replace(/(?<!^)[A-Z]/g, (c) => `-${c}`).toLowerCase();
   const word = '[a-z0-9]+(?:-[a-z0-9]+)*';
   return new RegExp(
-    String.raw`^\.${block}(?:__${word})?(?:--${word})?(?:\[.+\])?$`,
+    String.raw`^\.${block}(?:__${word})?(?:--${word})?(?:\[[^\]]+\])*$`,
   );
 };
 
-const colors = ['/color$/', 'fill', 'stroke'];
-const spacings = ['/^(margin|padding|inset)/', '/^(row-|column-)?gap$/'];
-const strictProperties = [...colors, ...spacings, 'font-size'];
+// Les raccourcis (background, border, outline…) sont développés puis vérifiés.
+const strictProperties = [
+  '/color$/',
+  'fill',
+  'stroke',
+  'box-shadow',
+  'text-shadow',
+  '/^(margin|padding|inset)/',
+  '/^(top|right|bottom|left)$/',
+  '/^(row-|column-)?gap$/',
+  'font-size',
+];
 
 /** @type {import('stylelint').Config} */
 export default {
@@ -34,16 +43,15 @@ export default {
           'inherit',
           'initial',
           'unset',
-          'currentColor',
+          '/^currentcolor$/i',
           'transparent',
           'none',
           'auto',
           '0',
         ],
-        // Couleurs : uniquement var(--…), jamais rgb()/hsl(). Ailleurs, calc()/clamp() de tokens.
-        ignoreFunctions: Object.fromEntries(
-          strictProperties.map((p) => [p, !colors.includes(p)]),
-        ),
+        // Uniquement var(--…) : un calc() ou un clamp() se définit comme token.
+        ignoreFunctions: false,
+        expandShorthand: true,
       },
     ],
     'order/order': ['custom-properties', 'declarations'],

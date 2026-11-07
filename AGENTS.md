@@ -36,4 +36,4 @@ Les pages `/styleguide` ne sont publiées que si `STYLEGUIDE=1`. Un composant n'
 ## Playwright
 
 L'image Docker de `ci.yml`, de `deploy.yml` et de `pnpm captures:maj` suit la version de
-`@playwright/test` : mets à jour les deux workflows en même temps que le paquet.
+`@playwright/test` : mets à jour les deux workflows (tag et empreinte `@sha256:`) en même temps que le paquet.

@@ -1,15 +1,35 @@
+import { createServer } from 'node:net';
 import { defineConfig, devices } from '@playwright/test';
 
-// Port distinct de celui d'astro dev (4321) : les tests ne visent jamais le serveur de dev.
-const port = 4322;
+/**
+ * Port libre choisi une fois par lancement, puis hérité par les workers via l'environnement :
+ * deux worktrees (ou un `astro dev`) ne partagent jamais le serveur de test.
+ */
+const freePort = () =>
+  new Promise<number>((resolve, reject) => {
+    const server = createServer().listen(0, () => {
+      const address = server.address();
+      server.close(() =>
+        typeof address === 'object' && address
+          ? resolve(address.port)
+          : reject(new Error('port introuvable')),
+      );
+    });
+  });
+process.env['E2E_PORT'] ??= String(await freePort());
+const port = process.env['E2E_PORT'];
 const baseURL = `http://localhost:${port}`;
 
 /**
  * Les captures ne sont fiables que dans l'image Docker officielle de Playwright (ADR 0003),
- * reconnaissable à l'emplacement de ses navigateurs. Ailleurs, `toHaveScreenshot` est ignoré.
+ * reconnaissable à l'emplacement de ses navigateurs. Ailleurs, `toHaveScreenshot` est ignoré,
+ * sauf en CI où ce serait un faux vert.
  */
 const inPlaywrightImage =
   process.env['PLAYWRIGHT_BROWSERS_PATH'] === '/ms-playwright';
+if (process.env['CI'] && !inPlaywrightImage) {
+  throw new Error('En CI, Playwright doit tourner dans son image Docker.');
+}
 
 const widths = [375, 768, 1280];
 
@@ -20,7 +40,6 @@ export default defineConfig({
   ignoreSnapshots: !inPlaywrightImage,
   snapshotPathTemplate:
     '{testDir}/{testFileDir}/__captures__/{testFileName}/{arg}-{projectName}{ext}',
-  expect: { toHaveScreenshot: { animations: 'disabled' } },
   use: { baseURL },
   projects: widths.map((width) => ({
     name: `chromium-${width}`,
@@ -31,6 +50,6 @@ export default defineConfig({
     command: `astro build --outDir dist-styleguide && astro preview --outDir dist-styleguide --port ${port}`,
     env: { STYLEGUIDE: '1' },
     url: baseURL,
-    reuseExistingServer: false,
+    timeout: 300_000,
   },
 });
