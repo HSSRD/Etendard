@@ -28,33 +28,35 @@ for (const url of pages) {
   });
 }
 
-// Sur la page styleguide, les sections font chacune un écran : le clic fait défiler.
-test('un clic sur « Projets » amène la section juste sous le header, sans JavaScript', async ({
-  page,
-}) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/styleguide/site-header');
-  await expect(page.locator('script')).toHaveCount(0);
+test.describe('sans JavaScript', () => {
+  test.use({ javaScriptEnabled: false });
 
-  await nav(page).getByRole('link', { name: 'Projets' }).click();
-  await expect(page).toHaveURL(/#projets$/);
-  await expect
-    .poll(() => page.evaluate(() => window.scrollY))
-    .toBeGreaterThan(0);
-  const headerBox = await header(page).boundingBox();
-  const sectionBox = await page.locator('#projets').boundingBox();
-  expect(headerBox?.y).toBe(0);
-  expect(sectionBox?.y).toBeGreaterThanOrEqual(headerBox?.height ?? Infinity);
-  await expect(page.locator('#projets h2')).toBeInViewport();
+  // Sur la page styleguide, #projets n'est pas en bas de page : le clic la fait défiler
+  // exactement jusqu'au bas du header (scroll-margin-top du socle).
+  test('un clic sur « Projets » arrête la section juste sous le header', async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/styleguide/site-header');
+    await expect(page.locator('script')).toHaveCount(0);
+
+    await nav(page).getByRole('link', { name: 'Projets' }).click();
+    await expect(page).toHaveURL(/#projets$/);
+    const headerBox = await header(page).boundingBox();
+    const sectionBox = await page.locator('#projets').boundingBox();
+    expect(headerBox?.y).toBe(0);
+    expect(sectionBox?.y).toBeCloseTo(headerBox?.height ?? Infinity, 0);
+    await expect(page.locator('#projets h2')).toBeInViewport();
+  });
 });
 
-test('le header colle en haut, opaque, à la hauteur du token, sur une ligne', async ({
+test('le header colle en haut, au-dessus du contenu, à la hauteur du token, sur une ligne', async ({
   page,
 }) => {
   await page.goto('/styleguide/site-header');
   await expect(header(page)).toHaveCSS('position', 'sticky');
   await expect(header(page)).toHaveCSS('top', '0px');
-  // Fond opaque : vérifié par thème plus bas (même couleur que la page).
+  // Fond opaque : vérifié par thème plus bas.
 
   // Hauteur du token, et chaque lien tient dans le header sans déborder à droite :
   // un retour à la ligne ferait sortir un lien du header.
@@ -93,16 +95,27 @@ test('le header colle en haut, opaque, à la hauteur du token, sur une ligne', a
     .poll(() => page.evaluate(() => window.scrollY))
     .toBeGreaterThan(0);
   expect((await header(page).boundingBox())?.y).toBe(0);
+  // Peint au-dessus du contenu qui défile dessous.
+  expect(
+    await page.evaluate(() =>
+      document.elementFromPoint(1, 1)?.closest('.site-header'),
+    ),
+  ).toBeTruthy();
 });
 
 test('chaque lien du header a un focus visible au clavier', async ({
   page,
 }) => {
   await page.goto('/styleguide/site-header');
-  // Le premier Tab atteint le lien d'évitement du layout.
-  await page.keyboard.press('Tab');
-  for (const name of ['Étendard', 'Accueil', 'Projets']) {
+  const brand = header(page).getByRole('link', { name: 'Étendard' });
+  // Tab jusqu'au header, quel que soit le nombre d'éléments focusables avant lui.
+  for (let i = 0; i < 10; i++) {
     await page.keyboard.press('Tab');
+    if (await brand.evaluate((element) => element === document.activeElement))
+      break;
+  }
+  for (const [index, name] of ['Étendard', 'Accueil', 'Projets'].entries()) {
+    if (index > 0) await page.keyboard.press('Tab');
     const link = header(page).getByRole('link', { name, exact: true });
     await expect(link).toBeFocused();
     await expect(link).toHaveCSS('outline-style', 'solid');
@@ -121,27 +134,21 @@ test('avec un texte agrandi à 200 %, le header passe à la ligne sans défileme
     return root.scrollWidth - root.clientWidth;
   });
   expect(overflow).toBeLessThanOrEqual(0);
-  // Chaque lien reste entier à l'écran, anneau de focus compris (décalage + épaisseur).
-  const links = await header(page)
-    .getByRole('link')
-    .evaluateAll((elements) =>
-      elements.map((element) => {
-        const style = getComputedStyle(element);
-        return {
-          top: element.getBoundingClientRect().top,
-          ring:
-            Number.parseFloat(style.getPropertyValue('--focus-offset')) +
-            Number.parseFloat(style.getPropertyValue('--focus-width')),
-        };
-      }),
-    );
+  // Chaque lien reste entier à l'écran, anneau de focus compris (décalage + épaisseur, en px).
+  const ring = await page.evaluate(() => {
+    const probe = document.createElement('div');
+    probe.style.height = 'calc(var(--focus-offset) + var(--focus-width))';
+    document.body.append(probe);
+    const height = probe.getBoundingClientRect().height;
+    probe.remove();
+    return height;
+  });
+  expect(ring).toBeGreaterThan(0);
+  const links = await header(page).getByRole('link').all();
   expect(links).toHaveLength(3);
-  for (const { ring, top } of links) {
-    expect(ring).toBeGreaterThan(0);
-    expect(top).toBeGreaterThanOrEqual(ring);
-  }
-  for (const link of await header(page).getByRole('link').all()) {
+  for (const link of links) {
     await expect(link).toBeInViewport({ ratio: 1 });
+    expect((await link.boundingBox())?.y).toBeGreaterThanOrEqual(ring);
   }
   await expect(header(page)).toHaveScreenshot('site-header-texte-agrandi.png');
 });

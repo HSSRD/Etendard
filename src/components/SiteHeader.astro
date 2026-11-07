@@ -52,13 +52,17 @@ const links = [
     padding: var(--space-2) var(--space-4);
   }
 
+  /* Marge verticale : cible de tap plus haute que la ligne de texte. */
   .site-header__brand,
   .site-header__link {
     color: var(--color-text);
+    display: inline-block;
+    padding: var(--space-1) 0;
     text-decoration-line: none;
   }
 
-  @media (any-hover: hover) {
+  /* Pointeur principal seulement : pas de soulignement resté collé après un tap. */
+  @media (hover: hover) {
     .site-header__brand:hover,
     .site-header__link:hover {
       text-decoration-line: underline;

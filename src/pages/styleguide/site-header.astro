@@ -1,7 +1,8 @@
 ---
 // SiteHeader (ticket #11). Un seul rendu statique ; les états survol, focus et texte
-// agrandi sont produits et capturés par SiteHeader.spec.ts. Les sections factices font
-// chacune un écran pour tester le défilement vers #accueil et #projets sous le header.
+// agrandi sont produits et capturés par SiteHeader.spec.ts. Les blocs factices font
+// chacun un écran : #projets n'est pas en bas de page, le défilement vers l'ancre
+// dépend donc bien de scroll-margin-top.
 import SiteHeader from '../../components/SiteHeader.astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 ---
@@ -18,6 +19,9 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
   <section id="projets" class="site-header-demo">
     <h2>Projets</h2>
   </section>
+  <div class="site-header-demo">
+    <p>Suite de la page : #projets peut défiler jusque sous le header.</p>
+  </div>
 </BaseLayout>
 
 <style>
