@@ -1,12 +1,17 @@
 ---
 // Bas de page du site (ticket #12), rendu dans l'emplacement « footer » de BaseLayout.
-const year = new Date().getFullYear();
+interface Props {
+  /** Année du copyright ; par défaut celle du build. Figée sur le styleguide pour les captures. */
+  year?: number;
+}
+
+const { year = new Date().getFullYear() } = Astro.props;
 ---
 
 <footer class="site-footer">
   <div class="site-footer__inner">
     <p class="site-footer__tagline">Étendard, la vitrine des projets HSSRD</p>
-    <p class="site-footer__copyright">© {year} HSSRD</p>
+    <p>© {year} HSSRD</p>
     <ul class="site-footer__links">
       <li>
         <a href="https://github.com/HSSRD/Etendard" rel="noopener">
@@ -34,7 +39,7 @@ const year = new Date().getFullYear();
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-2) var(--space-5);
-    margin: 0 auto;
+    margin-inline: auto;
     max-width: var(--content-max-width);
     padding: var(--space-6) var(--space-4);
   }

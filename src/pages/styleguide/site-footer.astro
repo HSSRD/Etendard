@@ -1,5 +1,5 @@
 ---
-// SiteFooter (ticket #12) : un seul état, testé dans les deux thèmes par SiteFooter.spec.ts.
+// SiteFooter (ticket #12) : un seul état (année figée pour des captures stables), testé dans les deux thèmes par SiteFooter.spec.ts.
 import SiteFooter from '../../components/SiteFooter.astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 ---
@@ -11,5 +11,5 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
   <meta slot="head" name="robots" content="noindex" />
   <!-- Cible du lien « Retour en haut », comme la section d'accueil de la one page. -->
   <h1 id="accueil">SiteFooter</h1>
-  <SiteFooter slot="footer" />
+  <SiteFooter slot="footer" year={2026} />
 </BaseLayout>
