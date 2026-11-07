@@ -1,0 +1,15 @@
+---
+// SiteFooter (ticket #12) : un seul état, testé dans les deux thèmes par SiteFooter.spec.ts.
+import SiteFooter from '../../components/SiteFooter.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+
+<BaseLayout
+  title="SiteFooter — Styleguide — Étendard"
+  description="Bas de page d’Étendard : publication, code source et retour en haut."
+>
+  <meta slot="head" name="robots" content="noindex" />
+  <!-- Cible du lien « Retour en haut », comme la section d'accueil de la one page. -->
+  <h1 id="accueil">SiteFooter</h1>
+  <SiteFooter slot="footer" />
+</BaseLayout>

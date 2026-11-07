@@ -1,0 +1,53 @@
+---
+// Bas de page du site (ticket #12), rendu dans l'emplacement « footer » de BaseLayout.
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+  <div class="site-footer__inner">
+    <p class="site-footer__tagline">Étendard, la vitrine des projets HSSRD</p>
+    <p class="site-footer__copyright">© {year} HSSRD</p>
+    <ul class="site-footer__links">
+      <li>
+        <a href="https://github.com/HSSRD/Etendard" rel="noopener">
+          Code source sur GitHub
+        </a>
+      </li>
+      <li>
+        <a href="#accueil">Retour en haut</a>
+      </li>
+    </ul>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    border-top-color: var(--color-border);
+    border-top-style: solid;
+    border-top-width: var(--border-width);
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+  }
+
+  .site-footer__inner {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-5);
+    margin: 0 auto;
+    max-width: var(--content-max-width);
+    padding: var(--space-6) var(--space-4);
+  }
+
+  .site-footer__tagline {
+    color: var(--color-text);
+  }
+
+  .site-footer__links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-5);
+    list-style: none;
+    padding: 0;
+  }
+</style>
