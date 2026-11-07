@@ -3,9 +3,11 @@ import { expectNoAxeViolations, schemes } from '../../tests/helpers';
 
 /** Aucun défilement horizontal à la largeur du projet (375 px compris). */
 const expectNoHorizontalScroll = async (page: Page) => {
-  const overflow = await page.evaluate(
-    () => document.documentElement.scrollWidth - window.innerWidth,
-  );
+  // clientWidth exclut la barre de défilement verticale, contrairement à innerWidth.
+  const overflow = await page.evaluate(() => {
+    const root = document.documentElement;
+    return root.scrollWidth - root.clientWidth;
+  });
   expect(overflow).toBeLessThanOrEqual(0);
 };
 
@@ -23,18 +25,25 @@ for (const scheme of schemes) {
     await expect(hero.locator('.hero__lead')).toHaveText(
       'Bienvenue ! Voici le site qui regroupe tous les projets de Hussard.',
     );
-    await expect(
-      hero.getByRole('link', { name: 'Découvrir les projets' }),
-    ).toHaveAttribute('href', '#projets');
+    const cta = hero.getByRole('link', { name: 'Découvrir les projets' });
+    await expect(cta).toHaveAttribute('href', '#projets');
     await expectNoHorizontalScroll(page);
     await expectNoAxeViolations(page);
     await expect(page).toHaveScreenshot(`hero-${scheme}.png`, {
       fullPage: true,
     });
+
+    // État focus clavier du CTA.
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
+    await expect(cta).toBeFocused();
+    await expect(page).toHaveScreenshot(`hero-${scheme}-focus.png`, {
+      fullPage: true,
+    });
   });
 }
 
-test('accueil : le Hero remplit l’écran sous le header, centré, projets juste dessous', async ({
+test('accueil : le Hero remplit l’écran sous le header, centré, et mène aux projets', async ({
   page,
 }) => {
   await page.goto('/');
@@ -76,12 +85,9 @@ test('accueil : le Hero remplit l’écran sous le header, centré, projets just
   for (const element of [layout.title, layout.cta]) {
     expect(element.left + element.width / 2).toBeCloseTo(sectionCenter, 0);
   }
-});
 
-test('accueil : l’appel à l’action mène à la section projets', async ({
-  page,
-}) => {
-  await page.goto('/');
+  // L'appel à l'action mène à la section projets, qui existe et s'affiche.
   await page.getByRole('link', { name: 'Découvrir les projets' }).click();
   await expect(page).toHaveURL(/#projets$/);
+  await expect(page.locator('#projets')).toBeInViewport();
 });
