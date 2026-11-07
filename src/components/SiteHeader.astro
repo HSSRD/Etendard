@@ -49,7 +49,7 @@ const links = [
     justify-content: space-between;
     margin: 0 auto;
     max-width: var(--content-max-width);
-    padding: 0 var(--space-4);
+    padding: var(--space-2) var(--space-4);
   }
 
   .site-header__brand,
@@ -58,7 +58,7 @@ const links = [
     text-decoration-line: none;
   }
 
-  @media (hover: hover) {
+  @media (any-hover: hover) {
     .site-header__brand:hover,
     .site-header__link:hover {
       text-decoration-line: underline;
