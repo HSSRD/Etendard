@@ -53,6 +53,9 @@ jobs:
           node scripts/maj-captures.js tests/essai.spec.ts
           # Interruption : le trap doit quand même rendre les fichiers.
           rm -rf dist-styleguide test-results .astro
-          timeout -s INT 6 node scripts/maj-captures.js tests/essai.spec.ts || echo "interrompu ($?)"
+          node scripts/maj-captures.js tests/essai.spec.ts & pid=$!
+          sleep 7; pkill -INT -f "docker run" || true; kill -INT $pid || true
+          wait $pid || echo "interrompu ($?)"
+          docker ps -a
           sleep 5
           echo "root-owned après interruption:"; find . -path ./node_modules -prune -o -user 0 -print; ls -ld dist-styleguide .astro test-results 2>&1 || true
