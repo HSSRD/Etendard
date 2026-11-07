@@ -1,0 +1,7 @@
+# Prettier ignore déjà ce que liste .gitignore.
+pnpm-lock.yaml
+# Contenu figé ou hors périmètre de l’outillage : non reformaté.
+docs/adr/
+infra/
+# Seul le job build est modifiable ici (ticket #9) : pas de reformatage du reste.
+.github/workflows/deploy.yml
