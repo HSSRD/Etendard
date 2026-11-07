@@ -16,7 +16,7 @@ interface Props {
 const {
   title,
   description,
-  noindex = Astro.url.pathname.startsWith('/styleguide'),
+  noindex = /^\/styleguide(\/|$)/.test(Astro.url.pathname),
 } = Astro.props;
 ---
 

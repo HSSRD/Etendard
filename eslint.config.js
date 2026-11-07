@@ -5,7 +5,7 @@ import { defineConfig } from 'eslint/config';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
-// Un composant n'importe jamais une page (ADR 0005). dependency-cruiser ne lit pas
+// Un composant ou un layout n'importe jamais une page (ADR 0005). dependency-cruiser ne lit pas
 // les .astro : la règle est imposée ici, pour import, import() et import.meta.glob.
 // « / » s'écrit \x2F : les sélecteurs ESLint (esquery) ne l'acceptent pas tel quel.
 // Couvre `../pages`, `../../src/pages`, `@/pages` et la forme Vite `/src/pages`.
