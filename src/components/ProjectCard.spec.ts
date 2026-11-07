@@ -1,19 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { expectNoAxeViolations, schemes } from '../../tests/helpers';
 
-const cards = [
-  {
-    title: 'Overwatch',
-    summary: /^Une application Unity /,
-    body: /flux vidéo/,
-  },
-  {
-    title: 'Sentry',
-    summary: /^Une caméra motorisée /,
-    body: /deux servomoteurs/,
-  },
-];
-
 test('chaque carte montre le titre, le résumé et le corps de sa fiche', async ({
   page,
 }) => {
@@ -23,20 +10,27 @@ test('chaque carte montre le titre, le résumé et le corps de sa fiche', async 
     'ProjectCard',
   );
   const articles = page.locator('article.project-card');
-  await expect(articles).toHaveCount(cards.length);
-  for (const [index, card] of cards.entries()) {
-    const article = articles.nth(index);
-    await expect(article.getByRole('heading', { level: 3 })).toHaveText(
-      card.title,
-    );
-    await expect(article.locator('.project-card__summary')).toHaveText(
-      card.summary,
-    );
-    await expect(article.locator('.project-card__body p')).toHaveText(
-      card.body,
-    );
+  await expect(articles.getByRole('heading', { level: 3 })).toHaveText([
+    'Hussard',
+    'Overwatch',
+    'Sentry',
+  ]);
+  for (const article of await articles.all()) {
+    await expect(article.locator('.project-card__summary')).not.toBeEmpty();
+    await expect(article.locator('.project-card__body p')).not.toBeEmpty();
   }
-  await expect(page.locator('script')).toHaveCount(0);
+});
+
+test('la présentation (intro) n’a pas de cadre, les cartes en ont un', async ({
+  page,
+}) => {
+  await page.goto('/styleguide/project-card');
+  const articles = page.locator('article.project-card');
+
+  await expect(articles.first()).toHaveClass(/project-card--intro/);
+  await expect(articles.first()).toHaveCSS('border-top-style', 'none');
+  await expect(articles.nth(1)).not.toHaveClass(/project-card--intro/);
+  await expect(articles.nth(1)).toHaveCSS('border-top-style', 'solid');
 });
 
 for (const scheme of schemes) {

@@ -1,16 +1,21 @@
 ---
-// ProjectCard dans chacun de ses états : une fiche de sous-unité par section (ticket #14).
-import { getEntry } from 'astro:content';
+// ProjectCard dans chacun de ses états (ticket #14) : présentation (intro), puis carte de sous-unité.
+import { getEntries, getEntry } from 'astro:content';
 import ProjectCard from '../../components/ProjectCard.astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 
-const states = await Promise.all(
-  ['overwatch', 'sentry'].map(async (id) => {
-    const project = await getEntry('projects', id);
-    if (!project) throw new Error(`Fiche ${id} introuvable.`);
-    return project;
-  }),
-);
+const hussard = await getEntry('projects', 'hussard');
+if (!hussard) throw new Error('Fiche hussard introuvable.');
+const units = await getEntries(hussard.data.units ?? []);
+const states = [
+  { id: 'intro', label: 'Présentation (intro)', project: hussard, intro: true },
+  ...units.map((project) => ({
+    id: project.id,
+    label: `Carte ${project.data.title}`,
+    project,
+    intro: false,
+  })),
+];
 ---
 
 <BaseLayout
@@ -20,13 +25,13 @@ const states = await Promise.all(
   <meta slot="head" name="robots" content="noindex" />
   <div class="styleguide-project-card">
     <h1>ProjectCard</h1>
-    {states.map((project) => (
+    {states.map((state) => (
       <section
         class="styleguide-project-card__state"
-        aria-labelledby={`etat-${project.id}`}
+        aria-labelledby={`etat-${state.id}`}
       >
-        <h2 id={`etat-${project.id}`}>Fiche {project.data.title}</h2>
-        <ProjectCard project={project} />
+        <h2 id={`etat-${state.id}`}>{state.label}</h2>
+        <ProjectCard project={state.project} intro={state.intro} />
       </section>
     ))}
   </div>

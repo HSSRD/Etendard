@@ -1,12 +1,12 @@
 ---
 // Section « Projets » de la one page (ticket #14) : Hussard, puis une carte par sous-unité.
-import { getEntries, getEntry, render } from 'astro:content';
+import { getEntries, getEntry } from 'astro:content';
 import ProjectCard from './ProjectCard.astro';
 
 const hussard = await getEntry('projects', 'hussard');
-if (!hussard)
+if (!hussard) {
   throw new Error('Fiche src/content/projects/hussard.md introuvable.');
-const { Content } = await render(hussard);
+}
 const units = (await getEntries(hussard.data.units ?? [])).toSorted(
   (a, b) => a.data.order - b.data.order,
 );
@@ -14,11 +14,7 @@ const units = (await getEntries(hussard.data.units ?? [])).toSorted(
 
 <div class="projects-section">
   <h2>Projets</h2>
-  <div class="projects-section__intro">
-    <h3>{hussard.data.title}</h3>
-    <p class="projects-section__summary">{hussard.data.summary}</p>
-    <Content />
-  </div>
+  <ProjectCard project={hussard} intro />
   <div class="projects-section__units">
     {units.map((unit) => (
       <ProjectCard project={unit} />
@@ -33,15 +29,6 @@ const units = (await getEntries(hussard.data.units ?? [])).toSorted(
     margin: 0 auto;
     max-width: var(--content-max-width);
     padding: var(--space-8) var(--space-4);
-  }
-
-  .projects-section__intro {
-    display: grid;
-    gap: var(--space-3);
-  }
-
-  .projects-section__summary {
-    font-size: var(--font-size-lg);
   }
 
   .projects-section__units {
