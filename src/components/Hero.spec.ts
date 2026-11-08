@@ -26,7 +26,10 @@ for (const scheme of schemes) {
     expect((await hero.locator('.hero__lead').textContent())?.trim()).toBe(
       'Bienvenue\u00a0! Voici le site qui regroupe tous les projets de Hussard.',
     );
-    const cta = hero.getByRole('link', { name: 'Découvrir les projets' });
+    const cta = hero.getByRole('link', {
+      name: 'Découvrir les projets',
+      exact: true,
+    });
     await expect(cta).toHaveAttribute('href', '#projets');
     await expectNoHorizontalScroll(page);
     await expectNoAxeViolations(page);
@@ -65,15 +68,17 @@ for (const scheme of schemes) {
     await expect(cta).toHaveCSS('border-top-style', 'solid');
     await expect(cta).toHaveCSS('border-top-width', /^[1-9]/);
     await expect(cta).not.toHaveCSS('border-top-color', 'rgba(0, 0, 0, 0)');
+    await expect(page).toHaveScreenshot(`hero-${scheme}-forced-colors.png`, {
+      fullPage: true,
+    });
   });
 }
 
 test('l’index du styleguide mène à la page du Hero', async ({ page }) => {
   await page.goto('/styleguide');
-  await expect(page.getByRole('link', { name: 'Hero' })).toHaveAttribute(
-    'href',
-    '/styleguide/hero',
-  );
+  await expect(
+    page.getByRole('link', { name: 'Hero', exact: true }),
+  ).toHaveAttribute('href', '/styleguide/hero');
 });
 
 test('accueil : le Hero remplit l’écran sous le header, centré, et mène aux projets', async ({
@@ -135,7 +140,9 @@ test('accueil : le Hero remplit l’écran sous le header, centré, et mène aux
   await page
     .locator('body')
     .evaluate((body) => body.style.setProperty('padding-bottom', '200vh'));
-  await page.getByRole('link', { name: 'Découvrir les projets' }).click();
+  await page
+    .getByRole('link', { name: 'Découvrir les projets', exact: true })
+    .click();
   await expect(page).toHaveURL(/#projets$/);
   await expect
     .poll(() =>
