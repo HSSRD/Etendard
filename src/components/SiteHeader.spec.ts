@@ -46,7 +46,8 @@ test.describe('sans JavaScript', () => {
     const sectionBox = await page.locator('#projets').boundingBox();
     expect(headerBox?.y).toBe(0);
     expect(sectionBox?.y).toBeCloseTo(headerBox?.height ?? Infinity, 0);
-    await expect(page.locator('#projets h2')).toBeInViewport();
+    const titleBox = await page.locator('#projets h2').boundingBox();
+    expect(titleBox?.y).toBeGreaterThanOrEqual(headerBox?.height ?? Infinity);
 
     // Retour en haut par le nom du site.
     await header(page).getByRole('link', { name: 'Étendard' }).click();
@@ -90,6 +91,8 @@ test('le header colle en haut, au-dessus du contenu, à la hauteur du token, sur
   expect(layout.links).toHaveLength(3);
   for (const link of layout.links) {
     expect(link.top).toBeGreaterThanOrEqual(0);
+    // Cible de tap d'au moins 24 px de haut (WCAG 2.5.8), grâce à la marge verticale.
+    expect(link.bottom - link.top).toBeGreaterThanOrEqual(24);
     expect(link.bottom).toBeLessThanOrEqual(layout.tokenHeight);
     expect(link.right).toBeLessThanOrEqual(layout.clientWidth);
   }
@@ -152,9 +155,15 @@ test('avec un texte agrandi à 200 %, le header ne déborde pas horizontalement'
   const links = await header(page).getByRole('link').all();
   expect(links).toHaveLength(3);
   const width = await page.evaluate(() => document.documentElement.clientWidth);
+  // Le header grandit avec son contenu passé à la ligne, au lieu de le laisser déborder.
+  const headerBox = await header(page).boundingBox();
+  const headerBottom = (headerBox?.y ?? 0) + (headerBox?.height ?? 0);
   for (const link of links) {
     const box = await link.boundingBox();
     expect(box?.y).toBeGreaterThanOrEqual(ring);
+    expect((box?.y ?? Infinity) + (box?.height ?? 0)).toBeLessThanOrEqual(
+      headerBottom - ring,
+    );
     expect(box?.x).toBeGreaterThanOrEqual(ring);
     expect((box?.x ?? Infinity) + (box?.width ?? 0)).toBeLessThanOrEqual(
       width - ring,
