@@ -8,6 +8,7 @@ const caddyfile = await readFile(
   'utf8',
 );
 const csp = /^\s*Content-Security-Policy "([^"]+)"$/m.exec(caddyfile)?.[1];
+if (!csp) throw new Error('CSP introuvable dans infra/pi/Caddyfile');
 
 test('la one page s’affiche sans violation de la CSP de Caddy', async ({
   page,
@@ -26,18 +27,25 @@ test('la one page s’affiche sans violation de la CSP de Caddy', async ({
     const response = await route.fetch();
     await route.fulfill({
       response,
-      headers: { ...response.headers(), 'content-security-policy': csp ?? '' },
+      headers: { ...response.headers(), 'content-security-policy': csp },
     });
   });
 
-  await page.goto('/');
+  const response = await page.goto('/');
+  expect(response?.headers()['content-security-policy']).toBe(csp);
+  const body = page.locator('body');
   for (const scheme of schemes) {
     await page.emulateMedia({ colorScheme: scheme });
     // Fond du thème : les feuilles de style ont bien été appliquées.
-    await expect(page.locator('body')).toHaveCSS(
+    await expect(body).toHaveCSS(
       'background-color',
       await themeBackground(page, scheme),
     );
   }
   expect(errors).toEqual([]);
+
+  // Témoin : la CSP est bien appliquée, un <style> en ligne est refusé.
+  await expect(
+    page.addStyleTag({ content: 'body { background-color: red; }' }),
+  ).rejects.toThrow(/Content Security Policy/);
 });

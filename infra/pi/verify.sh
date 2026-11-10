@@ -29,8 +29,15 @@ probe() {
 check() { probe attendu "$@"; }
 refute() { probe interdit "$@"; }
 
-# header <url> <nom> : la ligne de cet en-tête dans la réponse à une requête HEAD.
-header() { curl -sSI "$1" | tr -d '\r' | grep -i "^$2:"; }
+# header <url> <nom> : affiche l'en-tête servi, puis « conforme » s'il est identique à celui du
+# Caddyfile de ce dossier (une config modifiée mais pas rechargée ne l'est pas).
+header() {
+  local got want
+  got="$(curl -sSI "$1" | tr -d '\r' | grep -i "^$2:")"
+  want="$(sed -n "s|^[[:space:]]*$2 \"\(.*\)\"$|$2: \1|p" "$HERE/Caddyfile")"
+  echo "$got"
+  [ -n "$want" ] && [ "$got" = "$want" ] && echo conforme
+}
 
 title() { printf '\n### %s\n\n' "$*"; }
 
@@ -50,15 +57,14 @@ mode_pi() {
   refute "injoignable par l'adresse LAN" '^HTTP' curl -sSI --connect-timeout 3 "http://$(hostname -I | cut -d' ' -f1):8080/"
 
   title "Ticket #25 — en-têtes de sécurité et journal d'accès"
-  check "Caddyfile installé, identique au repo" '^ok$' sh -c "cmp /etc/caddy/Caddyfile '$HERE/Caddyfile' && echo ok"
+  check "Caddyfile installé, identique à celui de ce dossier" '^ok$' sh -c "cmp /etc/caddy/Caddyfile '$HERE/Caddyfile' && echo ok"
   # Une page servie et une erreur 404 : les en-têtes doivent être sur chaque réponse.
   # Chemin propre à ce passage : sa ligne dans le journal ne peut venir que de lui.
-  local url absent="/absente-verify-sh-$(date +%s)"
+  local url name absent="/absente-verify-sh-$(date +%s)"
   for url in http://127.0.0.1:8080/ "http://127.0.0.1:8080$absent"; do
-    check "CSP sur $url" "^Content-Security-Policy: default-src 'none';.*frame-ancestors 'none'" header "$url" Content-Security-Policy
-    check "nosniff sur $url" '^X-Content-Type-Options: nosniff$' header "$url" X-Content-Type-Options
-    check "Referrer-Policy sur $url" '^Referrer-Policy: .+' header "$url" Referrer-Policy
-    check "Permissions-Policy sur $url" '^Permissions-Policy: .+' header "$url" Permissions-Policy
+    for name in Content-Security-Policy X-Content-Type-Options Referrer-Policy Permissions-Policy; do
+      check "$name sur $url, conforme au Caddyfile" '^conforme$' header "$url" "$name"
+    done
   done
   local log=/var/log/caddy/etendard-access.log
   # grep plutôt que tail : d'autres visites peuvent s'être intercalées.
