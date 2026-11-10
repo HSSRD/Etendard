@@ -1,0 +1,47 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Mises à jour des dépendances et des actions GitHub (ADR 0013).",
+  "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
+  "timezone": "Europe/Paris",
+  "minimumReleaseAge": "3 days",
+  "internalChecksFilter": "strict",
+  "packageRules": [
+    {
+      "description": "Mineures et correctifs regroupés, mergés automatiquement si la CI (pnpm verify) passe.",
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "groupName": "mineures et correctifs",
+      "automerge": true
+    },
+    {
+      "description": "Jamais de merge automatique pour une majeure.",
+      "matchUpdateTypes": ["major"],
+      "automerge": false
+    },
+    {
+      "description": "L'image Docker de ci.yml et deploy.yml suit @playwright/test dans la même PR (scripts/image-playwright.test.ts) : pas de PR sans les trois mises à jour. Une montée invalide les captures (ADR 0003) : merge humain.",
+      "matchPackageNames": ["@playwright/test", "mcr.microsoft.com/playwright"],
+      "groupName": "Playwright",
+      "minimumGroupSize": 3,
+      "automerge": false
+    },
+    {
+      "description": "Image Playwright : tags v1.2.3-noble, sans date de publication. Le délai de 3 jours est porté par @playwright/test.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["mcr.microsoft.com/playwright"],
+      "versioning": "regex:^v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)-noble$",
+      "minimumReleaseAge": null
+    },
+    {
+      "description": "peerDependencies serrées (ADR 0001, ADR 0004) : merge humain.",
+      "matchPackageNames": ["typescript", "stylelint"],
+      "groupName": "TypeScript et Stylelint",
+      "automerge": false
+    },
+    {
+      "description": "Majeures écartées par l'ADR 0001 et l'ADR 0004 : listées dans le tableau de bord, sans PR, jusqu'à leur approbation.",
+      "matchPackageNames": ["typescript", "stylelint"],
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    }
+  ]
+}
