@@ -38,7 +38,7 @@ const noMotion = '(prefers-reduced-motion: no-preference)';
     display: grid;
     isolation: isolate;
     min-height: var(--min-height-below-header);
-    padding: var(--space-8) var(--space-4);
+    padding: var(--space-9) var(--space-4);
     position: relative;
   }
 
@@ -46,7 +46,7 @@ const noMotion = '(prefers-reduced-motion: no-preference)';
   .hero__video {
     inset: 0;
     position: absolute;
-    z-index: -1;
+    z-index: var(--z-index-behind);
   }
 
   .hero::after {
@@ -72,7 +72,6 @@ const noMotion = '(prefers-reduced-motion: no-preference)';
   }
 
   .hero__lead {
-    color: var(--color-text);
     font-size: var(--font-size-lg);
     text-wrap: balance;
   }

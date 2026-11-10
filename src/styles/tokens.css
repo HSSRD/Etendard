@@ -17,7 +17,7 @@
     --color-shadow: light-dark(#14171c1f, #00000080);
 
     /* Section d'accueil, toujours sombre : voile sur la vidéo, bords fondus dans le noir,
-     * bas fondu dans le fond de la page. */
+     * bas fondu dans le fond de la page, sur le padding bas du Hero pour ne jamais passer sous le texte. */
     --color-hero-shade: #000000;
     --color-hero-veil: #000000a6;
     --gradient-hero-vignette: radial-gradient(
@@ -25,7 +25,7 @@
       var(--color-hero-shade)
     );
     --gradient-hero-fade: linear-gradient(
-      transparent 70%,
+      transparent calc(100% - var(--space-9)),
       var(--color-background)
     );
 
@@ -75,6 +75,7 @@
     --content-max-width: 72rem;
     --header-height: 4rem;
     --min-height-below-header: calc(100svh - var(--header-height));
+    --z-index-behind: -1;
     --z-index-header: 10;
     --z-index-skip-link: 20;
 

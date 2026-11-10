@@ -57,7 +57,7 @@ test('Hero : vidéo de fond décorative, muette, en boucle, qui couvre la sectio
       video.evaluate((element: HTMLVideoElement) => ({
         playing: !element.paused && element.currentTime > 0,
         muted: element.muted,
-        source: new URL(element.currentSrc).pathname,
+        source: new URL(element.currentSrc, location.href).pathname,
       })),
     )
     .toEqual({
@@ -113,12 +113,16 @@ for (const scheme of schemes) {
       'rgb(0, 0, 0)',
     );
 
-    // Bas de la section fondu dans le fond de la page, du thème de la page.
-    const fade = await page
+    // Bas de la section fondu dans le fond de la page, du thème de la page, sur le seul
+    // padding bas : le texte, toujours clair, ne passe jamais sur le fondu (thème clair).
+    const { fade, paddingBottom } = await page
       .locator('.hero')
-      .evaluate((hero) => getComputedStyle(hero, '::after').backgroundImage);
+      .evaluate((hero) => ({
+        fade: getComputedStyle(hero, '::after').backgroundImage,
+        paddingBottom: getComputedStyle(hero).paddingBottom,
+      }));
     expect(fade).toContain(
-      `linear-gradient(rgba(0, 0, 0, 0) 70%, ${await themeBackground(page, scheme)})`,
+      `linear-gradient(rgba(0, 0, 0, 0) calc(100% - ${paddingBottom}), ${await themeBackground(page, scheme)})`,
     );
     expect(fade).toContain('radial-gradient(');
   });
