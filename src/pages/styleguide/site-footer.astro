@@ -1,0 +1,14 @@
+---
+// SiteFooter (ticket #12) : un seul état (année figée pour des captures stables), testé dans les deux thèmes par SiteFooter.spec.ts.
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import SiteFooter from '../../components/SiteFooter.astro';
+---
+
+<BaseLayout
+  title="SiteFooter — Styleguide — Étendard"
+  description="Bas de page d’Étendard : publication, code source et retour en haut."
+>
+  <!-- Cible du lien « Retour en haut », comme la section d'accueil de la one page. -->
+  <h1 id="accueil">SiteFooter</h1>
+  <SiteFooter slot="footer" year={2026} />
+</BaseLayout>

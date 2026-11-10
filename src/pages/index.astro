@@ -1,6 +1,7 @@
 ---
-import SiteHeader from '../components/SiteHeader.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+import SiteHeader from '../components/SiteHeader.astro';
 ---
 
 <BaseLayout
@@ -19,5 +20,5 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     <h2>Projets</h2>
   </section>
 
-  {/* Emplacement footer : SiteFooter, ticket #12 (slot="footer"). */}
+  <SiteFooter slot="footer" />
 </BaseLayout>
