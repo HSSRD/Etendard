@@ -29,9 +29,11 @@ Les pages `/styleguide` ne sont publiées que si `STYLEGUIDE=1`. Un composant n'
 
 ## CSS
 
-- Aucune valeur en dur : couleurs, espacements, positions, ombres et tailles de police passent par les tokens (`var(--…)`).
+- Aucune valeur en dur : couleurs, espacements, positions, ombres, typographie (taille, famille, graisse, interligne),
+  rayons, épaisseurs de bordure et d'outline, `outline-offset`, durées et délais, `z-index` passent par les tokens (`var(--…)`).
   Pas de `calc()`, de `clamp()`, de dégradé ni de valeur de repli `var(--x, …)` dans un composant : définis un token.
-  `font`, `text-decoration`, `-webkit-text-stroke` et `border-inline`/`border-block` sont interdits : utilise les propriétés détaillées.
+  `font`, `text-decoration`, `-webkit-text-stroke`, `border` (et ses côtés), `outline`, `transition` et `animation`
+  sont interdits : utilise les propriétés détaillées.
 - BEM : `MonBloc.astro` définit le bloc `.mon-bloc` (`HeroCTA.astro` → `.hero-cta`), ses éléments `.mon-bloc__x`, ses modificateurs `.mon-bloc--y`.
 - Pas de globales Node (`process`, `Buffer`…) dans `src/` : utilise `import.meta.env`.
 - Propriétés par ordre alphabétique, variables CSS en premier (`stylelint --fix` les range).

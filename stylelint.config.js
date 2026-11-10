@@ -12,7 +12,7 @@ const bemSelector = (fileName) => {
   );
 };
 
-// Les raccourcis (background, border, outline…) sont développés puis vérifiés.
+// Les raccourcis autorisés (background, margin…) sont développés puis vérifiés.
 const strictProperties = [
   '/color$/',
   'fill',
@@ -26,6 +26,17 @@ const strictProperties = [
   '/^(top|right|bottom|left)$/',
   '/^(grid-)?(row-|column-)?gap$/',
   'font-size',
+  'font-family',
+  'font-weight',
+  'line-height',
+  // Raccourcis nommés en toutes lettres : vérifiés en entier, pas seulement développés
+  // (`border-radius: 4px/8px` ne se développe pas et passerait).
+  'border-radius',
+  'border-width',
+  '/^border(-[a-z]+)*-(radius|width)$/',
+  '/^outline-(width|offset)$/',
+  '/^(transition|animation)-(duration|delay)$/',
+  'z-index',
 ];
 
 /** @type {import('stylelint').Config} */
@@ -66,6 +77,8 @@ export default {
         // Uniquement var(--…) : un calc() ou un clamp() se définit comme token.
         ignoreFunctions: false,
         expandShorthand: true,
+        // var() est invalide dans @font-face : les polices auto-hébergées (ADR 0004) y déclarent leurs valeurs.
+        ignoreAtRules: ['@font-face'],
       },
     ],
     // Raccourcis que le plugin ne sait pas développer : longhands obligatoires.
@@ -74,7 +87,11 @@ export default {
         'font',
         'text-decoration',
         '-webkit-text-stroke',
-        '/^border-(block|inline)(-start|-end)?$/',
+        // Développés par position : `border: solid 2px` ou `transition: a 1s, b 2s` passeraient.
+        '/^border(-(top|right|bottom|left)|-(block|inline)(-start|-end)?)?$/',
+        'outline',
+        'transition',
+        'animation',
       ],
       { message: (p) => `« ${p} » : utilise les propriétés détaillées.` },
     ],
