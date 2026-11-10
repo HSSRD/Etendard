@@ -1,0 +1,51 @@
+---
+// Section d'accueil de la one page (ticket #13) : seul <h1> de la page et appel à descendre vers les projets.
+---
+
+<div class="hero">
+  <h1>Étendard</h1>
+  <p class="hero__lead">
+    Bienvenue&nbsp;! Voici le site qui regroupe tous les projets de Hussard.
+  </p>
+  <a class="hero__cta" href="#projets">
+    Découvrir les projets
+  </a>
+</div>
+
+<style>
+  .hero {
+    align-content: center;
+    display: grid;
+    gap: var(--space-5);
+    justify-items: center;
+    min-height: var(--min-height-below-header);
+    padding: var(--space-8) var(--space-4);
+    text-align: center;
+  }
+
+  .hero__lead {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-lg);
+    text-wrap: balance;
+  }
+
+  /* Bordure transparente : seul contour du bouton en mode couleurs forcées. */
+  .hero__cta {
+    background-color: var(--color-accent);
+    border-color: transparent;
+    border-radius: var(--radius-md);
+    border-style: solid;
+    border-width: var(--border-width);
+    color: var(--color-background);
+    display: inline-block;
+    font-weight: var(--font-weight-bold);
+    padding: var(--space-3) var(--space-5);
+    text-decoration-line: none;
+  }
+
+  @media (hover: hover) {
+    .hero__cta:hover {
+      text-decoration-line: underline;
+    }
+  }
+</style>
