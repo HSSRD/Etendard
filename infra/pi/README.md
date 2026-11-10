@@ -44,6 +44,6 @@ Ce qui est en place et pourquoi : [FONCTIONNEMENT.md](FONCTIONNEMENT.md). Ce REA
 bash infra/pi/test/etendard-receive.test.sh
 ```
 
-Dans ce repo, `pnpm test:infra` le lance aussi, y compris depuis PowerShell : le script prend lui-même le bash de Git. `pnpm verify`, et donc la CI, l'exécute avec le vrai `flock`.
+Dans ce repo, `pnpm test:infra` le lance aussi, y compris depuis PowerShell : le script prend lui-même le bash de Git. `pnpm verify` l'exécute aussi, et donc la CI, qui utilise le vrai `flock` (Linux).
 
 Le préfixe des chemins se change avec `ETENDARD_ROOT` (défaut `/srv/etendard`). Sous Windows, le test simule `flock`, absent du bash de Git ; sur le Pi, le vrai verrou est vérifié par `verify.sh`.
