@@ -42,7 +42,10 @@ export default {
       componentSelectors: bemSelector,
       // Variables CSS libres : tokens surchargés ou variables locales au bloc.
       ignoreCustomProperties: '.*',
-      implicitComponents: ['src/components/**/*.astro'],
+      implicitComponents: [
+        'src/components/**/*.astro',
+        'src/layouts/**/*.astro',
+      ],
     },
     'scale-unlimited/declaration-strict-value': [
       strictProperties,

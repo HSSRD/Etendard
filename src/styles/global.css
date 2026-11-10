@@ -1,0 +1,6 @@
+/* Point d'entrée des styles globaux : l'ordre des couches est fixé ici (ADR 0004). */
+@layer reset, tokens, base, components, utilities;
+
+@import './reset.css';
+@import './tokens.css';
+@import './base.css';

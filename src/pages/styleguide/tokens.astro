@@ -1,0 +1,250 @@
+---
+// Design tokens de tokens.css, rendus dans les deux thèmes (ticket #10).
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const themes = [
+  { id: 'light', label: 'Thème clair' },
+  { id: 'dark', label: 'Thème sombre' },
+];
+const colors = [
+  'background',
+  'surface',
+  'text',
+  'text-muted',
+  'accent',
+  'border',
+  'focus',
+];
+const texts = ['text', 'text-muted', 'accent'];
+const fontSizes = ['sm', 'base', 'lg', 'xl', '2xl', '3xl'];
+const spaces = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+---
+
+<BaseLayout
+  title="Tokens — Styleguide — Étendard"
+  description="Design tokens d’Étendard : couleurs, typographie et espacements."
+>
+  <div class="tokens">
+    <h1>Tokens</h1>
+    {themes.map((theme) => (
+      <section
+        class="tokens__theme"
+        data-theme={theme.id}
+        aria-labelledby={`theme-${theme.id}`}
+      >
+        <h2 id={`theme-${theme.id}`}>{theme.label}</h2>
+
+        <h3>Couleurs</h3>
+        <ul class="tokens__list">
+          {colors.map((color) => (
+            <li class="tokens__color">
+              <span class={`tokens__swatch tokens__swatch--${color}`} />
+              <code>--color-{color}</code>
+            </li>
+          ))}
+        </ul>
+
+        <h3>Textes sur fond et surface</h3>
+        <ul class="tokens__list">
+          {['background', 'surface'].map((ground) => (
+            <li class={`tokens__ground tokens__ground--${ground}`}>
+              {texts.map((text) => (
+                <p class={`tokens__text tokens__text--${text}`}>
+                  --color-{text} sur --color-{ground}
+                </p>
+              ))}
+              <p>
+                <a href="#contenu">Lien vers le début du contenu</a>
+              </p>
+            </li>
+          ))}
+        </ul>
+
+        <h3>Échelle typographique</h3>
+        {fontSizes.map((size) => (
+          <p class={`tokens__font-size tokens__font-size--${size}`}>
+            --font-size-{size} : Étendard
+          </p>
+        ))}
+
+        <h3>Espacements</h3>
+        <ul class="tokens__list tokens__list--column">
+          {spaces.map((space) => (
+            <li class="tokens__space">
+              <span class={`tokens__bar tokens__bar--${space}`} />
+              <code>--space-{space}</code>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ))}
+  </div>
+</BaseLayout>
+
+<style>
+  .tokens {
+    margin: 0 auto;
+    max-width: var(--content-max-width);
+    padding: var(--space-6) var(--space-4);
+  }
+
+  .tokens__theme {
+    border-color: var(--color-border);
+    border-radius: var(--radius-lg);
+    border-style: solid;
+    border-width: var(--border-width);
+    display: grid;
+    gap: var(--space-4);
+    margin-top: var(--space-6);
+    padding: var(--space-5);
+  }
+
+  .tokens__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    list-style: none;
+    padding: 0;
+  }
+
+  .tokens__list--column {
+    flex-direction: column;
+  }
+
+  .tokens__color,
+  .tokens__space {
+    align-items: center;
+    display: flex;
+    gap: var(--space-2);
+  }
+
+  .tokens__swatch {
+    border-color: var(--color-border);
+    border-radius: var(--radius-sm);
+    border-style: solid;
+    border-width: var(--border-width);
+    box-shadow: var(--shadow-sm);
+    height: var(--space-7);
+    width: var(--space-7);
+  }
+
+  .tokens__swatch--background {
+    background-color: var(--color-background);
+  }
+
+  .tokens__swatch--surface {
+    background-color: var(--color-surface);
+  }
+
+  .tokens__swatch--text {
+    background-color: var(--color-text);
+  }
+
+  .tokens__swatch--text-muted {
+    background-color: var(--color-text-muted);
+  }
+
+  .tokens__swatch--accent {
+    background-color: var(--color-accent);
+  }
+
+  .tokens__swatch--border {
+    background-color: var(--color-border);
+  }
+
+  .tokens__swatch--focus {
+    background-color: var(--color-focus);
+  }
+
+  .tokens__ground {
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    padding: var(--space-4);
+  }
+
+  .tokens__ground--background {
+    background-color: var(--color-background);
+  }
+
+  .tokens__ground--surface {
+    background-color: var(--color-surface);
+  }
+
+  .tokens__text--text {
+    color: var(--color-text);
+  }
+
+  .tokens__text--text-muted {
+    color: var(--color-text-muted);
+  }
+
+  .tokens__text--accent {
+    color: var(--color-accent);
+  }
+
+  .tokens__font-size--sm {
+    font-size: var(--font-size-sm);
+  }
+
+  .tokens__font-size--base {
+    font-size: var(--font-size-base);
+  }
+
+  .tokens__font-size--lg {
+    font-size: var(--font-size-lg);
+  }
+
+  .tokens__font-size--xl {
+    font-size: var(--font-size-xl);
+  }
+
+  .tokens__font-size--2xl {
+    font-size: var(--font-size-2xl);
+  }
+
+  .tokens__font-size--3xl {
+    font-size: var(--font-size-3xl);
+    line-height: var(--line-height-tight);
+  }
+
+  .tokens__bar {
+    background-color: var(--color-accent);
+    height: var(--space-4);
+  }
+
+  .tokens__bar--1 {
+    width: var(--space-1);
+  }
+
+  .tokens__bar--2 {
+    width: var(--space-2);
+  }
+
+  .tokens__bar--3 {
+    width: var(--space-3);
+  }
+
+  .tokens__bar--4 {
+    width: var(--space-4);
+  }
+
+  .tokens__bar--5 {
+    width: var(--space-5);
+  }
+
+  .tokens__bar--6 {
+    width: var(--space-6);
+  }
+
+  .tokens__bar--7 {
+    width: var(--space-7);
+  }
+
+  .tokens__bar--8 {
+    width: var(--space-8);
+  }
+
+  .tokens__bar--9 {
+    width: var(--space-9);
+  }
+</style>

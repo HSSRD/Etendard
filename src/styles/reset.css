@@ -1,0 +1,44 @@
+/* Reset minimal. */
+@layer reset {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  /* <dialog> et [popover] gardent la marge auto qui les centre. */
+  *:not(dialog, [popover]) {
+    margin: 0;
+  }
+
+  /* Pas de grossissement automatique du texte (iOS en paysage), zoom intact. */
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    overflow-wrap: break-word;
+  }
+
+  img,
+  picture,
+  svg,
+  video {
+    display: block;
+    height: auto;
+    max-width: 100%;
+  }
+
+  input,
+  button,
+  textarea,
+  select {
+    font-family: inherit;
+    font-size: inherit;
+    font-style: inherit;
+    font-weight: inherit;
+    letter-spacing: inherit;
+    line-height: inherit;
+  }
+}
