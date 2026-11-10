@@ -31,25 +31,21 @@ const noMotion = '(prefers-reduced-motion: no-preference)';
 </div>
 
 <style>
-  /* Toujours sombre : fond noir sous la vidéo, contenu en thème sombre. Le voile, le vignettage
-   * et le fondu du bas (::after) restent dans le thème de la page, pour finir sur son fond. */
+  /* Voile, vignettage et fondu (::after) dans le thème de la page, pour finir sur son fond. */
   .hero {
     align-content: center;
     background-color: var(--color-hero-shade);
     display: grid;
     isolation: isolate;
     min-height: var(--min-height-below-header);
-    overflow: hidden;
     padding: var(--space-8) var(--space-4);
     position: relative;
   }
 
   .hero::after,
   .hero__video {
-    height: 100%;
     inset: 0;
     position: absolute;
-    width: 100%;
     z-index: -1;
   }
 
@@ -60,8 +56,12 @@ const noMotion = '(prefers-reduced-motion: no-preference)';
   }
 
   .hero__video {
+    height: 100%;
     object-fit: cover;
+    width: 100%;
   }
+
+  /* Couleurs du thème sombre, sans son fond : la vidéo reste visible. */
 
   .hero__content {
     background-color: transparent;

@@ -16,17 +16,15 @@
     --color-focus: var(--color-accent);
     --color-shadow: light-dark(#14171c1f, #00000080);
 
-    /* Section d'accueil, toujours sombre : vidéo assombrie par un voile, bords fondus dans le noir,
-     * bas fondu dans le fond de la page (évalué dans le thème de la page). */
+    /* Section d'accueil, toujours sombre : voile sur la vidéo, bords fondus dans le noir,
+     * bas fondu dans le fond de la page. */
     --color-hero-shade: #000000;
     --color-hero-veil: #000000a6;
     --gradient-hero-vignette: radial-gradient(
-      ellipse at center,
       transparent 45%,
-      var(--color-hero-shade) 100%
+      var(--color-hero-shade)
     );
     --gradient-hero-fade: linear-gradient(
-      to bottom,
       transparent 70%,
       var(--color-background)
     );

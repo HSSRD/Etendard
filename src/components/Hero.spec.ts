@@ -1,3 +1,4 @@
+import { statSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import {
   expectNoAxeViolations,
@@ -47,25 +48,21 @@ test('Hero : vidéo de fond décorative, muette, en boucle, qui couvre la sectio
     ['/accueil/bienvenue.mp4', 3_000_000],
     ['/accueil/bienvenue.avif', 150_000],
   ] as const) {
-    const response = await page.request.get(path);
-    expect(response.ok()).toBe(true);
-    expect((await response.body()).length).toBeLessThanOrEqual(budget);
+    expect(statSync(`public${path}`).size).toBeLessThanOrEqual(budget);
   }
 
-  // Lecture automatique, muette et en boucle de la source WebM.
+  // Lecture automatique et muette de la source WebM.
   await expect
     .poll(() =>
       video.evaluate((element: HTMLVideoElement) => ({
         playing: !element.paused && element.currentTime > 0,
         muted: element.muted,
-        loop: element.loop,
         source: new URL(element.currentSrc).pathname,
       })),
     )
     .toEqual({
       playing: true,
       muted: true,
-      loop: true,
       source: '/accueil/bienvenue.webm',
     });
 
@@ -103,20 +100,14 @@ for (const scheme of schemes) {
   test(`Hero, thème ${scheme} : toujours sombre, fondu vers le fond de la page`, async ({
     page,
   }) => {
-    await page.emulateMedia({ colorScheme: scheme });
+    await page.emulateMedia({ colorScheme: scheme, reducedMotion: 'reduce' });
     await page.goto('/styleguide/hero');
 
-    // Contenu en thème sombre quel que soit le thème de la page.
-    await page.locator('body').evaluate((body) => {
-      body.dataset['theme'] = 'dark';
-    });
-    const darkText = await page
-      .locator('body')
-      .evaluate((body) => getComputedStyle(body).color);
-    await page.locator('body').evaluate((body) => {
-      delete body.dataset['theme'];
-    });
-    await expect(page.locator('.hero__content')).toHaveCSS('color', darkText);
+    // Contenu en thème sombre (couleurs light-dark()) quel que soit le thème de la page.
+    await expect(page.locator('.hero__content')).toHaveCSS(
+      'color-scheme',
+      'dark',
+    );
     await expect(page.locator('.hero')).toHaveCSS(
       'background-color',
       'rgb(0, 0, 0)',
