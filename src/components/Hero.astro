@@ -1,30 +1,76 @@
 ---
 // Section d'accueil de la one page (ticket #13) : seul <h1> de la page et appel à descendre vers les projets.
+// Vidéo de bienvenue en fond (ticket #22) : décorative, muette, sans JavaScript. Les sources ne
+// s'appliquent pas en mouvement réduit : seul le poster s'affiche et rien n'est téléchargé.
+const noMotion = '(prefers-reduced-motion: no-preference)';
 ---
 
 <div class="hero">
-  <h1>Étendard</h1>
-  <p class="hero__lead">
-    Bienvenue&nbsp;! Voici le site qui regroupe tous les projets de Hussard.
-  </p>
-  <a class="hero__cta" href="#projets">
-    Découvrir les projets
-  </a>
+  <video
+    class="hero__video"
+    autoplay
+    muted
+    loop
+    playsinline
+    preload="metadata"
+    poster="/accueil/bienvenue.avif"
+    aria-hidden="true"
+  >
+    <source src="/accueil/bienvenue.webm" type="video/webm" media={noMotion} />
+    <source src="/accueil/bienvenue.mp4" type="video/mp4" media={noMotion} />
+  </video>
+  <div class="hero__content" data-theme="dark">
+    <h1>Étendard</h1>
+    <p class="hero__lead">
+      Bienvenue&nbsp;! Voici le site qui regroupe tous les projets de Hussard.
+    </p>
+    <a class="hero__cta" href="#projets">
+      Découvrir les projets
+    </a>
+  </div>
 </div>
 
 <style>
+  /* Voile, vignettage et fondu (::after) dans le thème de la page, pour finir sur son fond. */
   .hero {
     align-content: center;
+    background-color: var(--color-hero-shade);
+    display: grid;
+    isolation: isolate;
+    min-height: var(--min-height-below-header);
+    padding: var(--space-9) var(--space-4);
+    position: relative;
+  }
+
+  .hero::after,
+  .hero__video {
+    inset: 0;
+    position: absolute;
+    z-index: var(--z-index-behind);
+  }
+
+  .hero::after {
+    background-color: var(--color-hero-veil);
+    background-image: var(--gradient-hero-fade), var(--gradient-hero-vignette);
+    content: '';
+  }
+
+  .hero__video {
+    height: 100%;
+    object-fit: cover;
+    width: 100%;
+  }
+
+  /* Couleurs du thème sombre, sans son fond : la vidéo reste visible. */
+  .hero__content {
+    background-color: transparent;
     display: grid;
     gap: var(--space-5);
     justify-items: center;
-    min-height: var(--min-height-below-header);
-    padding: var(--space-8) var(--space-4);
     text-align: center;
   }
 
   .hero__lead {
-    color: var(--color-text-muted);
     font-size: var(--font-size-lg);
     text-wrap: balance;
   }

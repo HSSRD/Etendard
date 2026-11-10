@@ -25,6 +25,8 @@ test('la page d’accueil pose la structure de la one page', async ({ page }) =>
 test('le lien d’évitement apparaît au clavier et mène au contenu', async ({
   page,
 }) => {
+  // Mouvement réduit : la vidéo d'accueil reste figée sur son poster pour la capture.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
   const skipLink = page.getByRole('link', { name: 'Aller au contenu' });
   await expect(skipLink).toHaveAttribute('href', '#contenu');
@@ -79,7 +81,8 @@ test('les ancres défilent en douceur et s’arrêtent sous le header', async ({
 
 for (const scheme of schemes) {
   test(`thème ${scheme} : fond, accessibilité et capture`, async ({ page }) => {
-    await page.emulateMedia({ colorScheme: scheme });
+    // Mouvement réduit : la vidéo d'accueil reste figée sur son poster pour la capture.
+    await page.emulateMedia({ colorScheme: scheme, reducedMotion: 'reduce' });
     await page.goto('/');
 
     await expect(page.locator('body')).toHaveCSS(
