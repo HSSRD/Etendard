@@ -29,10 +29,8 @@ const strictProperties = [
   'font-family',
   'font-weight',
   'line-height',
-  '/^border(-[a-z]+)*-radius$/',
-  '/^border(-[a-z]+)*-width$/',
-  'outline-width',
-  'outline-offset',
+  '/^border(-[a-z]+)*-(radius|width)$/',
+  '/^outline-(width|offset)$/',
   '/^(transition|animation)-(duration|delay)$/',
   'z-index',
 ];

@@ -25,11 +25,7 @@ test('refuse les rayons, bordures, typographies, durées et z-index en dur', asy
     z-index: 5;
   `);
 
-  expect(
-    warnings.filter(
-      (w) => w.rule === 'scale-unlimited/declaration-strict-value',
-    ),
-  ).toHaveLength(11);
+  expect(warnings).toHaveLength(11);
 });
 
 test('accepte les tokens et les mots-clés admis', async () => {
