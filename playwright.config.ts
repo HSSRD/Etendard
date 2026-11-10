@@ -42,7 +42,7 @@ export default defineConfig({
   testMatch: ['src/**/*.spec.ts', 'tests/**/*.spec.ts'],
   forbidOnly: ci,
   // En CI, rapport.json va dans test-results/, donc dans l'artefact « playwright » de ci.yml :
-  // pnpm captures:ci y lit le fichier de test et le projet de chaque capture en écart.
+  // pnpm captures:ci y lit, pour chaque capture en écart, l'image produite et sa référence.
   reporter: ci
     ? [['github'], ['json', { outputFile: 'test-results/rapport.json' }]]
     : 'list',

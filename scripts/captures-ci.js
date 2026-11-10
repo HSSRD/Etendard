@@ -12,32 +12,14 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import config from '../playwright.config.ts';
 
-const actualSuffix = '-actual.png';
-// Dossier de playwright.config.ts, donc {testDir} : les captures n'y dépendent pas du dossier courant.
 const root = fileURLToPath(new URL('..', import.meta.url));
-const template = config.snapshotPathTemplate;
-if (!template) throw new Error('snapshotPathTemplate absent.');
-const handled = [
-  'testDir',
-  'testFileDir',
-  'testFileName',
-  'arg',
-  'projectName',
-  'ext',
-];
-const tokenPattern = /\{(\w+)\}/g;
-for (const [token, key = ''] of template.matchAll(tokenPattern)) {
-  if (!handled.includes(key)) {
-    throw new Error(`snapshotPathTemplate : ${token} non géré.`);
-  }
-}
 
 /**
  * @typedef {{ name: string, path?: string }} Attachment
- * @typedef {{ file: string, tests: { projectName: string, results: { attachments: Attachment[] }[] }[] }} Spec
+ * @typedef {{ tests: { projectName: string, results: { attachments: Attachment[] }[] }[] }} Spec
  * @typedef {{ suites?: Suite[], specs?: Spec[] }} Suite
+ * @typedef {Suite & { config: { rootDir: string, projects: { name: string, outputDir: string }[] } }} Report
  */
 
 /** @param {Suite} suite @returns {Spec[]} */
@@ -46,48 +28,51 @@ const specsOf = (suite) => [
   ...(suite.suites ?? []).flatMap(specsOf),
 ];
 
+/** Chemin relatif sous `base`, ou erreur s'il en sort (chemins venus de l'artefact). */
+const inside = (/** @type {string} */ base, /** @type {string} */ file) => {
+  const relative = path.posix.relative(base, file);
+  if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) {
+    throw new Error(`${file} : hors de ${base}.`);
+  }
+  return relative;
+};
+
 /**
  * Associe chaque image « actual » d'un dossier test-results/ au chemin de sa capture de
- * référence, selon le snapshotPathTemplate de playwright.config.ts. Le fichier de test et le
- * projet viennent du rapport JSON que Playwright écrit en CI (rapport.json).
+ * référence. Dans le rapport JSON que Playwright écrit en CI (rapport.json), chaque
+ * `X-actual.png` est accompagnée de `X-expected.png`, qui pointe sur la référence, présente ou
+ * manquante. Sans elle (nouvelle capture instable), il n'y a rien à installer.
  * @param {string} resultsDir
  */
 export const references = (resultsDir) => {
-  /** @type {Suite} */
+  /** @type {Report} */
   const report = JSON.parse(
     readFileSync(path.join(resultsDir, 'rapport.json'), 'utf8'),
   );
-  const attachments = specsOf(report).flatMap(({ file, tests }) =>
-    tests.flatMap(({ projectName, results }) =>
-      results.flatMap((result) =>
-        result.attachments.map((attachment) => ({
-          ...attachment,
-          file,
-          projectName,
-        })),
-      ),
-    ),
-  );
-  return attachments
-    .filter(({ name, path: actual }) => actual && name.endsWith(actualSuffix))
-    .map(({ name, path: actual = '', file, projectName }) => {
-      /** @type {Record<string, string>} */
-      const tokens = {
-        testDir: root,
-        testFileDir: path.posix.dirname(file),
-        testFileName: path.posix.basename(file),
-        arg: name.slice(0, -actualSuffix.length),
-        projectName,
-        ext: '.png',
-      };
-      const to = template.replace(tokenPattern, (_, key) => tokens[key] ?? '');
-      // Chemin absolu sur le runner : seule la partie sous test-results/ est dans l'artefact.
-      const [, inArtifact] = actual.split('/test-results/');
-      if (!inArtifact) throw new Error(`${actual} : hors de test-results/.`);
-      return {
-        from: path.join(resultsDir, inArtifact),
-        to: path.normalize(to),
-      };
+  const { rootDir, projects } = report.config;
+  return specsOf(report)
+    .flatMap(({ tests }) => tests)
+    .flatMap(({ projectName, results }) => {
+      const outputDir = projects.find(
+        ({ name }) => name === projectName,
+      )?.outputDir;
+      if (!outputDir) throw new Error(`${projectName} : projet introuvable.`);
+      return results.flatMap(({ attachments }) =>
+        attachments.flatMap(({ name, path: actual }) => {
+          if (!actual || !name.endsWith('-actual.png')) return [];
+          const expected = attachments.find(
+            (other) =>
+              other.name === name.replace(/-actual\.png$/, '-expected.png'),
+          )?.path;
+          if (!expected) return [];
+          return [
+            {
+              from: path.join(resultsDir, inside(outputDir, actual)),
+              to: path.join(root, inside(rootDir, expected)),
+            },
+          ];
+        }),
+      );
     });
 };
 
@@ -103,11 +88,11 @@ if (import.meta.main) {
     const download = spawnSync(
       'gh',
       ['run', 'download', run, '--name', 'playwright', '--dir', dir],
-      { stdio: 'inherit' },
+      { cwd: root, stdio: 'inherit' },
     );
     if (download.status !== 0) {
       throw new Error(
-        `artefact « playwright » du run ${run} introuvable (gh installé et connecté ? run en échec de moins de 7 jours ?).`,
+        `artefact « playwright » du run ${run} non téléchargé (voir l'erreur de gh ci-dessus ; il est gardé 7 jours).`,
       );
     }
     const copies = references(dir);
