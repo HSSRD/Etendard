@@ -37,7 +37,7 @@ test('le lien d’évitement apparaît au clavier et mène au contenu', async ({
   await expect(skipLink).toHaveCSS('opacity', '1');
   for (const scheme of schemes) {
     await page.emulateMedia({ colorScheme: scheme });
-    await expect(page).toHaveScreenshot(`lien-evitement-${scheme}.png`, {
+    await expect.soft(page).toHaveScreenshot(`lien-evitement-${scheme}.png`, {
       mask: [page.locator('.site-footer')],
     });
   }

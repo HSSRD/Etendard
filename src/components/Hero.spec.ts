@@ -149,7 +149,7 @@ for (const scheme of schemes) {
     await expect(cta).toHaveAttribute('href', '#projets');
     await expectNoHorizontalScroll(page);
     await expectNoAxeViolations(page);
-    await expect(page).toHaveScreenshot(`hero-${scheme}.png`, {
+    await expect.soft(page).toHaveScreenshot(`hero-${scheme}.png`, {
       fullPage: true,
     });
 
@@ -157,7 +157,7 @@ for (const scheme of schemes) {
     await expect(cta).toHaveCSS('text-decoration-line', 'none');
     await cta.hover();
     await expect(cta).toHaveCSS('text-decoration-line', 'underline');
-    await expect(page).toHaveScreenshot(`hero-${scheme}-hover.png`, {
+    await expect.soft(page).toHaveScreenshot(`hero-${scheme}-hover.png`, {
       fullPage: true,
     });
     await page.mouse.move(0, 0);
@@ -175,7 +175,7 @@ for (const scheme of schemes) {
     await expect(cta).toHaveCSS('outline-width', /^[1-9]/);
     // Contour de la couleur du fond du bouton : le décalage le rend distinct.
     await expect(cta).toHaveCSS('outline-offset', /^[1-9]/);
-    await expect(page).toHaveScreenshot(`hero-${scheme}-focus.png`, {
+    await expect.soft(page).toHaveScreenshot(`hero-${scheme}-focus.png`, {
       fullPage: true,
     });
 
@@ -184,9 +184,11 @@ for (const scheme of schemes) {
     await expect(cta).toHaveCSS('border-top-style', 'solid');
     await expect(cta).toHaveCSS('border-top-width', /^[1-9]/);
     await expect(cta).not.toHaveCSS('border-top-color', 'rgba(0, 0, 0, 0)');
-    await expect(page).toHaveScreenshot(`hero-${scheme}-forced-colors.png`, {
-      fullPage: true,
-    });
+    await expect
+      .soft(page)
+      .toHaveScreenshot(`hero-${scheme}-forced-colors.png`, {
+        fullPage: true,
+      });
   });
 }
 
