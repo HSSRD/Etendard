@@ -41,7 +41,7 @@ Ce qui est en place et pourquoi : [FONCTIONNEMENT.md](FONCTIONNEMENT.md). Ce REA
 ## Tester `etendard-receive` sans le Pi
 
 ```bash
-bash infra/pi/test/etendard-receive.test.sh
+pnpm test:infra   # lancé aussi par pnpm verify, donc par la CI
 ```
 
 Le préfixe des chemins se change avec `ETENDARD_ROOT` (défaut `/srv/etendard`). Sous Windows, le test simule `flock`, absent du bash de Git ; le vrai verrou est vérifié par `verify.sh`.
