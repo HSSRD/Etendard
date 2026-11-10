@@ -26,9 +26,14 @@ test('l’icône référencée est un SVG servi aux couleurs de tokens.css', asy
       return color;
     }),
   );
-  const svg = await response.text();
-  expect(svg).not.toMatch(/#[0-9a-f]{3}\b|rgb\(|hsl\(/i);
-  const colors = [...new Set(svg.match(/#[0-9a-f]{6}\b/gi))].map(hexToRgb);
+  // Chaque couleur de l'icône (attributs de peinture) est un token, et chaque token est utilisé.
+  const paints = [
+    ...(await response.text()).matchAll(
+      /\b(?:fill|stroke|stop-color|color)="([^"]*)"/g,
+    ),
+  ].map(([, value]) => value ?? '');
+  for (const paint of paints) expect(paint).toMatch(/^#[0-9a-f]{6}$/i);
+  const colors = [...new Set(paints.map(hexToRgb))];
   expect(colors.sort()).toEqual(tokens.sort());
 });
 
