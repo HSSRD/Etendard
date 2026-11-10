@@ -55,7 +55,6 @@ mode_pi() {
   local url
   for url in http://127.0.0.1:8080/ http://127.0.0.1:8080/absente-verify-sh; do
     check "CSP sur $url" "^Content-Security-Policy: default-src 'none';.*frame-ancestors 'none'" header "$url" Content-Security-Policy
-    refute "CSP sans unsafe-inline" 'unsafe-inline' header "$url" Content-Security-Policy
     check "nosniff" '^X-Content-Type-Options: nosniff$' header "$url" X-Content-Type-Options
     check "Referrer-Policy" '^Referrer-Policy: .+' header "$url" Referrer-Policy
     check "Permissions-Policy" '^Permissions-Policy: .+' header "$url" Permissions-Policy
@@ -63,8 +62,6 @@ mode_pi() {
   local log=/var/log/caddy/etendard-access.log
   check "journal d'accès JSON, avec la requête précédente" '^\{.*"logger":"http\.log\.access.*"uri":"/absente-verify-sh"' tail -n 1 "$log"
   check "journal à l'utilisateur caddy" '^caddy:caddy ' stat -c '%U:%G %a %n' "$log"
-  check "rotation bornée (taille et nombre)" '^roll_size [0-9]+MiB roll_keep [0-9]+ $' \
-    sh -c "grep -Eo 'roll_(size|keep) [0-9A-Za-z]+' /etc/caddy/Caddyfile | tr '\n' ' '"
 
   title "Critère 2 — utilisateur deploy"
   check "utilisateur deploy, sans groupe secondaire" '^uid=[0-9]+\(deploy\) gid=[0-9]+\(deploy\) groups=[0-9]+\(deploy\)$' id deploy

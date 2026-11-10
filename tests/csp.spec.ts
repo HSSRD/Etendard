@@ -20,8 +20,9 @@ test('la one page s’affiche sans violation de la CSP de Caddy', async ({
   page.on('console', (message) => {
     if (message.type() === 'error') errors.push(message.text());
   });
-  // Toutes les réponses reçoivent la CSP, comme sous Caddy.
+  // La CSP de la page est celle de la réponse HTML : seul le document la reçoit.
   await page.route('**/*', async (route) => {
+    if (route.request().resourceType() !== 'document') return route.fallback();
     const response = await route.fetch();
     await route.fulfill({
       response,
@@ -29,9 +30,9 @@ test('la one page s’affiche sans violation de la CSP de Caddy', async ({
     });
   });
 
+  await page.goto('/');
   for (const scheme of schemes) {
     await page.emulateMedia({ colorScheme: scheme });
-    await page.goto('/');
     // Fond du thème : les feuilles de style ont bien été appliquées.
     await expect(page.locator('body')).toHaveCSS(
       'background-color',

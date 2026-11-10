@@ -52,12 +52,12 @@ Caddy les ajoute à chaque réponse, pages d'erreur comprises :
 | `Content-Security-Policy` | voir ci-dessous | qu'un contenu injecté dans la page (script, style, formulaire) soit exécuté ou envoyé ailleurs |
 | `X-Content-Type-Options` | `nosniff` | que le navigateur devine le type d'un fichier et exécute comme script ce qui n'en est pas un |
 | `Referrer-Policy` | `strict-origin-when-cross-origin` | qu'un site lié (GitHub) reçoive l'adresse complète de la page : il ne voit que le domaine |
-| `Permissions-Policy` | `camera=(), geolocation=(), microphone=(), payment=(), usb=()` | que la page, ou un contenu injecté, demande l'accès à la caméra, à la position, au micro, au paiement ou à l'USB |
+| `Permissions-Policy` | chaque fonction listée, coupée : `camera=()`… | que la page, ou un contenu injecté, demande l'accès à la caméra, à la position, au micro, au paiement ou à l'USB |
 
 La CSP, directive par directive :
 
 - `default-src 'none'` : tout est interdit par défaut, scripts compris. Le site n'envoie aucun JavaScript ;
-- `style-src 'self'` : seulement les feuilles de style du site. Astro les écrit dans un fichier `/_astro/*.css` et non dans un `<style>` de la page (`astro.config.mjs`), ce qui évite `'unsafe-inline'` ;
+- `style-src 'self'` : seulement les feuilles de style du site. Astro les écrit dans des fichiers `/_astro/*.css` et non dans un `<style>` de la page (`astro.config.mjs`), ce qui évite `'unsafe-inline'` ;
 - `img-src 'self'` : seulement les images du site ;
 - `base-uri 'none'` et `form-action 'none'` : pas de `<base>` qui détournerait les liens, ni de formulaire qui enverrait des données ;
 - `frame-ancestors 'none'` : aucun site ne peut afficher Étendard dans un cadre (protection contre le *clickjacking*).
