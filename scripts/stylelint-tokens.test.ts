@@ -35,9 +35,7 @@ test('signale chaque valeur en dur et chaque raccourci non vérifiable', async (
   const flaggedLines = new Set((await lint(declarations)).map((w) => w.line));
 
   // La première déclaration est à la ligne 3 (après `<style>` et `.foo {`).
-  expect([...flaggedLines].sort((a, b) => a - b)).toEqual(
-    declarations.map((_, i) => i + 3),
-  );
+  expect(flaggedLines).toEqual(new Set(declarations.map((_, i) => i + 3)));
 });
 
 test('accepte les tokens et les mots-clés admis', async () => {
