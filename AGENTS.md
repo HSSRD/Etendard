@@ -43,9 +43,5 @@ Les pages `/styleguide` ne sont publiées que si `STYLEGUIDE=1`. Un composant n'
 
 L'image Docker de `ci.yml`, de `deploy.yml` et de `pnpm captures:maj` suit la version de
 `@playwright/test` : mets à jour les deux workflows (tag et empreinte `@sha256:`) en même temps que le paquet.
-
-## Renovate
-
-`renovate.json` applique l'ADR 0013. La PR Renovate « Playwright » monte le paquet et l'image ensemble,
-sans merge automatique : régénère les captures dans sa branche (`pnpm captures:maj`), commite-les,
-puis laisse le merge à Flo.
+Renovate (`renovate.json`, ADR 0013) le fait dans sa PR « Playwright », jamais mergée automatiquement :
+régénère les captures dans sa branche (`pnpm captures:maj`) et commite-les ; le merge reste humain.
