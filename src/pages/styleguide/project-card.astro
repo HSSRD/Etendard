@@ -22,7 +22,6 @@ const states = (await getProjects()).flatMap(({ root, units }) => [
   title="ProjectCard — Styleguide — Étendard"
   description="Composant ProjectCard d’Étendard : la carte d’un projet."
 >
-  <meta slot="head" name="robots" content="noindex" />
   <div class="styleguide-project-card">
     <h1>ProjectCard</h1>
     {states.map((state, index) => (
