@@ -60,7 +60,7 @@ export function composer(c) {
     `Version servie par le Pi : ${c.servi || 'inconnue'}`,
     `Exécution : ${c.execution}`,
   ];
-  if (!c.rollback && c.resultats.release === 'success') {
+  if (c.resultats.release === 'success') {
     lignes.push(`Release : ${c.depot}/releases/tag/deploy-${court(c.sha)}`);
   } else if (c.resultats.release === 'failure') {
     lignes.push('Release : publication en échec, voir l’exécution');
