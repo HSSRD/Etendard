@@ -32,7 +32,12 @@ test('signale chaque valeur en dur et chaque raccourci non vérifiable', async (
     'transition-duration: 200ms;',
     'z-index: 5;',
   ];
-  const flaggedLines = new Set((await lint(declarations)).map((w) => w.line));
+  // L'ordre alphabétique n'est pas ce qui est testé : il signalerait une ligne à tort.
+  const flaggedLines = new Set(
+    (await lint(declarations))
+      .filter((w) => !w.rule.startsWith('order/'))
+      .map((w) => w.line),
+  );
 
   // La première déclaration est à la ligne 3 (après `<style>` et `.foo {`).
   expect(flaggedLines).toEqual(new Set(declarations.map((_, i) => i + 3)));
