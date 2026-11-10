@@ -35,7 +35,9 @@ test('le lien d’évitement apparaît au clavier et mène au contenu', async ({
   await expect(skipLink).toHaveCSS('opacity', '1');
   for (const scheme of schemes) {
     await page.emulateMedia({ colorScheme: scheme });
-    await expect(page).toHaveScreenshot(`lien-evitement-${scheme}.png`);
+    await expect(page).toHaveScreenshot(`lien-evitement-${scheme}.png`, {
+      mask: [page.locator('.site-footer')],
+    });
   }
 
   await page.keyboard.press('Enter');
@@ -87,6 +89,8 @@ for (const scheme of schemes) {
     await expectNoAxeViolations(page);
     await expect(page).toHaveScreenshot(`accueil-${scheme}.png`, {
       fullPage: true,
+      // L'année du footer change chaque 1er janvier ; le footer a ses propres captures.
+      mask: [page.locator('.site-footer')],
     });
   });
 }
