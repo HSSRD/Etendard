@@ -1,25 +1,19 @@
 import { expect, test } from '@playwright/test';
+import { hexToRgb } from './helpers';
 
-test('l’icône référencée est un SVG servi', async ({ page, request }) => {
-  await page.goto('/');
-  const icon = page.locator('link[rel="icon"]');
-  await expect(icon).toHaveCount(1);
-  await expect(icon).toHaveAttribute('type', 'image/svg+xml');
-
-  const href = await icon.getAttribute('href');
-  const response = await request.get(href ?? '');
-  expect(response.status()).toBe(200);
-  expect(response.headers()['content-type']).toMatch(/^image\/svg\+xml\b/);
-});
-
-test('les couleurs de l’icône sont celles de tokens.css', async ({
+test('l’icône référencée est un SVG servi aux couleurs de tokens.css', async ({
   page,
   request,
 }) => {
   await page.emulateMedia({ colorScheme: 'light' });
   await page.goto('/');
-  const href = await page.locator('link[rel="icon"]').getAttribute('href');
-  const svg = await (await request.get(href ?? '')).text();
+  const icon = page.locator('link[rel="icon"]');
+  await expect(icon).toHaveCount(1);
+  await expect(icon).toHaveAttribute('type', 'image/svg+xml');
+
+  const response = await request.get((await icon.getAttribute('href')) ?? '');
+  expect(response.status()).toBe(200);
+  expect(response.headers()['content-type']).toMatch(/^image\/svg\+xml\b/);
 
   // Valeurs des tokens au thème clair, au format de getComputedStyle.
   const tokens = await page.evaluate(() =>
@@ -32,13 +26,9 @@ test('les couleurs de l’icône sont celles de tokens.css', async ({
       return color;
     }),
   );
-  const colors = [...new Set(svg.match(/#[0-9a-f]{6}\b/gi))].map((hex) => {
-    const [r, g, b] = [1, 3, 5].map((i) =>
-      Number.parseInt(hex.slice(i, i + 2), 16),
-    );
-    return `rgb(${r}, ${g}, ${b})`;
-  });
+  const svg = await response.text();
   expect(svg).not.toMatch(/#[0-9a-f]{3}\b|rgb\(|hsl\(/i);
+  const colors = [...new Set(svg.match(/#[0-9a-f]{6}\b/gi))].map(hexToRgb);
   expect(colors.sort()).toEqual(tokens.sort());
 });
 
