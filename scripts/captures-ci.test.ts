@@ -57,11 +57,31 @@ const writeReport = (tests: { projectName: string; attachments: object[] }[]) =>
     }),
   );
 
-const copies = () =>
-  references(resultsDir).map(({ from, to }) => ({
-    from: path.relative(resultsDir, from).replaceAll('\\', '/'),
-    to: path.relative(repo, to).replaceAll('\\', '/'),
-  }));
+const install = () => {
+  const { copies, unstable } = references(resultsDir);
+  return {
+    copies: copies.map(({ from, to }) => ({
+      from: path.relative(resultsDir, from).replaceAll('\\', '/'),
+      to: path.relative(repo, to).replaceAll('\\', '/'),
+    })),
+    unstable,
+  };
+};
+
+/** Rapport d'une seule pièce jointe -actual, avec la référence `expected`. */
+const single = (
+  expected: string,
+  actual = `${ci}/test-results/d/x-actual.png`,
+) =>
+  writeReport([
+    {
+      projectName: 'chromium-375',
+      attachments: [
+        { name: 'x-expected.png', path: expected },
+        { name: 'x-actual.png', path: actual },
+      ],
+    },
+  ]);
 
 test('chaque image « actual » va au chemin de sa capture de référence', () => {
   const hero = 'src-components-Hero-1a2b3-chromium-375';
@@ -80,10 +100,20 @@ test('chaque image « actual » va au chemin de sa capture de référence', () =
           'src/components/__captures__/Hero.spec.ts/hero-light-hover-chromium-375.png',
           'hero-light-hover',
         ),
-        // Nouvelle capture instable : pas de -expected, rien à installer.
+        // Nouvelle capture instable : pas de -expected.
         {
           name: 'hero-light-focus-actual.png',
           path: `${ci}/test-results/${hero}/hero-light-focus-actual.png`,
+        },
+        // Capture existante instable : -previous accompagne -expected.
+        ...capture(
+          hero,
+          'src/components/__captures__/Hero.spec.ts/hero-dark-chromium-375.png',
+          'hero-dark',
+        ),
+        {
+          name: 'hero-dark-previous.png',
+          path: `${ci}/test-results/${hero}/hero-dark-previous.png`,
         },
         { name: 'trace', path: `${ci}/test-results/${hero}/trace.zip` },
         { name: 'stdout' },
@@ -91,42 +121,36 @@ test('chaque image « actual » va au chemin de sa capture de référence', () =
     },
   ]);
 
-  expect(copies()).toEqual([
-    {
-      from: `${hero}/hero-light-actual.png`,
-      to: 'src/components/__captures__/Hero.spec.ts/hero-light-chromium-375.png',
-    },
-    {
-      from: `${hero}/hero-light-hover-actual.png`,
-      to: 'src/components/__captures__/Hero.spec.ts/hero-light-hover-chromium-375.png',
-    },
-  ]);
+  expect(install()).toEqual({
+    copies: [
+      {
+        from: `${hero}/hero-light-actual.png`,
+        to: 'src/components/__captures__/Hero.spec.ts/hero-light-chromium-375.png',
+      },
+      {
+        from: `${hero}/hero-light-hover-actual.png`,
+        to: 'src/components/__captures__/Hero.spec.ts/hero-light-hover-chromium-375.png',
+      },
+    ],
+    unstable: ['hero-light-focus (chromium-375)', 'hero-dark (chromium-375)'],
+  });
 });
 
-test('un chemin hors du repo ou de test-results/ fait échouer la commande', () => {
-  writeReport([
-    {
-      projectName: 'chromium-375',
-      attachments: [
-        { name: 'x-expected.png', path: '/etc/x.png' },
-        { name: 'x-actual.png', path: `${ci}/test-results/d/x-actual.png` },
-      ],
-    },
-  ]);
-  expect(copies).toThrow(/hors de \/__w\/Etendard\/Etendard\./);
-
-  writeReport([
-    {
-      projectName: 'chromium-375',
-      attachments: [
-        { name: 'x-expected.png', path: `${ci}/src/x.png` },
-        { name: 'x-actual.png', path: '/home/runner/.ssh/x-actual.png' },
-      ],
-    },
-  ]);
-  expect(copies).toThrow(/hors de \/__w\/Etendard\/Etendard\/test-results\./);
+test('un chemin venu du rapport ne sort jamais des captures ni de test-results/', () => {
+  const capturePath = `${ci}/src/__captures__/x.png`;
+  single('/etc/x.png');
+  expect(install).toThrow(/hors de \/__w\/Etendard\/Etendard\./);
+  // « \ » : séparateur sous Windows.
+  single(String.raw`${ci}/src\..\..\..\x.png`);
+  expect(install).toThrow(/hors de/);
+  single(`${ci}/node_modules/.bin/astro`);
+  expect(install).toThrow(/pas une capture de référence/);
+  single(capturePath, '/home/runner/.ssh/x-actual.png');
+  expect(install).toThrow(/hors de \/__w\/Etendard\/Etendard\/test-results\./);
+  single(capturePath, String.raw`${ci}/test-results/d\..\..\x-actual.png`);
+  expect(install).toThrow(/hors de/);
 });
 
 test('sans rapport.json, la commande échoue', () => {
-  expect(copies).toThrow(/rapport\.json/);
+  expect(install).toThrow(/rapport\.json/);
 });

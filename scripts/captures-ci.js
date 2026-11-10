@@ -31,7 +31,8 @@ const specsOf = (suite) => [
 /** Chemin relatif sous `base`, ou erreur s'il en sort (chemins venus de l'artefact). */
 const inside = (/** @type {string} */ base, /** @type {string} */ file) => {
   const relative = path.posix.relative(base, file);
-  if (!relative || relative.startsWith('..')) {
+  // « \ » compte aussi : sous Windows, path.join le prend pour un séparateur.
+  if (!relative || relative.split(/[\\/]/).includes('..')) {
     throw new Error(`${file} : hors de ${base}.`);
   }
   return relative;
@@ -41,7 +42,8 @@ const inside = (/** @type {string} */ base, /** @type {string} */ file) => {
  * Associe chaque image « actual » d'un dossier test-results/ au chemin de sa capture de
  * référence. Dans le rapport JSON que Playwright écrit en CI (rapport.json), chaque
  * `X-actual.png` est accompagnée de `X-expected.png`, qui pointe sur la référence, présente ou
- * manquante. Sans elle (nouvelle capture instable), il n'y a rien à installer.
+ * manquante. Sans elle (nouvelle capture) ou avec `X-previous.png`, Playwright n'a pas obtenu
+ * deux images identiques de suite : la capture est instable et n'est pas installée.
  * @param {string} resultsDir
  */
 export const references = (resultsDir) => {
@@ -50,30 +52,41 @@ export const references = (resultsDir) => {
     readFileSync(path.join(resultsDir, 'rapport.json'), 'utf8'),
   );
   const { rootDir, projects } = report.config;
-  return specsOf(report)
-    .flatMap(({ tests }) => tests)
-    .flatMap(({ projectName, results }) => {
-      const outputDir = projects.find(
-        ({ name }) => name === projectName,
-      )?.outputDir;
-      if (!outputDir) throw new Error(`${projectName} : projet introuvable.`);
-      return results.flatMap(({ attachments }) =>
-        attachments.flatMap(({ name, path: actual }) => {
-          if (!actual || !name.endsWith('-actual.png')) return [];
-          const expected = attachments.find(
-            (other) =>
-              other.name === name.replace(/-actual\.png$/, '-expected.png'),
-          )?.path;
-          if (!expected) return [];
-          return [
-            {
-              from: path.join(resultsDir, inside(outputDir, actual)),
-              to: path.join(root, inside(rootDir, expected)),
-            },
-          ];
-        }),
-      );
-    });
+  /** @type {{ from: string, to: string }[]} */
+  const copies = [];
+  /** @type {string[]} */
+  const unstable = [];
+  for (const { projectName, results } of specsOf(report).flatMap(
+    ({ tests }) => tests,
+  )) {
+    const outputDir = projects.find(
+      ({ name }) => name === projectName,
+    )?.outputDir;
+    if (!outputDir) throw new Error(`${projectName} : projet introuvable.`);
+    for (const { attachments } of results) {
+      /** @param {string} name */
+      const pathOf = (name) =>
+        attachments.find((attachment) => attachment.name === name)?.path;
+      for (const { name, path: actual } of attachments) {
+        if (!actual || !name.endsWith('-actual.png')) continue;
+        const base = name.slice(0, -'-actual.png'.length);
+        const expected = pathOf(`${base}-expected.png`);
+        if (!expected || pathOf(`${base}-previous.png`)) {
+          unstable.push(`${base} (${projectName})`);
+          continue;
+        }
+        const to = inside(rootDir, expected);
+        if (!/(^|\/)__captures__\/.+\.png$/.test(to)) {
+          throw new Error(`${expected} : pas une capture de référence.`);
+        }
+        copies.push({
+          from: path.join(resultsDir, inside(outputDir, actual)),
+          to: path.join(root, to),
+        });
+      }
+    }
+  }
+  return { copies, unstable };
 };
 
 if (import.meta.main) {
@@ -90,12 +103,13 @@ if (import.meta.main) {
       ['run', 'download', run, '--name', 'playwright', '--dir', dir],
       { cwd: root, stdio: 'inherit' },
     );
+    if (download.error) throw new Error(`gh : ${download.error.message}`);
     if (download.status !== 0) {
       throw new Error(
-        `artefact « playwright » du run ${run} non téléchargé (voir l'erreur de gh ci-dessus ; il est gardé 7 jours).`,
+        `artefact « playwright » du run ${run} non téléchargé (voir l'erreur de gh ci-dessus).`,
       );
     }
-    const copies = references(dir);
+    const { copies, unstable } = references(dir);
     for (const { from, to } of copies) {
       mkdirSync(path.dirname(to), { recursive: true });
       copyFileSync(from, to);
@@ -104,6 +118,12 @@ if (import.meta.main) {
     console.log(
       `${copies.length} capture(s) installée(s). Relis chaque image avant de commiter.`,
     );
+    if (unstable.length > 0) {
+      console.error(
+        `Capture(s) instable(s), non installée(s) : ${unstable.join(', ')}.`,
+      );
+      process.exitCode = 1;
+    }
   } catch (error) {
     console.error(
       `captures:ci : ${error instanceof Error ? error.message : error}`,

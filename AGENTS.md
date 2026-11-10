@@ -31,8 +31,8 @@ Quand un changement visuel invalide des captures et que Docker manque :
 4. Relis chaque image modifiée (`git status`) : un écart non voulu est un bug à corriger, pas une capture à commiter.
 5. Commite les captures (`test: mettre à jour les captures générées par la CI (#N)`) et pousse : le run doit passer.
 
-`tests/accueil.spec.ts` capture la one page entière (`accueil-*`, `lien-evitement-*`) : tout changement
-visuel d'un composant de la page change aussi ces captures. Une capture suivie d'autres étapes du test
+`tests/accueil.spec.ts` capture la one page entière (`accueil-*`) et son haut d'écran (`lien-evitement-*`) :
+tout changement visuel d'un composant de la page change aussi ces captures. Une capture suivie d'autres étapes du test
 s'écrit `expect.soft(…).toHaveScreenshot(…)` : le test va jusqu'au bout, le run produit toutes ses
 captures en écart et échoue quand même.
 
