@@ -178,17 +178,19 @@ jobs:
       - *servi
 
   # E-mail Brevo après chaque déploiement ou rollback, quel qu'en soit le résultat (#32).
-  # Un échec d'envoi laisse un avertissement sans changer le résultat du déploiement.
-  notify:
+  # message exécute le script du repo sans aucun secret ; notify envoie sans code du repo.
+  # Un échec laisse un avertissement sans changer le résultat du déploiement.
+  message:
     needs: [deploy, release, rollback]
     if: ${{ always() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    environment: production
     continue-on-error: true
     permissions:
       contents: read
       pull-requests: read
+    outputs:
+      mail: ${{ steps.mail.outputs.json }}
     steps:
       - *checkout
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -196,6 +198,7 @@ jobs:
           node-version-file: .nvmrc
       # Titres et branches restent dans l'environnement : jamais interpolés dans run.
       - name: Composer l'e-mail
+        id: mail
         env:
           GH_TOKEN: ${{ github.token }}
           ROLLBACK: ${{ inputs.rollback }}
@@ -205,26 +208,37 @@ jobs:
           SERVI: ${{ needs.rollback.outputs.servi || needs.deploy.outputs.servi }}
           ROLLBACK_EFFECTUE: ${{ needs.deploy.outputs.rollback }}
         run: |
-          if node scripts/deploy-notify.js > mail.json; then
-            echo "Objet : $(jq -r .subject mail.json)"
-          else
-            echo "::warning::e-mail non composé, voir l'erreur ci-dessus"
-            rm -f mail.json
-          fi
-      # Seule étape à voir les secrets ; jq ajoute les adresses sans les afficher.
+          mail="$(node scripts/deploy-notify.js)"
+          echo "Objet : $(jq -r .subject <<< "$mail")"
+          echo "json=$mail" >> "$GITHUB_OUTPUT"
+
+  notify:
+    needs: message
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: production
+    continue-on-error: true
+    permissions: {}
+    steps:
+      # Seuls l'objet et le texte sont repris ; jq ajoute les adresses sans les afficher.
       - name: Envoyer l'e-mail par Brevo
         env:
+          MAIL: ${{ needs.message.outputs.mail }}
           BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
           NOTIFY_EMAIL_FROM: ${{ secrets.NOTIFY_EMAIL_FROM }}
           NOTIFY_EMAIL_TO: ${{ secrets.NOTIFY_EMAIL_TO }}
         run: |
-          [ -s mail.json ] || exit 0
+          if [ -z "$MAIL" ]; then
+            echo "::warning::e-mail non envoyé : le job message ne l'a pas composé"
+            exit 0
+          fi
           if [ -z "$BREVO_API_KEY" ] || [ -z "$NOTIFY_EMAIL_FROM" ] || [ -z "$NOTIFY_EMAIL_TO" ]; then
             echo "::warning::e-mail non envoyé : secrets Brevo absents de production"
             exit 0
           fi
           code="$(jq --arg from "$NOTIFY_EMAIL_FROM" --arg to "$NOTIFY_EMAIL_TO" \
-              '{sender: {email: $from}, to: [{email: $to}]} + .' mail.json \
+              '{sender: {email: $from}, to: [{email: $to}], subject, textContent}' <<< "$MAIL" \
             | curl -sS -o /dev/null -w '%{http_code}' --max-time 30 \
               -H "api-key: $BREVO_API_KEY" -H 'content-type: application/json' \
               --data @- https://api.brevo.com/v3/smtp/email)" || code="injoignable"

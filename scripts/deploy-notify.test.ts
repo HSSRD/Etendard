@@ -95,7 +95,14 @@ describe('objet', () => {
         ...rollback,
         resultats: { ...resultats, rollback: 'failure' },
       }).subject,
-    ).toBe('❌ Rollback manuel en échec — b36f16a servi');
+    ).toBe('❌ Rollback manuel en échec — b36f16a');
+    expect(
+      composer({
+        ...rollback,
+        servi: '',
+        resultats: { ...resultats, rollback: 'success' },
+      }).subject,
+    ).toBe('↩️ Rollback manuel effectué, version servie inconnue');
   });
 });
 
@@ -117,6 +124,13 @@ describe('corps', () => {
     const mail = composer({ ...base, resultats: echec, servi: avant });
     expect(mail.textContent).not.toContain('Release');
   });
+
+  test('une release en échec est signalée malgré le déploiement réussi', () => {
+    const resultats = { ...base.resultats, release: 'failure' };
+    expect(composer({ ...base, resultats }).textContent).toContain(
+      'Release : publication en échec',
+    );
+  });
 });
 
 test('une branche au nom piégé reste une donnée', () => {
@@ -130,20 +144,28 @@ test('une branche au nom piégé reste une donnée', () => {
 
 describe('script lancé par le job notify', () => {
   const branche = 'x"; $(id)\nfin';
-  // Fausse API GitHub : la PR mergée porte une branche au nom piégé.
-  const lancer = async (args: string[]) => {
+  const pulls = [
+    {
+      title: 'feat: $(id)',
+      html_url: `${depot}/pull/29`,
+      head: { ref: branche },
+    },
+  ];
+  // Fausse API GitHub : par défaut, la PR mergée porte une branche au nom piégé.
+  const lancer = async (
+    args: string[],
+    api404 = false,
+    prs: unknown[] = pulls,
+  ) => {
     const api = createServer((requete, reponse) => {
+      reponse.statusCode = api404 ? 404 : 200;
       reponse.setHeader('content-type', 'application/json');
       reponse.end(
-        requete.url?.endsWith('/pulls')
-          ? JSON.stringify([
-              {
-                title: 'feat: $(id)',
-                html_url: `${depot}/pull/29`,
-                head: { ref: branche },
-              },
-            ])
-          : '{}',
+        JSON.stringify(
+          requete.url?.endsWith('/pulls')
+            ? prs
+            : { commit: { message: 'chore: pousser\n\ndétails' } },
+        ),
       );
     });
     await new Promise<void>((ok) => api.listen(0, '127.0.0.1', ok));
@@ -172,6 +194,16 @@ describe('script lancé par le job notify', () => {
       api.close();
     }
   };
+
+  test('sans PR : titre du commit', async () => {
+    const { subject } = JSON.parse(await lancer([], false, []));
+    expect(subject).toBe('✅ chore: pousser déployé — a25e05f');
+  });
+
+  test('API GitHub en erreur : l’e-mail part quand même', async () => {
+    const { subject } = JSON.parse(await lancer([], true));
+    expect(subject).toBe('✅ a25e05f déployé — a25e05f');
+  });
 
   test('écrit l’objet et le texte en JSON', async () => {
     expect(JSON.parse(await lancer([]))).toEqual({

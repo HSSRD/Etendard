@@ -25,9 +25,12 @@ const uneLigne = (texte) => texte.replace(/\s+/g, ' ').trim();
 /** @param {Contexte} c */
 function objet(c) {
   if (c.rollback) {
+    const servi = c.servi
+      ? ` — ${court(c.servi)}`
+      : ', version servie inconnue';
     return c.resultats.rollback === 'success'
-      ? `↩️ Rollback manuel effectué — ${court(c.servi)}`
-      : `❌ Rollback manuel en échec${c.servi ? ` — ${court(c.servi)} servi` : ''}`;
+      ? `↩️ Rollback manuel effectué${servi}`
+      : `❌ Rollback manuel en échec${servi}`;
   }
   const nom = uneLigne(c.pr?.branche || c.titreCommit || court(c.sha));
   if (c.resultats.deploy === 'success') {
@@ -59,6 +62,8 @@ export function composer(c) {
   ];
   if (!c.rollback && c.resultats.release === 'success') {
     lignes.push(`Release : ${c.depot}/releases/tag/deploy-${court(c.sha)}`);
+  } else if (c.resultats.release === 'failure') {
+    lignes.push('Release : publication en échec, voir l’exécution');
   }
   return { subject: objet(c), textContent: `${lignes.join('\n')}\n` };
 }
@@ -68,6 +73,7 @@ async function github(chemin) {
   const reponse = await fetch(
     `${env.GITHUB_API_URL ?? 'https://api.github.com'}${chemin}`,
     {
+      signal: AbortSignal.timeout(10_000),
       headers: {
         accept: 'application/vnd.github+json',
         ...(env.GH_TOKEN ? { authorization: `Bearer ${env.GH_TOKEN}` } : {}),
@@ -88,21 +94,26 @@ async function lireContexte() {
   const depot = `${env.GITHUB_SERVER_URL ?? 'https://github.com'}/${env.GITHUB_REPOSITORY}`;
   let pr = null;
   let titreCommit = '';
+  // PR et titre ne font qu'habiller l'e-mail : s'ils sont illisibles, il part quand même.
   if (sha) {
-    const [premiere] = await github(
-      `/repos/${env.GITHUB_REPOSITORY}/commits/${sha}/pulls`,
-    );
-    if (premiere) {
-      pr = {
-        titre: premiere.title,
-        url: premiere.html_url,
-        branche: premiere.head.ref,
-      };
-    } else {
-      const commit = await github(
-        `/repos/${env.GITHUB_REPOSITORY}/commits/${sha}`,
+    try {
+      const [premiere] = await github(
+        `/repos/${env.GITHUB_REPOSITORY}/commits/${sha}/pulls`,
       );
-      titreCommit = commit.commit.message.split('\n')[0];
+      if (premiere) {
+        pr = {
+          titre: premiere.title,
+          url: premiere.html_url,
+          branche: premiere.head.ref,
+        };
+      } else {
+        const commit = await github(
+          `/repos/${env.GITHUB_REPOSITORY}/commits/${sha}`,
+        );
+        titreCommit = commit.commit.message.split('\n')[0];
+      }
+    } catch (erreur) {
+      console.error(`PR introuvable : ${erreur.message}`);
     }
   }
   return {
