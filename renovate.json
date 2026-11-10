@@ -12,7 +12,7 @@
       "automerge": true
     },
     {
-      "description": "Paquet et image des deux workflows dans la même PR, à la même version : branche créée seulement avec les trois mises à jour et après le délai de 3 jours (AGENTS.md). Merge humain : captures invalidées (ADR 0003).",
+      "description": "Paquet et image des deux workflows (AGENTS.md) dans la même PR, à la même version : branche créée seulement avec les trois mises à jour, une fois le délai passé. Merge humain : captures invalidées (ADR 0003).",
       "matchPackageNames": ["@playwright/test", "mcr.microsoft.com/playwright"],
       "groupName": "Playwright",
       "minimumGroupSize": 3,
@@ -21,7 +21,7 @@
       "automerge": false
     },
     {
-      "description": "Image Playwright : tags v1.2.3-noble, sans date de publication. Le délai de 3 jours est porté par @playwright/test.",
+      "description": "Image Playwright : tags v1.2.3-noble, sans date de publication. Le délai est porté par @playwright/test.",
       "matchPackageNames": ["mcr.microsoft.com/playwright"],
       "versioning": "regex:^v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)-noble$",
       "minimumReleaseAge": null
