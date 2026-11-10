@@ -17,6 +17,7 @@
     "test:e2e": "playwright test",
     "test:infra": "node scripts/test-infra.js",
     "captures:maj": "node scripts/maj-captures.js",
+    "captures:ci": "node scripts/captures-ci.js",
     "verify:fast": "pnpm check && pnpm lint && pnpm test",
     "verify": "pnpm verify:fast && pnpm test:infra && knip && depcruise src && pnpm build && html-validate \"dist/**/*.html\" && pnpm test:e2e && html-validate \"dist-styleguide/styleguide/**/*.html\""
   },
