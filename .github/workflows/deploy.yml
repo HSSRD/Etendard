@@ -31,7 +31,8 @@ jobs:
     outputs:
       sha256: ${{ steps.archive.outputs.sha256 }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - &checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
@@ -179,7 +180,7 @@ jobs:
   # E-mail Brevo après chaque déploiement ou rollback, quel qu'en soit le résultat (#32).
   # Un échec d'envoi laisse un avertissement sans changer le résultat du déploiement.
   notify:
-    needs: [build, deploy, release, rollback]
+    needs: [deploy, release, rollback]
     if: ${{ always() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -189,37 +190,44 @@ jobs:
       contents: read
       pull-requests: read
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
+      - *checkout
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
       # Titres et branches restent dans l'environnement : jamais interpolés dans run.
-      - name: Envoyer l'e-mail
+      - name: Composer l'e-mail
         env:
           GH_TOKEN: ${{ github.token }}
           ROLLBACK: ${{ inputs.rollback }}
-          BUILD_RESULT: ${{ needs.build.result }}
           DEPLOY_RESULT: ${{ needs.deploy.result }}
           RELEASE_RESULT: ${{ needs.release.result }}
           ROLLBACK_RESULT: ${{ needs.rollback.result }}
-          SERVI: ${{ inputs.rollback && needs.rollback.outputs.servi || needs.deploy.outputs.servi }}
+          SERVI: ${{ needs.rollback.outputs.servi || needs.deploy.outputs.servi }}
           ROLLBACK_EFFECTUE: ${{ needs.deploy.outputs.rollback }}
+        run: |
+          if node scripts/deploy-notify.js > mail.json; then
+            echo "Objet : $(jq -r .subject mail.json)"
+          else
+            echo "::warning::e-mail non composé, voir l'erreur ci-dessus"
+            rm -f mail.json
+          fi
+      # Seule étape à voir les secrets ; jq ajoute les adresses sans les afficher.
+      - name: Envoyer l'e-mail par Brevo
+        env:
           BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
           NOTIFY_EMAIL_FROM: ${{ secrets.NOTIFY_EMAIL_FROM }}
           NOTIFY_EMAIL_TO: ${{ secrets.NOTIFY_EMAIL_TO }}
         run: |
-          if ! node scripts/deploy-notify.js > mail.json; then
-            echo "::warning::e-mail non composé, voir l'erreur ci-dessus"
-            exit 0
-          fi
-          echo "Objet : $(jq -r .subject mail.json)"
+          [ -s mail.json ] || exit 0
           if [ -z "$BREVO_API_KEY" ] || [ -z "$NOTIFY_EMAIL_FROM" ] || [ -z "$NOTIFY_EMAIL_TO" ]; then
             echo "::warning::e-mail non envoyé : secrets Brevo absents de production"
             exit 0
           fi
-          code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30             -H "api-key: $BREVO_API_KEY" -H 'content-type: application/json'             --data @mail.json https://api.brevo.com/v3/smtp/email)" || code="injoignable"
+          code="$(jq --arg from "$NOTIFY_EMAIL_FROM" --arg to "$NOTIFY_EMAIL_TO" \
+              '{sender: {email: $from}, to: [{email: $to}]} + .' mail.json \
+            | curl -sS -o /dev/null -w '%{http_code}' --max-time 30 \
+              -H "api-key: $BREVO_API_KEY" -H 'content-type: application/json' \
+              --data @- https://api.brevo.com/v3/smtp/email)" || code="injoignable"
           case "$code" in
             2??) echo "e-mail envoyé" ;;
             *) echo "::warning::e-mail non envoyé (Brevo : $code)" ;;

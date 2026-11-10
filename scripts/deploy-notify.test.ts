@@ -11,7 +11,6 @@ const depot = 'https://github.com/HSSRD/Etendard';
 const base = {
   rollback: false,
   resultats: {
-    build: 'success',
     deploy: 'success',
     release: 'success',
     rollback: 'skipped',
@@ -60,7 +59,7 @@ describe('objet', () => {
 
   test('échec avant toute bascule : version précédente toujours servie', () => {
     const suffixe = ', version précédente toujours servie';
-    const build = { ...echec, build: 'failure', deploy: 'skipped' };
+    const build = { ...echec, deploy: 'skipped' };
     expect(composer({ ...base, resultats: build, servi: '' }).subject).toBe(
       `❌ issue-29-helpers-tests : déploiement en échec${suffixe}`,
     );
@@ -69,9 +68,13 @@ describe('objet', () => {
     );
   });
 
-  test('échec sans version servie lisible : pas de supposition', () => {
+  test('échec après la bascule : la version servie est lue, pas supposée', () => {
+    const nom = '❌ issue-29-helpers-tests : déploiement en échec';
     expect(composer({ ...base, resultats: echec, servi: '' }).subject).toBe(
-      '❌ issue-29-helpers-tests : déploiement en échec, version servie inconnue',
+      `${nom}, version servie inconnue`,
+    );
+    expect(composer({ ...base, resultats: echec }).subject).toBe(
+      `${nom}, nouvelle version servie`,
     );
   });
 
@@ -79,7 +82,6 @@ describe('objet', () => {
     const rollback = { ...base, rollback: true, sha: avant, servi: avant };
     const resultats = {
       ...base.resultats,
-      build: 'skipped',
       deploy: 'skipped',
     };
     expect(
@@ -124,8 +126,6 @@ test('une branche au nom piégé reste une donnée', () => {
   expect(mail.subject).toBe(
     '✅ x"; $(curl evil) `id` \'fin\\ déployé — a25e05f',
   );
-  expect(mail.subject).not.toMatch(/[\r\n]/);
-  expect(JSON.parse(JSON.stringify(mail))).toEqual(mail);
 });
 
 describe('script lancé par le job notify', () => {
@@ -160,13 +160,10 @@ describe('script lancé par le job notify', () => {
             GITHUB_RUN_ID: '42',
             GITHUB_SHA: sha,
             ROLLBACK: 'false',
-            BUILD_RESULT: 'success',
             DEPLOY_RESULT: 'success',
             RELEASE_RESULT: 'success',
             ROLLBACK_RESULT: 'skipped',
             SERVI: sha,
-            NOTIFY_EMAIL_FROM: 'EXPEDITEUR',
-            NOTIFY_EMAIL_TO: 'DESTINATAIRE',
           },
         },
       );
@@ -176,19 +173,16 @@ describe('script lancé par le job notify', () => {
     }
   };
 
-  test('écrit le corps JSON de l’API Brevo', async () => {
-    const payload = JSON.parse(await lancer([]));
-    expect(payload).toEqual({
-      sender: { email: 'EXPEDITEUR' },
-      to: [{ email: 'DESTINATAIRE' }],
+  test('écrit l’objet et le texte en JSON', async () => {
+    expect(JSON.parse(await lancer([]))).toEqual({
       subject: '✅ x"; $(id) fin déployé — a25e05f',
       textContent: expect.stringContaining('PR : feat: $(id) — '),
     });
   });
 
-  test('à blanc : affiche l’e-mail sans les adresses', async () => {
-    const sortie = await lancer(['--a-blanc']);
-    expect(sortie).toContain('Objet : ✅ x"; $(id) fin déployé — a25e05f');
-    expect(sortie).not.toMatch(/EXPEDITEUR|DESTINATAIRE/);
+  test('à blanc : affiche l’e-mail lisible', async () => {
+    expect(await lancer(['--a-blanc'])).toContain(
+      'Objet : ✅ x"; $(id) fin déployé — a25e05f\n\nPR : feat: $(id) — ',
+    );
   });
 });

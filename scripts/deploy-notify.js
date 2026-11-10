@@ -1,7 +1,7 @@
 // Compose l'e-mail envoyé par le job `notify` de deploy.yml (ticket #32).
-// Usage : node scripts/deploy-notify.js            → corps JSON de l'API Brevo sur stdout
-//         node scripts/deploy-notify.js --a-blanc  → objet et texte, sans adresse ni envoi
-// L'envoi lui-même (curl) et les secrets restent dans le workflow.
+// Usage : node scripts/deploy-notify.js            → { subject, textContent } en JSON
+//         node scripts/deploy-notify.js --a-blanc  → l'e-mail lisible, sans envoi
+// Adresses, clé API et envoi (curl) restent dans le workflow : le script ne voit aucun secret.
 
 const court = (sha) => sha.slice(0, 7);
 // Un objet d'e-mail tient sur une ligne, quel que soit le nom de branche ou le titre reçu.
@@ -11,7 +11,7 @@ const uneLigne = (texte) => texte.replace(/\s+/g, ' ').trim();
  * @typedef {{ titre: string, url: string, branche: string }} PR
  * @typedef {{
  *   rollback: boolean,
- *   resultats: { build: string, deploy: string, release: string, rollback: string },
+ *   resultats: { deploy: string, release: string, rollback: string },
  *   sha: string,
  *   servi: string,
  *   rollbackEffectue: boolean,
@@ -33,12 +33,18 @@ function objet(c) {
   if (c.resultats.deploy === 'success') {
     return `✅ ${nom} déployé — ${court(c.sha)}`;
   }
-  let suite = ', version servie inconnue';
-  if (c.rollbackEffectue) suite = ', rollback effectué';
-  else if (c.resultats.deploy === 'skipped' || (c.servi && c.servi !== c.sha)) {
-    suite = ', version précédente toujours servie';
-  }
-  return `❌ ${nom} : déploiement en échec${suite}`;
+  return `❌ ${nom} : déploiement en échec, ${etatApresEchec(c)}`;
+}
+
+/** @param {Contexte} c */
+function etatApresEchec(c) {
+  if (c.rollbackEffectue) return 'rollback effectué';
+  // Build en échec : deploy n'a pas tourné, le Pi n'a rien reçu.
+  if (c.resultats.deploy === 'skipped')
+    return 'version précédente toujours servie';
+  if (!c.servi) return 'version servie inconnue';
+  if (c.servi === c.sha) return 'nouvelle version servie';
+  return 'version précédente toujours servie';
 }
 
 /** @param {Contexte} c */
@@ -102,7 +108,6 @@ async function lireContexte() {
   return {
     rollback,
     resultats: {
-      build: env.BUILD_RESULT ?? '',
       deploy: env.DEPLOY_RESULT ?? '',
       release: env.RELEASE_RESULT ?? '',
       rollback: env.ROLLBACK_RESULT ?? '',
@@ -119,12 +124,9 @@ async function lireContexte() {
 
 if (import.meta.main) {
   const mail = composer(await lireContexte());
-  if (process.argv.includes('--a-blanc')) {
-    console.log(`Objet : ${mail.subject}\n\n${mail.textContent}`);
-  } else {
-    const { NOTIFY_EMAIL_FROM: from, NOTIFY_EMAIL_TO: to } = process.env;
-    console.log(
-      JSON.stringify({ sender: { email: from }, to: [{ email: to }], ...mail }),
-    );
-  }
+  console.log(
+    process.argv.includes('--a-blanc')
+      ? `Objet : ${mail.subject}\n\n${mail.textContent}`
+      : JSON.stringify(mail),
+  );
 }
