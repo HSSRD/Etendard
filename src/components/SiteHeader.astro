@@ -1,0 +1,84 @@
+---
+// En-tête collant de la one page : nom du site et navigation par ancres (ticket #11).
+const links = [
+  { href: '#accueil', label: 'Accueil' },
+  { href: '#projets', label: 'Projets' },
+];
+---
+
+<header class="site-header">
+  <div class="site-header__inner">
+    <a class="site-header__brand" href="#accueil">
+      Étendard
+    </a>
+    <nav aria-label="Navigation principale">
+      <ul class="site-header__list">
+        {links.map((link) => (
+          <li>
+            <a class="site-header__link" href={link.href}>
+              {link.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<style>
+  /* Même fond que la page (et que <meta name="theme-color">), séparé par une bordure. */
+  .site-header {
+    background-color: var(--color-background);
+    border-bottom-color: var(--color-border);
+    border-bottom-style: solid;
+    border-bottom-width: var(--border-width);
+    display: flex;
+    /* Hauteur minimale : avec un texte agrandi, le header passe à la ligne au lieu de déborder. */
+    min-height: var(--header-height);
+    position: sticky;
+    top: 0;
+    z-index: var(--z-index-header);
+  }
+
+  .site-header__inner {
+    align-items: center;
+    display: flex;
+    flex-grow: 1;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    justify-content: space-between;
+    margin: 0 auto;
+    max-width: var(--content-max-width);
+    padding: var(--space-2) var(--space-4);
+  }
+
+  /* Marge verticale : cible de tap plus haute que la ligne de texte. */
+  .site-header__brand,
+  .site-header__link {
+    color: var(--color-text);
+    display: inline-block;
+    padding: var(--space-1) 0;
+    text-decoration-line: none;
+  }
+
+  /* Pointeur principal seulement : pas de soulignement resté collé après un tap. */
+  @media (hover: hover) {
+    .site-header__brand:hover,
+    .site-header__link:hover {
+      text-decoration-line: underline;
+    }
+  }
+
+  .site-header__brand {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-bold);
+  }
+
+  .site-header__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-5);
+    list-style: none;
+    padding: 0;
+  }
+</style>

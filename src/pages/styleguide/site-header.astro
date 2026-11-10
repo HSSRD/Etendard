@@ -1,0 +1,33 @@
+---
+// SiteHeader (ticket #11). Un seul rendu statique ; les états survol, focus et texte
+// agrandi sont produits et capturés par SiteHeader.spec.ts. Les blocs factices font
+// chacun un écran : #projets n'est pas en bas de page, le défilement vers l'ancre
+// dépend donc bien de scroll-margin-top.
+import SiteHeader from '../../components/SiteHeader.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+
+<BaseLayout
+  title="SiteHeader — Styleguide — Étendard"
+  description="Styleguide d’Étendard : en-tête collant et navigation par ancres."
+>
+  <SiteHeader slot="header" />
+  <section id="accueil" class="site-header-demo">
+    <h1>SiteHeader</h1>
+  </section>
+  <section id="projets" class="site-header-demo">
+    <h2>Projets</h2>
+  </section>
+  <div class="site-header-demo">
+    <p>Suite de la page : #projets peut défiler jusque sous le header.</p>
+  </div>
+</BaseLayout>
+
+<style>
+  /* Positionnés, comme des cartes le seront : le header doit rester au-dessus (z-index). */
+  .site-header-demo {
+    min-height: var(--min-height-below-header);
+    padding: var(--space-6) var(--space-4);
+    position: relative;
+  }
+</style>
