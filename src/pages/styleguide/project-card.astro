@@ -1,0 +1,52 @@
+---
+// ProjectCard dans chacun de ses états (ticket #14) : présentation (intro), puis carte de sous-unité.
+import ProjectCard from '../../components/ProjectCard.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getProjects } from '../../lib/projects';
+
+const states = (await getProjects()).flatMap(({ root, units }) => [
+  {
+    label: `Présentation (intro) ${root.data.title}`,
+    project: root,
+    intro: true,
+  },
+  ...units.map((project) => ({
+    label: `Carte ${project.data.title}`,
+    project,
+    intro: false,
+  })),
+]);
+---
+
+<BaseLayout
+  title="ProjectCard — Styleguide — Étendard"
+  description="Composant ProjectCard d’Étendard : la carte d’un projet."
+>
+  <div class="styleguide-project-card">
+    <h1>ProjectCard</h1>
+    {states.map((state, index) => (
+      <section
+        class="styleguide-project-card__state"
+        aria-labelledby={`etat-${index}`}
+      >
+        <h2 id={`etat-${index}`}>{state.label}</h2>
+        <ProjectCard project={state.project} intro={state.intro} />
+      </section>
+    ))}
+  </div>
+</BaseLayout>
+
+<style>
+  .styleguide-project-card {
+    display: grid;
+    gap: var(--space-6);
+    margin: 0 auto;
+    max-width: var(--content-max-width);
+    padding: var(--space-6) var(--space-4);
+  }
+
+  .styleguide-project-card__state {
+    display: grid;
+    gap: var(--space-4);
+  }
+</style>

@@ -1,0 +1,52 @@
+---
+// Carte d'un projet (ticket #14) : titre, résumé et corps Markdown de sa fiche.
+// `intro` : présentation sans cadre, pour le projet qui chapeaute ses sous-unités.
+import { render, type CollectionEntry } from 'astro:content';
+
+interface Props {
+  project: CollectionEntry<'projects'>;
+  intro?: boolean;
+}
+
+const { project, intro = false } = Astro.props;
+const { Content } = await render(project);
+---
+
+<article class:list={['project-card', { 'project-card--intro': intro }]}>
+  <h3>{project.data.title}</h3>
+  <p class="project-card__summary">{project.data.summary}</p>
+  <div class="project-card__body">
+    <Content />
+  </div>
+</article>
+
+<style>
+  .project-card {
+    background-color: var(--color-surface);
+    border-color: var(--color-border);
+    border-radius: var(--radius-lg);
+    border-style: solid;
+    border-width: var(--border-width);
+    box-shadow: var(--shadow-sm);
+    display: grid;
+    gap: var(--space-3);
+    padding: var(--space-5);
+  }
+
+  .project-card--intro {
+    background-color: transparent;
+    border-style: none;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  .project-card__summary {
+    font-size: var(--font-size-lg);
+  }
+
+  .project-card__body {
+    color: var(--color-text-muted);
+    display: grid;
+    gap: var(--space-3);
+  }
+</style>

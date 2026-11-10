@@ -1,0 +1,24 @@
+---
+// ProjectsSection telle qu'insérée dans la one page (ticket #14).
+import ProjectsSection from '../../components/ProjectsSection.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+
+<BaseLayout
+  title="ProjectsSection — Styleguide — Étendard"
+  description="Composant ProjectsSection d’Étendard : la section des projets."
+>
+  <h1 class="styleguide-projects-section">ProjectsSection</h1>
+  <section id="projets">
+    <ProjectsSection />
+  </section>
+</BaseLayout>
+
+<style>
+  /* Aligné sur le contenu centré de la section. */
+  .styleguide-projects-section {
+    margin: 0 auto;
+    max-width: var(--content-max-width);
+    padding: var(--space-6) var(--space-4) 0;
+  }
+</style>
