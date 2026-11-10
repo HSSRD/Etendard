@@ -2,7 +2,8 @@
  * Design tokens (ADR 0004) : seule source des valeurs visuelles du site.
  * Couleurs en light-dark() : le thème suit `color-scheme`, donc `prefers-color-scheme`,
  * sauf surcharge par `data-theme="light"|"dark"` (sur <html> ou sur un conteneur).
- * Les couleurs de fond sont reprises par les <meta name="theme-color"> de BaseLayout.
+ * Les couleurs de fond sont reprises par les <meta name="theme-color"> de BaseLayout,
+ * --color-accent et --color-surface (thème clair) par public/favicon.svg.
  */
 @layer tokens {
   :root {
