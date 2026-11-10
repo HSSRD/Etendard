@@ -19,6 +19,20 @@ const actualSuffix = '-actual.png';
 const root = fileURLToPath(new URL('..', import.meta.url));
 const template = config.snapshotPathTemplate;
 if (!template) throw new Error('snapshotPathTemplate absent.');
+const handled = [
+  'testDir',
+  'testFileDir',
+  'testFileName',
+  'arg',
+  'projectName',
+  'ext',
+];
+const tokenPattern = /\{(\w+)\}/g;
+for (const [token, key = ''] of template.matchAll(tokenPattern)) {
+  if (!handled.includes(key)) {
+    throw new Error(`snapshotPathTemplate : ${token} non géré.`);
+  }
+}
 
 /**
  * @typedef {{ name: string, path?: string }} Attachment
@@ -43,38 +57,38 @@ export const references = (resultsDir) => {
   const report = JSON.parse(
     readFileSync(path.join(resultsDir, 'rapport.json'), 'utf8'),
   );
-  return specsOf(report).flatMap(({ file, tests }) =>
+  const attachments = specsOf(report).flatMap(({ file, tests }) =>
     tests.flatMap(({ projectName, results }) =>
-      results.flatMap(({ attachments }) =>
-        attachments.flatMap(({ name, path: actual }) => {
-          if (!actual || !name.endsWith(actualSuffix)) return [];
-          /** @type {Record<string, string>} */
-          const tokens = {
-            testDir: root,
-            testFileDir: path.posix.dirname(file),
-            testFileName: path.posix.basename(file),
-            arg: name.slice(0, -actualSuffix.length),
-            projectName,
-            ext: '.png',
-          };
-          const to = template.replace(/\{(\w+)\}/g, (token, key) => {
-            const value = tokens[key];
-            if (value === undefined) {
-              throw new Error(`snapshotPathTemplate : ${token} non géré.`);
-            }
-            return value;
-          });
-          // Chemin absolu sur le runner : seule la partie sous test-results/ est dans l'artefact.
-          const [, inArtifact] = actual.split('/test-results/');
-          if (!inArtifact)
-            throw new Error(`${actual} : hors de test-results/.`);
-          return [
-            { from: path.join(resultsDir, inArtifact), to: path.normalize(to) },
-          ];
-        }),
+      results.flatMap((result) =>
+        result.attachments.map((attachment) => ({
+          ...attachment,
+          file,
+          projectName,
+        })),
       ),
     ),
   );
+  return attachments
+    .filter(({ name, path: actual }) => actual && name.endsWith(actualSuffix))
+    .map(({ name, path: actual = '', file, projectName }) => {
+      /** @type {Record<string, string>} */
+      const tokens = {
+        testDir: root,
+        testFileDir: path.posix.dirname(file),
+        testFileName: path.posix.basename(file),
+        arg: name.slice(0, -actualSuffix.length),
+        projectName,
+        ext: '.png',
+      };
+      const to = template.replace(tokenPattern, (_, key) => tokens[key] ?? '');
+      // Chemin absolu sur le runner : seule la partie sous test-results/ est dans l'artefact.
+      const [, inArtifact] = actual.split('/test-results/');
+      if (!inArtifact) throw new Error(`${actual} : hors de test-results/.`);
+      return {
+        from: path.join(resultsDir, inArtifact),
+        to: path.normalize(to),
+      };
+    });
 };
 
 if (import.meta.main) {
@@ -88,7 +102,7 @@ if (import.meta.main) {
   try {
     const download = spawnSync(
       'gh',
-      ['run', 'download', String(run), '--name', 'playwright', '--dir', dir],
+      ['run', 'download', run, '--name', 'playwright', '--dir', dir],
       { stdio: 'inherit' },
     );
     if (download.status !== 0) {
