@@ -1,0 +1,51 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Mises à jour des dépendances et des actions GitHub (ADR 0013).",
+  "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
+  "minimumReleaseAge": "3 days",
+  "vulnerabilityAlerts": {
+    "description": "Correctifs de sécurité : même délai de 3 jours (ADR 0013), que pnpm impose aussi (pnpm-workspace.yaml).",
+    "minimumReleaseAge": "3 days"
+  },
+  "packageRules": [
+    {
+      "description": "Mineures et correctifs regroupés, mergés automatiquement si la CI (pnpm verify) passe. Jamais les majeures, ni un simple changement d'empreinte.",
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "mineures et correctifs",
+      "automerge": true
+    },
+    {
+      "description": "Une mineure 0.x peut casser : PR séparée, merge humain.",
+      "matchUpdateTypes": ["minor"],
+      "matchCurrentVersion": "/^v?0\\./",
+      "groupName": null,
+      "automerge": false
+    },
+    {
+      "description": "Paquet et image des deux workflows (AGENTS.md) dans la même PR : une branche par version, créée seulement avec les trois mises à jour, une fois le délai passé. Merge humain : captures invalidées (ADR 0003).",
+      "matchPackageNames": ["@playwright/test", "mcr.microsoft.com/playwright"],
+      "groupName": "Playwright",
+      "groupSlug": "playwright-{{{newMajor}}}.{{{newMinor}}}.{{{newPatch}}}",
+      "minimumGroupSize": 3,
+      "automerge": false
+    },
+    {
+      "description": "Image Playwright : tags v1.2.3-noble, sans date de publication. Le délai est porté par @playwright/test.",
+      "matchPackageNames": ["mcr.microsoft.com/playwright"],
+      "versioning": "regex:^v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)-noble$",
+      "minimumReleaseAge": null
+    },
+    {
+      "description": "peerDependencies serrées (ADR 0001, ADR 0004) : PR séparées, merge humain.",
+      "matchPackageNames": ["typescript", "stylelint"],
+      "groupName": null,
+      "automerge": false
+    },
+    {
+      "description": "Majeures écartées par l'ADR 0001 et l'ADR 0004 : listées dans le tableau de bord, sans PR, jusqu'à leur approbation.",
+      "matchPackageNames": ["typescript", "stylelint"],
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    }
+  ]
+}
