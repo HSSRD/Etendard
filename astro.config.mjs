@@ -19,8 +19,6 @@ export default defineConfig({
   // infra/pi/Caddyfile s'en tient à style-src 'self' (ticket #25).
   build: { inlineStylesheets: 'never' },
   integrations: [styleguide],
-  vite: {
-    // Tests e2e : `astro preview` échoue si son port est pris au lieu d'en changer en silence.
-    preview: { strictPort: process.env.E2E_PORT !== undefined },
-  },
+  // Tests e2e : `astro preview` échoue si son port est pris au lieu d'en changer en silence.
+  vite: { preview: { strictPort: process.env.E2E_PORT !== undefined } },
 });
