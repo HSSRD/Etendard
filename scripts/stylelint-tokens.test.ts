@@ -17,6 +17,7 @@ test('signale chaque valeur en dur et chaque raccourci non vérifiable', async (
     'animation-duration: 1s;',
     'border: solid 2px var(--color-border);',
     'border-radius: 4px;',
+    'border-radius: 4px/8px;',
     'border-top: solid 2px var(--color-border);',
     'border-top-left-radius: 4px;',
     'border-top-width: 2px;',
@@ -55,4 +56,13 @@ test('accepte les tokens et les mots-clés admis', async () => {
   ]);
 
   expect(warnings).toEqual([]);
+});
+
+test('accepte les valeurs en dur de @font-face, où var() est invalide', async () => {
+  const { results } = await stylelint.lint({
+    code: "@font-face {\n  font-family: 'Inter';\n  font-weight: 100 900;\n}\n",
+    codeFilename: 'src/styles/fonts.css',
+  });
+
+  expect(results[0]?.warnings).toEqual([]);
 });
