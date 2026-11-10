@@ -118,6 +118,7 @@ Le dépôt contient une version générique de la politique, avec des valeurs `�
 | `deploy` | Environment `production` : envoie l'archive au Pi par le tailnet et vérifie la version servie | aucun droit GitHub |
 | `release` | publie la Release `deploy-<sha court>`, seulement si `deploy` a réussi | écriture du code (tags, Releases) |
 | `rollback` | seulement avec l'entrée `rollback` : revient à la version précédente | aucun droit GitHub |
+| `notify` | Environment `production`, dans tous les cas : envoie l'e-mail de résultat (#32) | lecture du code et des PR |
 
 La Release est publiée par un job séparé, après le déploiement : le job `build` exécute les scripts du repo et ne reçoit donc qu'un jeton en lecture.
 
@@ -131,6 +132,14 @@ gh workflow run deploy.yml -R HSSRD/Etendard --ref main -f rollback=true
 
 Pour revenir ensuite à la dernière version, relance le workflow sans cocher la case : le site est reconstruit depuis `main`, le Pi réactive la version qu'il a déjà, et la Release existante est gardée telle quelle.
 
+**E-mail de résultat (#32).** Le job `notify` s'exécute après chaque déploiement ou rollback, réussi ou non. [`scripts/deploy-notify.js`](../../scripts/deploy-notify.js) compose l'e-mail, puis `curl` l'envoie par l'API transactionnelle de Brevo. Objets possibles :
+
+- `✅ <branche de la PR> déployé — <sha court>` ;
+- `❌ <branche> : déploiement en échec, rollback effectué` (ou `, version précédente toujours servie`, ou `, version servie inconnue` si le Pi n'a pas répondu) ;
+- `↩️ Rollback manuel effectué — <sha servi>`, ou `❌ Rollback manuel en échec`.
+
+La branche est celle de la PR mergée ; sans PR (push direct), c'est le titre du commit. Le corps donne la PR, le SHA complet, la version servie par le Pi, le lien de l'exécution et celui de la Release. Un envoi raté, ou des secrets absents, laisse un avertissement dans le journal sans changer le résultat du déploiement. Pour voir l'e-mail sans l'envoyer : `GITHUB_REPOSITORY=HSSRD/Etendard GITHUB_SHA=<sha> DEPLOY_RESULT=success node scripts/deploy-notify.js --a-blanc`.
+
 **Vérification.** Tant que le site n'est pas public, elle passe par `status` et non par un test HTTPS de `version.txt` (écart temporaire à l'ADR 0006, levé à la mise en ligne).
 
 ### Les secrets de l'Environment `production`
@@ -143,6 +152,9 @@ L'Environment n'accepte que la branche `main` : un workflow lancé depuis une au
 | `TS_OAUTH_SECRET` | secret de ce client |
 | `DEPLOY_SSH_KEY` | clé privée `github-deploy`, sur le PC de Flo |
 | `DEPLOY_KNOWN_HOSTS` | clé d'hôte du Pi, au nom `florasp` utilisé par le workflow |
+| `BREVO_API_KEY` | clé API Brevo, limitée si possible à l'envoi d'e-mails transactionnels |
+| `NOTIFY_EMAIL_FROM` | adresse d'expéditeur, validée dans Brevo |
+| `NOTIFY_EMAIL_TO` | adresse qui reçoit l'e-mail de résultat |
 
 Pour les saisir ou les faire tourner, dans le bash de Git :
 
@@ -153,6 +165,14 @@ gh secret set DEPLOY_SSH_KEY     --env production -R HSSRD/Etendard < ~/.ssh/git
 ssh flo@192.168.1.41 cat /etc/ssh/ssh_host_ed25519_key.pub \
   | awk '{print "florasp", $1, $2}' \
   | gh secret set DEPLOY_KNOWN_HOSTS --env production -R HSSRD/Etendard
+```
+
+Les secrets Brevo se saisissent de la même façon, sans jamais écrire d'adresse dans le repo :
+
+```bash
+gh secret set BREVO_API_KEY     --env production -R HSSRD/Etendard   # colle la valeur
+gh secret set NOTIFY_EMAIL_FROM --env production -R HSSRD/Etendard   # colle la valeur
+gh secret set NOTIFY_EMAIL_TO   --env production -R HSSRD/Etendard   # colle la valeur
 ```
 
 La clé d'hôte est lue sur le Pi lui-même, par le réseau local, plutôt que par `ssh-keyscan`, qui accepterait la réponse de n'importe quelle machine. Le workflow vérifie l'empreinte (`StrictHostKeyChecking yes`) : si le Pi est réinstallé, il faut refaire la dernière commande.
