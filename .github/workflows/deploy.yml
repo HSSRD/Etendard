@@ -68,6 +68,7 @@ jobs:
     outputs:
       servi: ${{ steps.servi.outputs.sha }}
       rollback: ${{ steps.rollback.outputs.effectue }}
+      envoi: ${{ steps.envoi.outcome }}
     steps:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -106,6 +107,7 @@ jobs:
         id: before
         run: echo "sha=$(ssh florasp status || true)" >> "$GITHUB_OUTPUT"
       - name: Envoyer l'archive
+        id: envoi
         run: ssh florasp < etendard.tar.gz
       - name: Vérifier la version servie
         run: |
@@ -130,11 +132,12 @@ jobs:
             echo "effectue=true" >> "$GITHUB_OUTPUT"
             echo "servie après rollback : $(ssh florasp status)"
           fi
-      # Version servie en fin de job, reprise dans l'e-mail du job notify.
+      # Version servie en fin de job, reprise dans l'e-mail de résultat.
       - &servi
         name: Lire la version servie en fin de job
         id: servi
         if: always()
+        timeout-minutes: 1
         run: echo "sha=$(ssh florasp status || true)" >> "$GITHUB_OUTPUT"
 
   release:
@@ -207,6 +210,7 @@ jobs:
           ROLLBACK_RESULT: ${{ needs.rollback.result }}
           SERVI: ${{ needs.rollback.outputs.servi || needs.deploy.outputs.servi }}
           ROLLBACK_EFFECTUE: ${{ needs.deploy.outputs.rollback }}
+          ENVOI: ${{ needs.deploy.outputs.envoi }}
         run: |
           mail="$(node scripts/deploy-notify.js)"
           echo "Objet : $(jq -r .subject <<< "$mail")"
@@ -221,7 +225,7 @@ jobs:
     continue-on-error: true
     permissions: {}
     steps:
-      # Seuls l'objet et le texte sont repris ; jq ajoute les adresses sans les afficher.
+      # Seuls l'objet et le corps sont repris ; jq ajoute les adresses sans les afficher.
       - name: Envoyer l'e-mail par Brevo
         env:
           MAIL: ${{ needs.message.outputs.mail }}
@@ -237,11 +241,14 @@ jobs:
             echo "::warning::e-mail non envoyé : secrets Brevo absents de production"
             exit 0
           fi
-          code="$(jq --arg from "$NOTIFY_EMAIL_FROM" --arg to "$NOTIFY_EMAIL_TO" \
-              '{sender: {email: $from}, to: [{email: $to}], subject, textContent}' <<< "$MAIL" \
-            | curl -sS -o /dev/null -w '%{http_code}' --max-time 30 \
-              -H "api-key: $BREVO_API_KEY" -H 'content-type: application/json' \
-              --data @- https://api.brevo.com/v3/smtp/email)" || code="injoignable"
+          if ! payload="$(jq -e --arg from "$NOTIFY_EMAIL_FROM" --arg to "$NOTIFY_EMAIL_TO" \
+              '{sender: {email: $from}, to: [{email: $to}], subject, textContent, htmlContent}' <<< "$MAIL")"; then
+            echo "::warning::e-mail non envoyé : sortie du job message illisible"
+            exit 0
+          fi
+          code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 \
+            -H "api-key: $BREVO_API_KEY" -H 'content-type: application/json' \
+            --data @- https://api.brevo.com/v3/smtp/email <<< "$payload")" || code="injoignable"
           case "$code" in
             2??) echo "e-mail envoyé" ;;
             *) echo "::warning::e-mail non envoyé (Brevo : $code)" ;;

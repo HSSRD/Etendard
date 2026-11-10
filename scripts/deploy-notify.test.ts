@@ -17,6 +17,7 @@ const base = {
   },
   sha,
   servi: sha,
+  archiveEnvoyee: true,
   rollbackEffectue: false,
   pr: {
     titre: 'feat: ajouter les helpers',
@@ -59,8 +60,9 @@ describe('objet', () => {
 
   test('échec avant toute bascule : version précédente toujours servie', () => {
     const suffixe = ', version précédente toujours servie';
-    const build = { ...echec, deploy: 'skipped' };
-    expect(composer({ ...base, resultats: build, servi: '' }).subject).toBe(
+    // Build, empreinte ou tailnet en échec : l'archive n'est jamais partie.
+    const sansEnvoi = { ...base, servi: '', archiveEnvoyee: false };
+    expect(composer({ ...sansEnvoi, resultats: echec }).subject).toBe(
       `❌ issue-29-helpers-tests : déploiement en échec${suffixe}`,
     );
     expect(composer({ ...base, resultats: echec, servi: avant }).subject).toBe(
@@ -107,6 +109,13 @@ describe('objet', () => {
 });
 
 describe('corps', () => {
+  test('le corps HTML est le texte échappé', () => {
+    const pr = { ...base.pr, titre: '<script>&' };
+    expect(composer({ ...base, pr }).htmlContent).toMatch(
+      /^<pre>PR : &lt;script&gt;&amp; — /,
+    );
+  });
+
   test('PR, SHA complet, version servie, exécution et release', () => {
     expect(composer(base).textContent).toBe(
       [
@@ -142,7 +151,7 @@ test('une branche au nom piégé reste une donnée', () => {
   );
 });
 
-describe('script lancé par le job notify', () => {
+describe('script lancé par le job message', () => {
   const branche = 'x"; $(id)\nfin';
   const pulls = [
     {
@@ -156,6 +165,7 @@ describe('script lancé par le job notify', () => {
     args: string[],
     api404 = false,
     prs: unknown[] = pulls,
+    env: Record<string, string> = {},
   ) => {
     const api = createServer((requete, reponse) => {
       reponse.statusCode = api404 ? 404 : 200;
@@ -186,6 +196,8 @@ describe('script lancé par le job notify', () => {
             RELEASE_RESULT: 'success',
             ROLLBACK_RESULT: 'skipped',
             SERVI: sha,
+            ENVOI: 'success',
+            ...env,
           },
         },
       );
@@ -201,14 +213,46 @@ describe('script lancé par le job notify', () => {
   });
 
   test('API GitHub en erreur : l’e-mail part quand même', async () => {
-    const { subject } = JSON.parse(await lancer([], true));
+    const { subject, textContent } = JSON.parse(await lancer([], true));
     expect(subject).toBe('✅ a25e05f déployé — a25e05f');
+    expect(textContent).toContain('PR : non lue (API GitHub injoignable)');
   });
 
-  test('écrit l’objet et le texte en JSON', async () => {
+  test('rollback manuel : PR et SHA de la version désormais servie', async () => {
+    const { subject, textContent } = JSON.parse(
+      await lancer([], false, pulls, {
+        ROLLBACK: 'true',
+        DEPLOY_RESULT: 'skipped',
+        RELEASE_RESULT: 'skipped',
+        ROLLBACK_RESULT: 'success',
+        SERVI: avant,
+        ENVOI: '',
+      }),
+    );
+    expect(subject).toBe('↩️ Rollback manuel effectué — b36f16a');
+    expect(textContent).toContain(`Commit : ${avant}`);
+  });
+
+  test('échec avec rollback : sorties du job deploy lues', async () => {
+    const { subject, textContent } = JSON.parse(
+      await lancer([], false, pulls, {
+        DEPLOY_RESULT: 'failure',
+        RELEASE_RESULT: 'skipped',
+        ROLLBACK_EFFECTUE: 'true',
+        SERVI: 'ssh: connect to host florasp',
+      }),
+    );
+    expect(subject).toBe(
+      '❌ x"; $(id) fin : déploiement en échec, rollback effectué',
+    );
+    expect(textContent).toContain('Version servie par le Pi : inconnue');
+  });
+
+  test('écrit l’objet et le corps en JSON', async () => {
     expect(JSON.parse(await lancer([]))).toEqual({
       subject: '✅ x"; $(id) fin déployé — a25e05f',
       textContent: expect.stringContaining('PR : feat: $(id) — '),
+      htmlContent: expect.stringContaining('<pre>PR : feat: $(id) — '),
     });
   });
 

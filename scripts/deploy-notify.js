@@ -1,11 +1,13 @@
-// Compose l'e-mail envoyé par le job `notify` de deploy.yml (ticket #32).
-// Usage : node scripts/deploy-notify.js            → { subject, textContent } en JSON
+// Compose l'e-mail de résultat de deploy.yml (ticket #32), lancé par le job `message`.
+// Usage : node scripts/deploy-notify.js            → { subject, textContent, htmlContent } en JSON
 //         node scripts/deploy-notify.js --a-blanc  → l'e-mail lisible, sans envoi
 // Adresses, clé API et envoi (curl) restent dans le workflow : le script ne voit aucun secret.
 
 const court = (sha) => sha.slice(0, 7);
 // Un objet d'e-mail tient sur une ligne, quel que soit le nom de branche ou le titre reçu.
 const uneLigne = (texte) => texte.replace(/\s+/g, ' ').trim();
+const html = (texte) =>
+  texte.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 /**
  * @typedef {{ titre: string, url: string, branche: string }} PR
@@ -14,6 +16,7 @@ const uneLigne = (texte) => texte.replace(/\s+/g, ' ').trim();
  *   resultats: { deploy: string, release: string, rollback: string },
  *   sha: string,
  *   servi: string,
+ *   archiveEnvoyee: boolean,
  *   rollbackEffectue: boolean,
  *   pr: PR | null,
  *   titreCommit: string,
@@ -42,9 +45,8 @@ function objet(c) {
 /** @param {Contexte} c */
 function etatApresEchec(c) {
   if (c.rollbackEffectue) return 'rollback effectué';
-  // Build en échec : deploy n'a pas tourné, le Pi n'a rien reçu.
-  if (c.resultats.deploy === 'skipped')
-    return 'version précédente toujours servie';
+  // Échec avant l'envoi (build, empreinte, tailnet) : le Pi n'a rien reçu.
+  if (!c.archiveEnvoyee) return 'version précédente toujours servie';
   if (!c.servi) return 'version servie inconnue';
   if (c.servi === c.sha) return 'nouvelle version servie';
   return 'version précédente toujours servie';
@@ -55,7 +57,9 @@ export function composer(c) {
   const lignes = [
     c.pr
       ? `PR : ${uneLigne(c.pr.titre)} — ${c.pr.url}`
-      : `PR : aucune (commit : ${uneLigne(c.titreCommit) || 'titre inconnu'})`,
+      : c.titreCommit
+        ? `PR : aucune (commit : ${uneLigne(c.titreCommit)})`
+        : 'PR : non lue (API GitHub injoignable)',
     `Commit : ${c.sha || 'inconnu'}`,
     `Version servie par le Pi : ${c.servi || 'inconnue'}`,
     `Exécution : ${c.execution}`,
@@ -65,7 +69,13 @@ export function composer(c) {
   } else if (c.resultats.release === 'failure') {
     lignes.push('Release : publication en échec, voir l’exécution');
   }
-  return { subject: objet(c), textContent: `${lignes.join('\n')}\n` };
+  const texte = `${lignes.join('\n')}\n`;
+  // Brevo exige un corps HTML : le texte brut, simplement échappé.
+  return {
+    subject: objet(c),
+    textContent: texte,
+    htmlContent: `<pre>${html(texte)}</pre>`,
+  };
 }
 
 async function github(chemin) {
@@ -125,6 +135,7 @@ async function lireContexte() {
     },
     sha: sha ?? '',
     servi,
+    archiveEnvoyee: ['success', 'failure'].includes(env.ENVOI ?? ''),
     rollbackEffectue: env.ROLLBACK_EFFECTUE === 'true',
     pr,
     titreCommit,
