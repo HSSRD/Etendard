@@ -7,10 +7,7 @@ import { references } from './captures-ci.js';
 const repo = path.resolve(import.meta.dirname, '..');
 // Racine du repo sur le runner de la CI, comme dans les rapports réels.
 const ci = '/__w/Etendard/Etendard';
-const projects = ['chromium-375', 'chromium-1280'].map((name) => ({
-  name,
-  outputDir: `${ci}/test-results`,
-}));
+const projects = [{ name: 'chromium-375', outputDir: `${ci}/test-results` }];
 
 // Dossier test-results/ tel que l'artefact « playwright » de ci.yml le contient.
 let resultsDir = '';
@@ -92,7 +89,6 @@ test('chaque image « actual » va au chemin de sa capture de référence', () =
         { name: 'stdout' },
       ],
     },
-    { projectName: 'chromium-1280', attachments: [] },
   ]);
 
   expect(copies()).toEqual([

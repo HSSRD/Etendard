@@ -31,7 +31,7 @@ const specsOf = (suite) => [
 /** Chemin relatif sous `base`, ou erreur s'il en sort (chemins venus de l'artefact). */
 const inside = (/** @type {string} */ base, /** @type {string} */ file) => {
   const relative = path.posix.relative(base, file);
-  if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) {
+  if (!relative || relative.startsWith('..')) {
     throw new Error(`${file} : hors de ${base}.`);
   }
   return relative;
