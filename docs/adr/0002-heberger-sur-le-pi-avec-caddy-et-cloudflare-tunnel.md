@@ -13,7 +13,7 @@ Constat sur le Pi le 2026-11-07 (compte en lecture seule) : Raspberry Pi 4 Model
 
 - Héberger Étendard sur ce Pi. Flo prévoit de déplacer la caméra et Sentry sur un autre appareil : le Pi sera alors dédié à Étendard. **Ce déménagement doit précéder la mise en ligne publique.**
 - Après le déménagement, réinstaller le Pi : Raspberry Pi OS Lite 64 bits sur un nouveau support (SSD de préférence), préparé avec Raspberry Pi Imager (utilisateur, clé SSH, connexion par mot de passe désactivée). L'ancienne carte SD est conservée comme retour arrière. Date laissée à Flo.
-- **Caddy installé directement**, sous un utilisateur dédié, écoute uniquement sur `127.0.0.1:8080`. En-têtes : CSP stricte, HSTS, `nosniff`, `Referrer-Policy`, `Permissions-Policy`. Cache d'un an sur `/_astro/*`. Logs JSON avec rotation.
+- **Caddy installé directement**, sous un utilisateur dédié, écoute uniquement sur `127.0.0.1:8080`. En-têtes : CSP stricte, `nosniff`, `Referrer-Policy`, `Permissions-Policy` ; HSTS posé par Cloudflare, où se termine le HTTPS (#25). Cache d'un an sur `/_astro/*`. Logs JSON avec rotation.
 - **Cloudflare Tunnel** (`cloudflared`) pour l'exposition publique, dirigé vers `127.0.0.1:8080` uniquement : aucun port ouvert sur la box.
 - Durcissement : SSH par clé uniquement, pare-feu entrant par défaut en refus, mises à jour de sécurité automatiques.
 - Configuration du Pi en code : playbook Ansible dans un repo `HSSRD/infra` partagé avec Hussard.
@@ -44,4 +44,4 @@ Constat sur le Pi le 2026-11-07 (compte en lecture seule) : Raspberry Pi 4 Model
 
   Rien de cela ne vient d'Étendard, mais ces points sont à corriger avant d'exposer le Pi.
 - **Debian 12 n'est plus en support complet** depuis le 2026-07-11 ; il reste en LTS jusqu'au 2028-06-30 (debian.org). La réinstallation prévue règle l'OS, l'usure de la carte SD et la surface d'attaque du bureau ; un câble Ethernet améliorerait aussi la disponibilité.
-- **CSP stricte et Astro** : Astro produit des scripts et styles en ligne (hydratation des îles). Une CSP fixe dans Caddy sans `unsafe-inline` les bloquerait. L'option `security.csp` d'Astro (stable depuis la 6.0) calcule des hashes au build. À articuler au scaffolding avec les en-têtes Caddy et le script de Cloudflare Web Analytics.
+- **CSP stricte et Astro** : Astro produit des scripts et styles en ligne (hydratation des îles). Une CSP fixe dans Caddy sans `unsafe-inline` les bloquerait. L'option `security.csp` d'Astro (stable depuis la 6.0) calcule des hashes au build. Retenu au #25 : le site n'envoie aucun script et Astro écrit son CSS en fichiers (`inlineStylesheets: 'never'`), d'où une CSP fixe dans le `Caddyfile` (`style-src 'self'`), sans hash ni `unsafe-inline`. À revoir avec la première île et le script de Cloudflare Web Analytics.

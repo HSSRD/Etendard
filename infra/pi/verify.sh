@@ -52,15 +52,17 @@ mode_pi() {
   title "Ticket #25 — en-têtes de sécurité et journal d'accès"
   check "Caddyfile installé, identique au repo" '^ok$' sh -c "cmp /etc/caddy/Caddyfile '$HERE/Caddyfile' && echo ok"
   # Une page servie et une erreur 404 : les en-têtes doivent être sur chaque réponse.
-  local url
-  for url in http://127.0.0.1:8080/ http://127.0.0.1:8080/absente-verify-sh; do
+  # Chemin propre à ce passage : sa ligne dans le journal ne peut venir que de lui.
+  local url absent="/absente-verify-sh-$(date +%s)"
+  for url in http://127.0.0.1:8080/ "http://127.0.0.1:8080$absent"; do
     check "CSP sur $url" "^Content-Security-Policy: default-src 'none';.*frame-ancestors 'none'" header "$url" Content-Security-Policy
-    check "nosniff" '^X-Content-Type-Options: nosniff$' header "$url" X-Content-Type-Options
-    check "Referrer-Policy" '^Referrer-Policy: .+' header "$url" Referrer-Policy
-    check "Permissions-Policy" '^Permissions-Policy: .+' header "$url" Permissions-Policy
+    check "nosniff sur $url" '^X-Content-Type-Options: nosniff$' header "$url" X-Content-Type-Options
+    check "Referrer-Policy sur $url" '^Referrer-Policy: .+' header "$url" Referrer-Policy
+    check "Permissions-Policy sur $url" '^Permissions-Policy: .+' header "$url" Permissions-Policy
   done
   local log=/var/log/caddy/etendard-access.log
-  check "journal d'accès JSON, avec la requête précédente" '^\{.*"logger":"http\.log\.access.*"uri":"/absente-verify-sh"' tail -n 1 "$log"
+  # grep plutôt que tail : d'autres visites peuvent s'être intercalées.
+  check "journal d'accès JSON, avec la requête $absent" '^\{.*"logger":"http\.log\.access' grep -F "\"uri\":\"$absent\"" "$log"
   check "journal à l'utilisateur caddy" '^caddy:caddy ' stat -c '%U:%G %a %n' "$log"
 
   title "Critère 2 — utilisateur deploy"

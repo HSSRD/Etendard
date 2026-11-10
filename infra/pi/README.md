@@ -9,7 +9,7 @@ Ce qui est en place et pourquoi : [FONCTIONNEMENT.md](FONCTIONNEMENT.md). Ce REA
 | `install.sh` | Installation root, idempotente : Caddy, utilisateur `deploy`, `/srv/etendard`, `etendard-receive`, clé à commande forcée |
 | `Caddyfile` | Caddy sur `127.0.0.1:8080` uniquement, racine `/srv/etendard/current`, en-têtes de sécurité, journal d'accès |
 | `etendard-receive` | Seule commande de la clé de déploiement : réception (stdin), `rollback`, `status` |
-| `verify.sh` | Preuves des critères 1 à 5 |
+| `verify.sh` | Preuves des critères 1 à 5 du ticket #4, des en-têtes et du journal (#25) |
 | `tailscale-policy.hujson`, `tailscale-checklist.md` | Critères 6 et 7 |
 | `test/etendard-receive.test.sh` | Tests locaux du script (archives saines et piégées) |
 
@@ -20,13 +20,13 @@ Ce qui est en place et pourquoi : [FONCTIONNEMENT.md](FONCTIONNEMENT.md). Ce REA
    ```bash
    ssh-keygen -t ed25519 -N '' -C github-deploy -f ~/.ssh/github-deploy
    ```
-3. **Copier ce dossier et la clé publique sur le Pi**, puis installer :
+3. **Copier ce dossier et la clé publique sur le Pi**, puis installer (à refaire après chaque modification de ce dossier, `Caddyfile` compris, car `deploy.yml` ne livre que le site) :
    ```bash
    tar -czf - -C infra/pi . | ssh flo@192.168.1.41 "mkdir -p etendard-pi && tar -xzf - -C etendard-pi"
    scp ~/.ssh/github-deploy.pub flo@192.168.1.41:etendard-pi/
    ssh -t flo@192.168.1.41 'cd ~/etendard-pi && sudo bash install.sh github-deploy.pub'
    ```
-4. **Preuves côté Pi** (critères 1 à 3, verrou, Sentry intact) :
+4. **Preuves côté Pi** (critères 1 à 3, verrou, en-têtes et journal, Sentry intact) :
    ```bash
    ssh -t flo@192.168.1.41 'cd ~/etendard-pi && sudo bash verify.sh pi'
    ```
