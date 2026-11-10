@@ -41,7 +41,11 @@ const widths = [375, 768, 1280];
 export default defineConfig({
   testMatch: ['src/**/*.spec.ts', 'tests/**/*.spec.ts'],
   forbidOnly: ci,
-  reporter: ci ? 'github' : 'list',
+  // En CI, rapport.json va dans test-results/, donc dans l'artefact « playwright » de ci.yml :
+  // pnpm captures:ci y lit le fichier de test et le projet de chaque capture en écart.
+  reporter: ci
+    ? [['github'], ['json', { outputFile: 'test-results/rapport.json' }]]
+    : 'list',
   ignoreSnapshots: !inPlaywrightImage,
   snapshotPathTemplate:
     '{testDir}/{testFileDir}/__captures__/{testFileName}/{arg}-{projectName}{ext}',

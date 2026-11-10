@@ -4,10 +4,8 @@
 import { spawnSync } from 'node:child_process';
 import {
   copyFileSync,
-  existsSync,
   mkdirSync,
   mkdtempSync,
-  readdirSync,
   readFileSync,
   rmSync,
 } from 'node:fs';
@@ -16,63 +14,67 @@ import path from 'node:path';
 import config from '../playwright.config.ts';
 
 const actualSuffix = '-actual.png';
+const template = config.snapshotPathTemplate;
+if (!template) throw new Error('snapshotPathTemplate absent.');
+
+/**
+ * @typedef {{ name: string, path?: string }} Attachment
+ * @typedef {{ file: string, tests: { projectName: string, results: { attachments: Attachment[] }[] }[] }} Spec
+ * @typedef {{ suites?: Suite[], specs?: Spec[] }} Suite
+ */
+
+/** @param {Suite} suite @returns {Spec[]} */
+const specsOf = (suite) => [
+  ...(suite.specs ?? []),
+  ...(suite.suites ?? []).flatMap(specsOf),
+];
 
 /**
  * Associe chaque image « actual » d'un dossier test-results/ au chemin de sa capture de
- * référence, selon le snapshotPathTemplate de playwright.config.ts. Playwright tronque le nom
- * des dossiers de résultats : le fichier de test est lu dans leur error-context.md, le projet
- * dans leur suffixe.
+ * référence, selon le snapshotPathTemplate de playwright.config.ts. Le fichier de test et le
+ * projet viennent du rapport JSON que Playwright écrit en CI (rapport.json).
  * @param {string} resultsDir
  */
-export const references = (resultsDir) =>
-  readdirSync(resultsDir, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .flatMap(({ name: folder }) => {
-      const dir = path.join(resultsDir, folder);
-      const images = readdirSync(dir).filter((file) =>
-        file.endsWith(actualSuffix),
-      );
-      if (images.length === 0) return [];
-
-      const project = config.projects
-        ?.map(({ name }) => name)
-        .find((name) => folder.endsWith(`-${name}`));
-      if (!project) throw new Error(`${folder} : projet introuvable.`);
-      const context = path.join(dir, 'error-context.md');
-      const location = existsSync(context)
-        ? readFileSync(context, 'utf8').match(
-            /^- Location: (.+):\d+:\d+$/m,
-          )?.[1]
-        : undefined;
-      if (!location)
-        throw new Error(`${folder} : fichier de test introuvable.`);
-
-      return images.map((image) => {
-        const tokens = {
-          testDir: '.',
-          testFileDir: path.posix.dirname(location),
-          testFileName: path.posix.basename(location),
-          arg: image.slice(0, -actualSuffix.length),
-          projectName: project,
-          ext: '.png',
-        };
-        const to = config.snapshotPathTemplate?.replace(
-          /\{(\w+)\}/g,
-          (token, key) => {
-            if (!(key in tokens)) {
+export const references = (resultsDir) => {
+  /** @type {Suite} */
+  const report = JSON.parse(
+    readFileSync(path.join(resultsDir, 'rapport.json'), 'utf8'),
+  );
+  return specsOf(report).flatMap(({ file, tests }) =>
+    tests.flatMap(({ projectName, results }) =>
+      results.flatMap(({ attachments }) =>
+        attachments.flatMap(({ name, path: actual }) => {
+          if (!actual || !name.endsWith(actualSuffix)) return [];
+          /** @type {Record<string, string>} */
+          const tokens = {
+            testDir: '.',
+            testFileDir: path.posix.dirname(file),
+            testFileName: path.posix.basename(file),
+            arg: name.slice(0, -actualSuffix.length),
+            projectName,
+            ext: '.png',
+          };
+          const to = template.replace(/\{(\w+)\}/g, (token, key) => {
+            const value = tokens[key];
+            if (value === undefined) {
               throw new Error(`snapshotPathTemplate : ${token} non géré.`);
             }
-            return tokens[/** @type {keyof typeof tokens} */ (key)];
-          },
-        );
-        if (!to) throw new Error('snapshotPathTemplate absent.');
-        return { from: path.join(dir, image), to: path.normalize(to) };
-      });
-    });
+            return value;
+          });
+          // Chemin absolu sur le runner : seule la partie sous test-results/ est dans l'artefact.
+          const inArtifact = actual.split('/test-results/').at(-1) ?? '';
+          return [
+            { from: path.join(resultsDir, inArtifact), to: path.normalize(to) },
+          ];
+        }),
+      ),
+    ),
+  );
+};
 
 if (import.meta.main) {
   const run = process.argv[2];
-  if (!run || !/^\d+$/.test(run)) {
+  if (!/^\d+$/.test(run ?? '')) {
     console.error('Usage : pnpm captures:ci <id du run ci.yml en échec>');
     process.exit(1);
   }
@@ -81,10 +83,10 @@ if (import.meta.main) {
   try {
     const download = spawnSync(
       'gh',
-      ['run', 'download', run, '--name', 'playwright', '--dir', dir],
+      ['run', 'download', String(run), '--name', 'playwright', '--dir', dir],
       { stdio: 'inherit' },
     );
-    if (download.error || download.status !== 0) {
+    if (download.status !== 0) {
       throw new Error(
         `artefact « playwright » du run ${run} introuvable (gh installé et connecté ? run en échec de moins de 7 jours ?).`,
       );
