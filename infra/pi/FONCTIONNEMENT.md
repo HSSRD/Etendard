@@ -72,9 +72,9 @@ La CSP n'est écrite que dans le `Caddyfile`. `tests/csp.spec.ts` l'y lit, sert 
 
 Caddy écrit chaque requête, en JSON, dans `/var/log/caddy/etendard-access.log`. À 10 Mio, le fichier est renommé et compressé ; Caddy garde les 4 derniers. Le journal occupe donc au plus 50 Mio sur la carte SD. Il appartient à l'utilisateur `caddy`, sous lequel tourne le service : `install.sh` lui rend le dossier après `caddy validate`, qui, lancé en root, crée le fichier s'il n'existe pas.
 
-Le journal contient l'adresse IP des visiteurs et les en-têtes de leurs requêtes ; Caddy supprime les fichiers archivés au bout de 90 jours (sa valeur par défaut). Derrière Cloudflare Tunnel, l'IP enregistrée sera `127.0.0.1` et la vraie dans l'en-tête `Cf-Connecting-Ip` : à régler avec la mise en ligne.
+Le journal contient l'adresse IP des visiteurs et les en-têtes de leurs requêtes ; Caddy supprime un fichier archivé 90 jours après son archivage (sa valeur par défaut). L'archivage n'ayant lieu qu'à 10 Mio, une ligne peut rester bien plus longtemps sur un site peu visité. Derrière Cloudflare Tunnel, l'IP enregistrée sera `127.0.0.1` et la vraie dans l'en-tête `Cf-Connecting-Ip` : à régler avec la mise en ligne.
 
-Pour le lire : `sudo tail -f /var/log/caddy/etendard-access.log`.
+Pour le lire : `sudo tail -F /var/log/caddy/etendard-access.log`.
 
 ### L'utilisateur `deploy`
 

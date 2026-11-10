@@ -12,7 +12,7 @@ http://:8080 {
 	file_server
 
 	# En-têtes de sécurité, expliqués dans FONCTIONNEMENT.md. HSTS est posé par Cloudflare.
-	# tests/csp.spec.ts lit la CSP ici même et sert la page avec : garde-la sur une ligne.
+	# tests/csp.spec.ts (la CSP) et verify.sh (tous) les lisent ici : un par ligne, valeur entre guillemets.
 	header {
 		Content-Security-Policy "default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 		X-Content-Type-Options "nosniff"
