@@ -46,3 +46,4 @@ L'image Docker de `ci.yml`, de `deploy.yml` et de `pnpm captures:maj` suit la ve
 Renovate (`renovate.json`, ADR 0013) le fait dans sa PR « Playwright » :
 régénère les captures dans sa branche (`pnpm captures:maj`) et commite-les ; le merge reste humain.
 Si Renovate recrée ensuite la branche (rebase), ce commit disparaît : relance `pnpm captures:maj`.
+Une version plus récente arrive dans une nouvelle PR : ferme l'ancienne et refais-y les captures.
