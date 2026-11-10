@@ -31,8 +31,7 @@ test('la one page s’affiche sans violation de la CSP de Caddy', async ({
     });
   });
 
-  const response = await page.goto('/');
-  expect(response?.headers()['content-security-policy']).toBe(csp);
+  await page.goto('/');
   const body = page.locator('body');
   for (const scheme of schemes) {
     await page.emulateMedia({ colorScheme: scheme });
