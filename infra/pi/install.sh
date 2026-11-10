@@ -90,6 +90,10 @@ if ! dpkg -s caddy >/dev/null 2>&1; then
 fi
 caddy version
 caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+# Journal d'accès (directive log du Caddyfile) : à l'utilisateur caddy, sous lequel tourne le
+# service. validate, lancé en root, vient de l'ouvrir et l'a créé s'il n'existait pas.
+install -d -m 750 /var/log/caddy
+chown -R caddy:caddy /var/log/caddy
 
 step "Service caddy (démarrage au boot)"
 systemctl enable caddy

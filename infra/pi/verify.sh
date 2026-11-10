@@ -1,6 +1,6 @@
 #!/bin/bash
-# Produit les preuves des critères 1 à 5 du ticket #4, à coller en commentaire.
-#   sudo bash verify.sh pi      sur le Pi, après install.sh (critères 1, 2, 3 et verrou)
+# Produit les preuves des critères 1 à 5 du ticket #4, à coller en commentaire, et du critère 4 du ticket #25.
+#   sudo bash verify.sh pi      sur le Pi, après install.sh (critères 1, 2, 3 et verrou ; en-têtes et journal)
 #   bash verify.sh ssh          sur le PC, avec la clé privée (critères 1, 4 et 5)
 # Variables du mode ssh : KEY (clé privée, défaut ~/.ssh/github-deploy),
 # HOST (défaut florasp), FLO (défaut flo@192.168.1.41), LAN_IP (défaut 192.168.1.41).
@@ -29,6 +29,16 @@ probe() {
 check() { probe attendu "$@"; }
 refute() { probe interdit "$@"; }
 
+# header <url> <nom> : affiche l'en-tête servi, puis « conforme » s'il est identique à celui du
+# Caddyfile de ce dossier (une config modifiée mais pas rechargée ne l'est pas).
+header() {
+  local got want
+  got="$(curl -sSI "$1" | tr -d '\r' | grep -i "^$2:")"
+  want="$(sed -n "s|^[[:space:]]*$2 \"\(.*\)\"$|$2: \1|p" "$HERE/Caddyfile")"
+  echo "$got"
+  [ -n "$want" ] && [ "$got" = "$want" ] && echo conforme
+}
+
 title() { printf '\n### %s\n\n' "$*"; }
 
 mode_pi() {
@@ -45,6 +55,21 @@ mode_pi() {
   check "racine /srv/etendard/current" 'root \* /srv/etendard/current' grep -n root /etc/caddy/Caddyfile
   check "sert le site en local" '^HTTP/1.1 (200|404)' curl -sSI http://127.0.0.1:8080/
   refute "injoignable par l'adresse LAN" '^HTTP' curl -sSI --connect-timeout 3 "http://$(hostname -I | cut -d' ' -f1):8080/"
+
+  title "Ticket #25 — en-têtes de sécurité et journal d'accès"
+  check "Caddyfile installé, identique à celui de ce dossier" '^ok$' sh -c "cmp /etc/caddy/Caddyfile '$HERE/Caddyfile' && echo ok"
+  # Une page servie et une erreur 404 : les en-têtes doivent être sur chaque réponse.
+  # Chemin propre à ce passage : sa ligne dans le journal ne peut venir que de lui.
+  local url name absent="/absente-verify-sh-$(date +%s)"
+  for url in http://127.0.0.1:8080/ "http://127.0.0.1:8080$absent"; do
+    for name in Content-Security-Policy X-Content-Type-Options Referrer-Policy Permissions-Policy; do
+      check "$name sur $url, conforme au Caddyfile" '^conforme$' header "$url" "$name"
+    done
+  done
+  local log=/var/log/caddy/etendard-access.log
+  # grep plutôt que tail : d'autres visites peuvent s'être intercalées.
+  check "journal d'accès JSON, avec la requête $absent" '^\{.*"logger":"http\.log\.access' grep -F "\"uri\":\"$absent\"" "$log"
+  check "journal à l'utilisateur caddy" '^caddy:caddy ' stat -c '%U:%G %a %n' "$log"
 
   title "Critère 2 — utilisateur deploy"
   check "utilisateur deploy, sans groupe secondaire" '^uid=[0-9]+\(deploy\) gid=[0-9]+\(deploy\) groups=[0-9]+\(deploy\)$' id deploy

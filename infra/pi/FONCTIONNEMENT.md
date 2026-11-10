@@ -43,6 +43,39 @@ Caddy lit les fichiers de `/srv/etendard/current` et les renvoie au navigateur. 
 - **`admin off` et `auto_https off`.** Par défaut, Caddy ouvre aussi une API d'administration (port 2019) et des écoutes sur les ports 80 et 443. Ces options les suppriment. En contrepartie, un changement de configuration s'applique par `systemctl restart caddy` : `reload` ne fonctionne plus.
 - **Le paquet vient du dépôt apt officiel de Caddy.** Le `Caddyfile` est écrit *avant* l'installation, pour que Caddy ne démarre jamais avec la configuration par défaut du paquet (qui écoute sur le port 80 de toutes les interfaces).
 
+#### Les en-têtes de sécurité (#25)
+
+Caddy les ajoute à chaque réponse, pages d'erreur comprises :
+
+| En-tête | Valeur | Ce qu'il empêche |
+|---|---|---|
+| `Content-Security-Policy` | voir ci-dessous | qu'un contenu injecté dans la page (script, style, formulaire) soit exécuté ou envoyé ailleurs |
+| `X-Content-Type-Options` | `nosniff` | que le navigateur devine le type d'un fichier et exécute comme script ce qui n'en est pas un |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` | qu'un site lié (GitHub) reçoive l'adresse complète de la page : il ne voit que le domaine |
+| `Permissions-Policy` | chaque fonction listée, coupée : `camera=()`… | que la page, ou un contenu injecté, demande l'accès à la caméra, à la position, au micro, au paiement ou à l'USB |
+
+La CSP, directive par directive :
+
+- `default-src 'none'` : tout est interdit par défaut, scripts compris. Le site n'envoie aucun JavaScript ;
+- `style-src 'self'` : seulement les feuilles de style du site. Astro les écrit dans des fichiers `/_astro/*.css` et non dans un `<style>` de la page (`astro.config.mjs`), ce qui évite `'unsafe-inline'` ;
+- `img-src 'self'` : seulement les images du site ;
+- `base-uri 'none'` et `form-action 'none'` : pas de `<base>` qui détournerait les liens, ni de formulaire qui enverrait des données ;
+- `frame-ancestors 'none'` : aucun site ne peut afficher Étendard dans un cadre (protection contre le *clickjacking*).
+
+La CSP n'est écrite que dans le `Caddyfile`. `tests/csp.spec.ts` l'y lit, sert la one page avec, et échoue si le navigateur bloque une ressource au chargement ou si les styles ne s'appliquent pas. Une nouvelle ressource (police, image externe, Cloudflare Web Analytics) se déclare donc d'abord dans le `Caddyfile`, et `pnpm verify` le rappelle. Le test ne voit que la page servie par le Pi : ce que Cloudflare injecterait en route (analytics, détection de bots) sera à autoriser avec la mise en ligne.
+
+**Le `Caddyfile` ne part pas avec le site.** `deploy.yml` ne livre que les fichiers du site ; le `Caddyfile` s'applique en relançant `install.sh` sur le Pi (étape 3 du [README](README.md)). Une PR qui change la CSP pour une nouvelle ressource doit donc être appliquée sur le Pi au moment du merge, sinon le Pi bloque cette ressource. `verify.sh pi` compare le `Caddyfile` installé et les en-têtes servis à la copie du dossier copié sur le Pi : il ne voit l'écart avec le repo que si ce dossier a été recopié.
+
+**HSTS est posé par Cloudflare, pas par Caddy.** HSTS engage tout le domaine en HTTPS ; c'est Cloudflare qui détient ce domaine et son certificat, et le HTTPS des visiteurs s'y termine (ADR 0002). Cloudflare répond aussi seul, par exemple avec sa page d'erreur quand le Pi est éteint : un HSTS posé par Caddy y manquerait. Il s'active dans le tableau de bord Cloudflare (SSL/TLS > Edge Certificates > HSTS), avec la mise en ligne et le domaine.
+
+#### Le journal d'accès
+
+Caddy écrit chaque requête, en JSON, dans `/var/log/caddy/etendard-access.log`. À 10 Mio, le fichier est renommé et compressé ; Caddy garde les 4 derniers. Le journal occupe donc au plus 50 Mio sur la carte SD. Il appartient à l'utilisateur `caddy`, sous lequel tourne le service : `install.sh` lui rend le dossier après `caddy validate`, qui, lancé en root, crée le fichier s'il n'existe pas.
+
+Le journal contient l'adresse IP des visiteurs et les en-têtes de leurs requêtes ; Caddy supprime un fichier archivé 90 jours après son archivage (sa valeur par défaut). L'archivage n'ayant lieu qu'à 10 Mio, une ligne peut rester bien plus longtemps sur un site peu visité. Derrière Cloudflare Tunnel, l'IP enregistrée sera `127.0.0.1` et la vraie dans l'en-tête `Cf-Connecting-Ip` : à régler avec la mise en ligne.
+
+Pour le lire : `sudo tail -F /var/log/caddy/etendard-access.log`.
+
 ### L'utilisateur `deploy`
 
 - **Mot de passe `*`** : aucun mot de passe ne peut correspondre, mais la connexion par clé reste possible. Avec `!`, `sshd` pourrait considérer le compte comme verrouillé, et la clé serait refusée.
