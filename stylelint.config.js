@@ -26,6 +26,15 @@ const strictProperties = [
   '/^(top|right|bottom|left)$/',
   '/^(grid-)?(row-|column-)?gap$/',
   'font-size',
+  'font-family',
+  'font-weight',
+  'line-height',
+  '/^border(-[a-z]+)*-radius$/',
+  '/^border(-[a-z]+)*-width$/',
+  'outline-width',
+  'outline-offset',
+  '/^(transition|animation)-(duration|delay)$/',
+  'z-index',
 ];
 
 /** @type {import('stylelint').Config} */
