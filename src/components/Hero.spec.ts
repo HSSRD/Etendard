@@ -1,5 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
-import { expectNoAxeViolations, schemes } from '../../tests/helpers';
+import {
+  expectNoAxeViolations,
+  schemes,
+  themeBackground,
+} from '../../tests/helpers';
 
 /** Aucun défilement horizontal à la largeur du projet (375 px compris). */
 const expectNoHorizontalScroll = async (page: Page) => {
@@ -11,11 +15,128 @@ const expectNoHorizontalScroll = async (page: Page) => {
   expect(overflow).toBeLessThanOrEqual(0);
 };
 
+test('Hero : vidéo de fond décorative, muette, en boucle, qui couvre la section', async ({
+  page,
+}) => {
+  await page.goto('/styleguide/hero');
+
+  const video = page.locator('.hero__video');
+  for (const attribute of ['autoplay', 'muted', 'loop', 'playsinline']) {
+    await expect(video).toHaveAttribute(attribute, '');
+  }
+  await expect(video).toHaveAttribute('preload', 'metadata');
+  await expect(video).toHaveAttribute('poster', '/accueil/bienvenue.avif');
+  await expect(video).toHaveAttribute('aria-hidden', 'true');
+  await expect(video).not.toHaveAttribute('controls');
+  const sources = await video
+    .locator('source')
+    .evaluateAll((elements) =>
+      elements.map((source) => [
+        source.getAttribute('src'),
+        source.getAttribute('type'),
+      ]),
+    );
+  expect(sources).toEqual([
+    ['/accueil/bienvenue.webm', 'video/webm'],
+    ['/accueil/bienvenue.mp4', 'video/mp4'],
+  ]);
+
+  // Budgets du ticket #22 : 3 Mo par vidéo, 150 Ko pour le poster.
+  for (const [path, budget] of [
+    ['/accueil/bienvenue.webm', 3_000_000],
+    ['/accueil/bienvenue.mp4', 3_000_000],
+    ['/accueil/bienvenue.avif', 150_000],
+  ] as const) {
+    const response = await page.request.get(path);
+    expect(response.ok()).toBe(true);
+    expect((await response.body()).length).toBeLessThanOrEqual(budget);
+  }
+
+  // Lecture automatique, muette et en boucle de la source WebM.
+  await expect
+    .poll(() =>
+      video.evaluate((element: HTMLVideoElement) => ({
+        playing: !element.paused && element.currentTime > 0,
+        muted: element.muted,
+        loop: element.loop,
+        source: new URL(element.currentSrc).pathname,
+      })),
+    )
+    .toEqual({
+      playing: true,
+      muted: true,
+      loop: true,
+      source: '/accueil/bienvenue.webm',
+    });
+
+  // Cadrage : la vidéo occupe toute la section, recadrée sans déformation.
+  const [videoBox, heroBox] = await Promise.all([
+    video.boundingBox(),
+    page.locator('.hero').boundingBox(),
+  ]);
+  expect(videoBox).toEqual(heroBox);
+  await expect(video).toHaveCSS('object-fit', 'cover');
+  await expectNoHorizontalScroll(page);
+});
+
+test('Hero, mouvement réduit : la vidéo n’est pas chargée, seul le poster s’affiche', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/styleguide/hero');
+
+  const video = page.locator('.hero__video');
+  await expect(video).toBeVisible();
+  // Aucune source ne s'applique : NETWORK_NO_SOURCE, rien n'est lu ni téléchargé.
+  await expect
+    .poll(() =>
+      video.evaluate((element: HTMLVideoElement) => ({
+        source: element.currentSrc,
+        network: element.networkState,
+        paused: element.paused,
+      })),
+    )
+    .toEqual({ source: '', network: 3, paused: true });
+});
+
 for (const scheme of schemes) {
-  test(`Hero, thème ${scheme} : contenu, accessibilité et capture`, async ({
+  test(`Hero, thème ${scheme} : toujours sombre, fondu vers le fond de la page`, async ({
     page,
   }) => {
     await page.emulateMedia({ colorScheme: scheme });
+    await page.goto('/styleguide/hero');
+
+    // Contenu en thème sombre quel que soit le thème de la page.
+    await page.locator('body').evaluate((body) => {
+      body.dataset['theme'] = 'dark';
+    });
+    const darkText = await page
+      .locator('body')
+      .evaluate((body) => getComputedStyle(body).color);
+    await page.locator('body').evaluate((body) => {
+      delete body.dataset['theme'];
+    });
+    await expect(page.locator('.hero__content')).toHaveCSS('color', darkText);
+    await expect(page.locator('.hero')).toHaveCSS(
+      'background-color',
+      'rgb(0, 0, 0)',
+    );
+
+    // Bas de la section fondu dans le fond de la page, du thème de la page.
+    const fade = await page
+      .locator('.hero')
+      .evaluate((hero) => getComputedStyle(hero, '::after').backgroundImage);
+    expect(fade).toContain(
+      `linear-gradient(rgba(0, 0, 0, 0) 70%, ${await themeBackground(page, scheme)})`,
+    );
+    expect(fade).toContain('radial-gradient(');
+  });
+
+  test(`Hero, thème ${scheme} : contenu, accessibilité et capture`, async ({
+    page,
+  }) => {
+    // Mouvement réduit : la vidéo reste figée sur le poster, les captures sont stables.
+    await page.emulateMedia({ colorScheme: scheme, reducedMotion: 'reduce' });
     await page.goto('/styleguide/hero');
 
     const hero = page.locator('.hero');
