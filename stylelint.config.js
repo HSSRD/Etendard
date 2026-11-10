@@ -12,7 +12,7 @@ const bemSelector = (fileName) => {
   );
 };
 
-// Les raccourcis (background, border, outline…) sont développés puis vérifiés.
+// Les raccourcis autorisés (background, margin…) sont développés puis vérifiés.
 const strictProperties = [
   '/color$/',
   'fill',
@@ -81,7 +81,11 @@ export default {
         'font',
         'text-decoration',
         '-webkit-text-stroke',
-        '/^border-(block|inline)(-start|-end)?$/',
+        // Développés par position : `border: solid 2px` ou `transition: a 1s, b 2s` passeraient.
+        '/^border(-(top|right|bottom|left)|-(block|inline)(-start|-end)?)?$/',
+        'outline',
+        'transition',
+        'animation',
       ],
       { message: (p) => `« ${p} » : utilise les propriétés détaillées.` },
     ],
