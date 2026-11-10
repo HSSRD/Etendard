@@ -215,7 +215,7 @@ describe('script lancé par le job message', () => {
   test('API GitHub en erreur : l’e-mail part quand même', async () => {
     const { subject, textContent } = JSON.parse(await lancer([], true));
     expect(subject).toBe('✅ a25e05f déployé — a25e05f');
-    expect(textContent).toContain('PR : non lue (API GitHub injoignable)');
+    expect(textContent).toContain('PR : non lue');
   });
 
   test('rollback manuel : PR et SHA de la version désormais servie', async () => {
@@ -245,7 +245,20 @@ describe('script lancé par le job message', () => {
     expect(subject).toBe(
       '❌ x"; $(id) fin : déploiement en échec, rollback effectué',
     );
-    expect(textContent).toContain('Version servie par le Pi : inconnue');
+    expect(textContent).toContain('Version servie par le Pi : non lue');
+  });
+
+  test('envoi annulé : la version servie lue fait foi', async () => {
+    const { subject } = JSON.parse(
+      await lancer([], false, pulls, {
+        DEPLOY_RESULT: 'cancelled',
+        RELEASE_RESULT: 'skipped',
+        ENVOI: 'cancelled',
+      }),
+    );
+    expect(subject).toBe(
+      '❌ x"; $(id) fin : déploiement en échec, nouvelle version servie',
+    );
   });
 
   test('écrit l’objet et le corps en JSON', async () => {

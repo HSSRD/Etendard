@@ -59,9 +59,9 @@ export function composer(c) {
       ? `PR : ${uneLigne(c.pr.titre)} — ${c.pr.url}`
       : c.titreCommit
         ? `PR : aucune (commit : ${uneLigne(c.titreCommit)})`
-        : 'PR : non lue (API GitHub injoignable)',
+        : 'PR : non lue',
     `Commit : ${c.sha || 'inconnu'}`,
-    `Version servie par le Pi : ${c.servi || 'inconnue'}`,
+    `Version servie par le Pi : ${c.servi || 'non lue'}`,
     `Exécution : ${c.execution}`,
   ];
   if (c.resultats.release === 'success') {
@@ -135,7 +135,8 @@ async function lireContexte() {
     },
     sha: sha ?? '',
     servi,
-    archiveEnvoyee: ['success', 'failure'].includes(env.ENVOI ?? ''),
+    // Une étape d'envoi annulée a pu atteindre le Pi : seule « skipped » prouve le contraire.
+    archiveEnvoyee: !['', 'skipped'].includes(env.ENVOI ?? ''),
     rollbackEffectue: env.ROLLBACK_EFFECTUE === 'true',
     pr,
     titreCommit,

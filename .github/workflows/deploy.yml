@@ -138,6 +138,7 @@ jobs:
         id: servi
         if: always()
         timeout-minutes: 1
+        continue-on-error: true # simple lecture : ne change jamais le résultat du job
         run: echo "sha=$(ssh florasp status || true)" >> "$GITHUB_OUTPUT"
 
   release:
