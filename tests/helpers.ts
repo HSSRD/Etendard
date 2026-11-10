@@ -18,8 +18,13 @@ export const themeBackground = async (
     )
     .getAttribute('content');
   expect(hex).toMatch(/^#[0-9a-f]{6}$/);
+  return hexToRgb(hex ?? '');
+};
+
+/** Couleur `#rrggbb` au format de getComputedStyle. */
+export const hexToRgb = (hex: string) => {
   const [r, g, b] = [1, 3, 5].map((i) =>
-    Number.parseInt(hex?.slice(i, i + 2) ?? '', 16),
+    Number.parseInt(hex.slice(i, i + 2), 16),
   );
   return `rgb(${r}, ${g}, ${b})`;
 };
