@@ -8,7 +8,7 @@ Lis `docs/adr/` avant toute modification structurelle. Ne contredis jamais un AD
 - `pnpm dev` : serveur de développement (styleguide compris, sur `/styleguide`).
 - `pnpm verify:fast` : `astro check`, ESLint, Prettier, Stylelint, Vitest. Lance-la après chaque modification.
 - `pnpm verify` : `verify:fast`, `pnpm test:infra`, Knip, dependency-cruiser, build, `html-validate`, Playwright.
-- `pnpm test:infra` : tests de `infra/pi/etendard-receive` (bash ; sous Windows, celui de Git).
+- `pnpm test:infra` : tests de `infra/pi/etendard-receive` (sous Windows, dans le bash de Git).
 - `pnpm exec playwright test src/components/X.spec.ts` : boucle courte sur un composant.
 - `pnpm captures:maj [fichiers]` : régénère les captures de référence dans Docker.
 
