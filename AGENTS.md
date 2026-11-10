@@ -24,7 +24,8 @@ Ne modifie jamais une capture de référence à la main ni hors Docker : sans Do
 Quand un changement visuel invalide des captures et que Docker manque :
 
 1. Pousse la branche et ouvre la PR : le run `ci.yml` échoue sur `toHaveScreenshot`.
-2. `gh run list --branch <branche> --workflow ci.yml --status failure --limit 1` donne l'id du run.
+2. `gh run list --commit "$(git rev-parse HEAD)" --workflow ci.yml` donne l'id du run du dernier commit poussé
+   (attends qu'il soit terminé : un run plus ancien contient des captures périmées).
 3. `pnpm captures:ci <id>` télécharge l'artefact `playwright` (gardé 7 jours) et copie chaque image
    « actual » à la place de sa référence. Seules les captures manquantes ou en écart changent.
 4. Relis chaque image modifiée (`git status`) : un écart non voulu est un bug à corriger, pas une capture à commiter.

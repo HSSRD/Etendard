@@ -184,11 +184,9 @@ for (const scheme of schemes) {
     await expect(cta).toHaveCSS('border-top-style', 'solid');
     await expect(cta).toHaveCSS('border-top-width', /^[1-9]/);
     await expect(cta).not.toHaveCSS('border-top-color', 'rgba(0, 0, 0, 0)');
-    await expect
-      .soft(page)
-      .toHaveScreenshot(`hero-${scheme}-forced-colors.png`, {
-        fullPage: true,
-      });
+    await expect(page).toHaveScreenshot(`hero-${scheme}-forced-colors.png`, {
+      fullPage: true,
+    });
   });
 }
 

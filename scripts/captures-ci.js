@@ -11,9 +11,12 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import config from '../playwright.config.ts';
 
 const actualSuffix = '-actual.png';
+// Dossier de playwright.config.ts, donc {testDir} : les captures n'y dépendent pas du dossier courant.
+const root = fileURLToPath(new URL('..', import.meta.url));
 const template = config.snapshotPathTemplate;
 if (!template) throw new Error('snapshotPathTemplate absent.');
 
@@ -47,7 +50,7 @@ export const references = (resultsDir) => {
           if (!actual || !name.endsWith(actualSuffix)) return [];
           /** @type {Record<string, string>} */
           const tokens = {
-            testDir: '.',
+            testDir: root,
             testFileDir: path.posix.dirname(file),
             testFileName: path.posix.basename(file),
             arg: name.slice(0, -actualSuffix.length),
@@ -62,7 +65,9 @@ export const references = (resultsDir) => {
             return value;
           });
           // Chemin absolu sur le runner : seule la partie sous test-results/ est dans l'artefact.
-          const inArtifact = actual.split('/test-results/').at(-1) ?? '';
+          const [, inArtifact] = actual.split('/test-results/');
+          if (!inArtifact)
+            throw new Error(`${actual} : hors de test-results/.`);
           return [
             { from: path.join(resultsDir, inArtifact), to: path.normalize(to) },
           ];
@@ -95,7 +100,7 @@ if (import.meta.main) {
     for (const { from, to } of copies) {
       mkdirSync(path.dirname(to), { recursive: true });
       copyFileSync(from, to);
-      console.log(to);
+      console.log(path.relative('', to));
     }
     console.log(
       `${copies.length} capture(s) installée(s). Relis chaque image avant de commiter.`,

@@ -4,6 +4,8 @@ import path from 'node:path';
 import { afterEach, beforeEach, expect, test } from 'vitest';
 import { references } from './captures-ci.js';
 
+const repo = path.resolve(import.meta.dirname, '..');
+
 // Dossier test-results/ tel que l'artefact « playwright » de ci.yml le contient.
 let resultsDir = '';
 beforeEach(() => {
@@ -83,7 +85,8 @@ test('chaque image « actual » va au chemin de sa capture de référence', () =
 
   const copies = references(resultsDir).map(({ from, to }) => ({
     from: path.relative(resultsDir, from).replaceAll('\\', '/'),
-    to: to.replaceAll('\\', '/'),
+    // Relatif au repo, quel que soit le dossier courant.
+    to: path.relative(repo, to).replaceAll('\\', '/'),
   }));
   expect(copies).toEqual([
     {
@@ -100,7 +103,9 @@ test('chaque image « actual » va au chemin de sa capture de référence', () =
     },
   ]);
   // Ce sont bien les références existantes que Playwright compare.
-  for (const { to } of copies) expect(existsSync(to)).toBe(true);
+  for (const { to } of copies) {
+    expect(existsSync(path.join(repo, to))).toBe(true);
+  }
 });
 
 test('sans rapport.json, la commande échoue', () => {
