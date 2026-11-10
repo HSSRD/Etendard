@@ -5,16 +5,19 @@
   "minimumReleaseAge": "3 days",
   "packageRules": [
     {
-      "description": "Mineures et correctifs regroupés, mergés automatiquement si la CI (pnpm verify) passe. Les majeures ne le sont jamais.",
-      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "description": "Mineures et correctifs regroupés, mergés automatiquement si la CI (pnpm verify) passe. Jamais les majeures, ni les 0.x (une mineure 0.x peut casser), ni un simple changement d'empreinte.",
+      "matchUpdateTypes": ["minor", "patch"],
+      "matchCurrentVersion": "!/^0/",
       "groupName": "mineures et correctifs",
       "automerge": true
     },
     {
-      "description": "Paquet et image des deux workflows dans la même PR, créée seulement avec les trois mises à jour (AGENTS.md). Merge humain : captures invalidées (ADR 0003).",
+      "description": "Paquet et image des deux workflows dans la même PR, à la même version : branche créée seulement avec les trois mises à jour et après le délai de 3 jours (AGENTS.md). Merge humain : captures invalidées (ADR 0003).",
       "matchPackageNames": ["@playwright/test", "mcr.microsoft.com/playwright"],
       "groupName": "Playwright",
       "minimumGroupSize": 3,
+      "internalChecksFilter": "none",
+      "prCreation": "not-pending",
       "automerge": false
     },
     {
@@ -24,9 +27,9 @@
       "minimumReleaseAge": null
     },
     {
-      "description": "peerDependencies serrées (ADR 0001, ADR 0004) : merge humain.",
+      "description": "peerDependencies serrées (ADR 0001, ADR 0004) : PR séparées, merge humain.",
       "matchPackageNames": ["typescript", "stylelint"],
-      "groupName": "TypeScript et Stylelint",
+      "groupName": null,
       "automerge": false
     },
     {
