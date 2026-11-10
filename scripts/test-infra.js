@@ -20,4 +20,4 @@ const { error, status } = spawnSync(
 if (error) {
   console.error(`test:infra : ${bash} introuvable (${error.message}).`);
 }
-process.exit(error ? 1 : (status ?? 1));
+process.exit(status ?? 1);
