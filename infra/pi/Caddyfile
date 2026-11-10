@@ -10,4 +10,22 @@ http://:8080 {
 	bind 127.0.0.1
 	root * /srv/etendard/current
 	file_server
+
+	# En-têtes de sécurité, expliqués dans FONCTIONNEMENT.md. HSTS est posé par Cloudflare.
+	# tests/csp.spec.ts lit la CSP ici même et sert la page avec : garde-la sur une ligne.
+	header {
+		Content-Security-Policy "default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), geolocation=(), microphone=(), payment=(), usb=()"
+	}
+
+	# Journal d'accès JSON, 5 fichiers de 10 Mio au plus (le courant compris), anciens compressés.
+	log {
+		output file /var/log/caddy/etendard-access.log {
+			roll_size 10MiB
+			roll_keep 4
+		}
+		format json
+	}
 }

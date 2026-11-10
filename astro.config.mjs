@@ -15,7 +15,13 @@ const styleguide = {
 
 export default defineConfig({
   output: 'static',
+  // Tout le CSS dans un seul fichier /_astro/*.css, jamais en <style> : la CSP de
+  // infra/pi/Caddyfile s'en tient à style-src 'self' (ticket #25).
+  build: { inlineStylesheets: 'never' },
   integrations: [styleguide],
-  // Tests e2e : `astro preview` échoue si son port est pris au lieu d'en changer en silence.
-  vite: { preview: { strictPort: process.env.E2E_PORT !== undefined } },
+  vite: {
+    build: { cssCodeSplit: false },
+    // Tests e2e : `astro preview` échoue si son port est pris au lieu d'en changer en silence.
+    preview: { strictPort: process.env.E2E_PORT !== undefined },
+  },
 });

@@ -1,6 +1,6 @@
 #!/bin/bash
-# Produit les preuves des critères 1 à 5 du ticket #4, à coller en commentaire.
-#   sudo bash verify.sh pi      sur le Pi, après install.sh (critères 1, 2, 3 et verrou)
+# Produit les preuves des critères 1 à 5 du ticket #4, à coller en commentaire, et du critère 4 du ticket #25.
+#   sudo bash verify.sh pi      sur le Pi, après install.sh (critères 1, 2, 3 et verrou ; en-têtes et journal)
 #   bash verify.sh ssh          sur le PC, avec la clé privée (critères 1, 4 et 5)
 # Variables du mode ssh : KEY (clé privée, défaut ~/.ssh/github-deploy),
 # HOST (défaut florasp), FLO (défaut flo@192.168.1.41), LAN_IP (défaut 192.168.1.41).
@@ -29,6 +29,9 @@ probe() {
 check() { probe attendu "$@"; }
 refute() { probe interdit "$@"; }
 
+# header <url> <nom> : la ligne de cet en-tête dans la réponse à une requête HEAD.
+header() { curl -sSI "$1" | tr -d '\r' | grep -i "^$2:"; }
+
 title() { printf '\n### %s\n\n' "$*"; }
 
 mode_pi() {
@@ -45,6 +48,23 @@ mode_pi() {
   check "racine /srv/etendard/current" 'root \* /srv/etendard/current' grep -n root /etc/caddy/Caddyfile
   check "sert le site en local" '^HTTP/1.1 (200|404)' curl -sSI http://127.0.0.1:8080/
   refute "injoignable par l'adresse LAN" '^HTTP' curl -sSI --connect-timeout 3 "http://$(hostname -I | cut -d' ' -f1):8080/"
+
+  title "Ticket #25 — en-têtes de sécurité et journal d'accès"
+  check "Caddyfile installé, identique au repo" '^ok$' sh -c "cmp /etc/caddy/Caddyfile '$HERE/Caddyfile' && echo ok"
+  # Une page servie et une erreur 404 : les en-têtes doivent être sur chaque réponse.
+  local url
+  for url in http://127.0.0.1:8080/ http://127.0.0.1:8080/absente-verify-sh; do
+    check "CSP sur $url" "^Content-Security-Policy: default-src 'none';.*frame-ancestors 'none'" header "$url" Content-Security-Policy
+    refute "CSP sans unsafe-inline" 'unsafe-inline' header "$url" Content-Security-Policy
+    check "nosniff" '^X-Content-Type-Options: nosniff$' header "$url" X-Content-Type-Options
+    check "Referrer-Policy" '^Referrer-Policy: .+' header "$url" Referrer-Policy
+    check "Permissions-Policy" '^Permissions-Policy: .+' header "$url" Permissions-Policy
+  done
+  local log=/var/log/caddy/etendard-access.log
+  check "journal d'accès JSON, avec la requête précédente" '^\{.*"logger":"http\.log\.access.*"uri":"/absente-verify-sh"' tail -n 1 "$log"
+  check "journal à l'utilisateur caddy" '^caddy:caddy ' stat -c '%U:%G %a %n' "$log"
+  check "rotation bornée (taille et nombre)" '^roll_size [0-9]+MiB roll_keep [0-9]+ $' \
+    sh -c "grep -Eo 'roll_(size|keep) [0-9A-Za-z]+' /etc/caddy/Caddyfile | tr '\n' ' '"
 
   title "Critère 2 — utilisateur deploy"
   check "utilisateur deploy, sans groupe secondaire" '^uid=[0-9]+\(deploy\) gid=[0-9]+\(deploy\) groups=[0-9]+\(deploy\)$' id deploy

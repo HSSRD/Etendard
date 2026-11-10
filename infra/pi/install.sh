@@ -89,7 +89,11 @@ if ! dpkg -s caddy >/dev/null 2>&1; then
   caddy_changed=1
 fi
 caddy version
+# Journal d'accès (Caddyfile, directive log) : dossier à caddy, qui tourne sous cet utilisateur.
+install -d -o caddy -g caddy -m 750 /var/log/caddy
 caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+# validate, lancé en root, ouvre le journal et le crée au besoin : il doit rester à caddy.
+chown -R caddy:caddy /var/log/caddy
 
 step "Service caddy (démarrage au boot)"
 systemctl enable caddy

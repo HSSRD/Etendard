@@ -7,7 +7,7 @@ Ce qui est en place et pourquoi : [FONCTIONNEMENT.md](FONCTIONNEMENT.md). Ce REA
 | Fichier | Rôle |
 | --- | --- |
 | `install.sh` | Installation root, idempotente : Caddy, utilisateur `deploy`, `/srv/etendard`, `etendard-receive`, clé à commande forcée |
-| `Caddyfile` | Caddy sur `127.0.0.1:8080` uniquement, racine `/srv/etendard/current` |
+| `Caddyfile` | Caddy sur `127.0.0.1:8080` uniquement, racine `/srv/etendard/current`, en-têtes de sécurité, journal d'accès |
 | `etendard-receive` | Seule commande de la clé de déploiement : réception (stdin), `rollback`, `status` |
 | `verify.sh` | Preuves des critères 1 à 5 |
 | `tailscale-policy.hujson`, `tailscale-checklist.md` | Critères 6 et 7 |
