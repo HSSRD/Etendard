@@ -69,6 +69,16 @@ La CSP n'est écrite que dans le `Caddyfile`. `tests/csp.spec.ts` l'y lit, sert 
 
 **HSTS est posé par Cloudflare, pas par Caddy.** HSTS engage tout le domaine en HTTPS ; c'est Cloudflare qui détient ce domaine et son certificat, et le HTTPS des visiteurs s'y termine (ADR 0002). Cloudflare répond aussi seul, par exemple avec sa page d'erreur quand le Pi est éteint : un HSTS posé par Caddy y manquerait. Il s'active dans le tableau de bord Cloudflare (SSL/TLS > Edge Certificates > HSTS), avec la mise en ligne et le domaine.
 
+#### Le cache des fichiers `/_astro/` (#36)
+
+Astro écrit les feuilles de style dans `/_astro/`, sous un nom qui contient une empreinte de leur contenu : `BaseLayout.CIdr1MYV.css`. Caddy les sert avec `Cache-Control: public, max-age=31536000, immutable`. Le navigateur et Cloudflare les gardent donc un an, sans jamais les redemander, et la feuille de style, qui bloque l'affichage, ne fait plus l'aller-retour Cloudflare, tunnel, Pi en Wi-Fi à chaque visite.
+
+**Ce cache est sans risque.** Un fichier de `/_astro/` ne change jamais de contenu : si le CSS change, l'empreinte change, donc le nom aussi. La nouvelle page HTML pointe vers ce nouveau nom, que personne n'a encore en cache. L'ancien fichier reste en cache, mais plus aucune page ne le demande. Les autres fichiers (`/`, la vidéo, `favicon.svg`, `version.txt`) gardent un nom fixe : ils n'ont pas cet en-tête, sinon une nouvelle version mettrait jusqu'à un an à arriver.
+
+**Seules les réponses 2xx et 304 le portent.** Une 404 sur `/_astro/` n'est pas gardée un an : sans cela, un fichier absent un instant, puis rendu par un rollback, resterait introuvable pour ce visiteur ou derrière Cloudflare.
+
+`verify.sh pi` le contrôle sur un fichier réel de `/_astro/`.
+
 #### Le journal d'accès
 
 Caddy écrit chaque requête, en JSON, dans `/var/log/caddy/etendard-access.log`. À 10 Mio, le fichier est renommé et compressé ; Caddy garde les 4 derniers. Le journal occupe donc au plus 50 Mio sur la carte SD. Il appartient à l'utilisateur `caddy`, sous lequel tourne le service : `install.sh` lui rend le dossier après `caddy validate`, qui, lancé en root, crée le fichier s'il n'existe pas.

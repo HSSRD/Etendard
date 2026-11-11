@@ -20,6 +20,13 @@ http://:8080 {
 		Permissions-Policy "camera=(), geolocation=(), microphone=(), payment=(), usb=()"
 	}
 
+	# Cache d'un an des fichiers d'Astro, dont le nom porte l'empreinte du contenu (#36, FONCTIONNEMENT.md).
+	# Sur les réponses 2xx et 304 seulement : une 404 ne doit pas rester en cache un an.
+	header /_astro/* {
+		Cache-Control "public, max-age=31536000, immutable"
+		match status 2xx 304
+	}
+
 	# Journal d'accès JSON, 5 fichiers de 10 Mio au plus (le courant compris), anciens compressés.
 	log {
 		output file /var/log/caddy/etendard-access.log {
