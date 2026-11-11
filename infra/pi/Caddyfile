@@ -28,7 +28,7 @@ http://:8080 {
 	}
 
 	# Pages HTML revalidées à chaque visite (ETag, réponse 304 légère) : après un déploiement,
-	# aucun navigateur ne garde une ancienne page qui demanderait d'anciens /_astro/ (#52).
+	# un navigateur ne réutilise pas une ancienne page qui demanderait d'anciens /_astro/ (#52).
 	@html path */ *.html
 	header @html {
 		Cache-Control "no-cache"

@@ -81,7 +81,7 @@ Astro écrit les feuilles de style dans `/_astro/`, sous un nom qui contient une
 
 #### Le cache des pages HTML et de `version.txt` (#52)
 
-**Les pages HTML portent `Cache-Control: no-cache`.** Le navigateur (et Cloudflare) peut garder la page, mais doit la revalider à chaque visite : il renvoie son `ETag`, et Caddy répond `304 Not Modified`, sans corps, tant que la page n'a pas changé. Sans cet en-tête, un navigateur réutiliserait la page sans la redemander pendant une durée qu'il calcule lui-même (souvent 10 % de l'âge de `Last-Modified`, RFC 9111) : jusqu'à quelques jours après un déploiement. Cette ancienne page demanderait d'anciens fichiers de `/_astro/`, que le Pi n'a plus au-delà de 5 versions : la page s'afficherait sans style.
+**Les pages HTML portent `Cache-Control: no-cache`.** Le navigateur (et Cloudflare) peut garder la page, mais doit la revalider à chaque visite : il renvoie son `ETag`, et Caddy répond `304 Not Modified`, sans corps, tant que la page n'a pas changé. Sans cet en-tête, un navigateur réutiliserait la page sans la redemander pendant une durée qu'il calcule lui-même (souvent 10 % de l'âge de `Last-Modified`, RFC 9111) : jusqu'à quelques jours après un déploiement. Cette ancienne page demanderait d'anciens fichiers de `/_astro/`, que le Pi ne sert plus dès le déploiement suivant (il ne sert que `current`) : sans eux en cache, la page s'afficherait sans style.
 
 Le matcher `@html` vise les chemins en `/` et en `.html`, c'est-à-dire les pages d'Astro, et non le type de la réponse : une `304` n'a pas de `Content-Type`, elle perdrait l'en-tête.
 
