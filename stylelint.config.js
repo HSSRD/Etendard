@@ -93,7 +93,7 @@ export default {
         'outline',
         'transition',
         'animation',
-        // Non développés par le plugin : `background: #f00 url(x.png)` ou `scroll-padding: 2px` passeraient.
+        // `background: #f00 url(x.png)`, `scroll-padding: 2px` ou `column-rule: … 2px` passeraient.
         'background',
         '/^scroll-padding(-(block|inline))?$/',
         'column-rule',
