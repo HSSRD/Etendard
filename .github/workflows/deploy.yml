@@ -125,18 +125,15 @@ jobs:
         timeout-minutes: 3 # annulé, le job ne l'interrompt plus
         env:
           BEFORE: ${{ steps.before.outputs.sha }}
-          ENVOI: ${{ steps.envoi.outcome }}
         run: |
-          # Sans version de départ, seul un envoi réussi prouve la bascule (receive sort en 0 après).
-          if [ -z "$BEFORE" ] && [ "$ENVOI" != success ]; then
-            echo "::error::version d'avant l'envoi illisible, rollback non lancé"
-            exit 0
-          fi
           now="$(ssh florasp status || true)"
           if [ -z "$now" ]; then
             echo "::error::version servie illisible, rollback non lancé"
           elif [ "$now" = "$BEFORE" ]; then
             echo "version servie inchangée ($now), rollback inutile"
+          elif [ -z "$BEFORE" ] && [ "$now" != "$GITHUB_SHA" ]; then
+            # Sans version de départ, seule la version de ce job prouve la bascule.
+            echo "::error::version d'avant l'envoi illisible et $now servie, rollback non lancé"
           else
             ssh florasp rollback
             echo "effectue=true" >> "$GITHUB_OUTPUT"
