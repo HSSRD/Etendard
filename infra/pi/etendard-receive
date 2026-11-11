@@ -18,9 +18,12 @@ LOCK_WAIT="${ETENDARD_LOCK_WAIT:-120}"   # secondes ; surchargé uniquement par 
 
 die() { echo "etendard-receive: $*" >&2; exit 1; }
 
+served_or_empty() { basename "$(readlink "$CURRENT" 2>/dev/null)"; }
+valid_sha() { [[ "$1" =~ ^[0-9a-f]{7,40}$ ]]; }
+
 current_sha() {
   [ -L "$CURRENT" ] || die "aucune version servie"
-  basename "$(readlink "$CURRENT")"
+  served_or_empty
 }
 
 # Versions publiées, de la plus récente à la plus ancienne (date de publication).
@@ -34,16 +37,14 @@ switch_to() {
   mv -T "$CURRENT.tmp" "$CURRENT"   # rename(2) : bascule atomique
 }
 
-# lock : refuse si le verrou est pris ; lock -w <s> : l'attend au plus <s> secondes.
+# lock -n : refuse si le verrou est pris ; lock -w <s> : l'attend au plus <s> secondes.
 lock() {
   exec 9>"$ROOT/.lock"
-  flock "${@:--n}" 9 || die "un autre déploiement est en cours"
+  flock "$@" 9 || die "un autre déploiement est en cours"
 }
 
-served_or_empty() { basename "$(readlink "$CURRENT" 2>/dev/null)"; }
-
 receive() {
-  lock
+  lock -n
   replaced="$(served_or_empty)"
   incoming="$(mktemp -d "$RELEASES/.incoming.XXXXXX")"
   trap 'rm -rf "$incoming"' EXIT
@@ -65,7 +66,7 @@ receive() {
 
   [ -f "$site/version.txt" ] || die "version.txt absent à la racine de l'archive"
   sha="$(head -n1 "$site/version.txt" | tr -d '\r\n')"
-  [[ "$sha" =~ ^[0-9a-f]{7,40}$ ]] || die "SHA invalide dans version.txt"
+  valid_sha "$sha" || die "SHA invalide dans version.txt"
 
   if [ -d "$RELEASES/$sha" ]; then
     echo "version $sha déjà présente, réactivée"
@@ -83,7 +84,7 @@ receive() {
 }
 
 rollback() {
-  lock
+  lock -n
   current="$(current_sha)"
   previous="$(releases_by_date | grep -A1 -x "$current" | sed -n 2p)" || true
   [ -n "$previous" ] || die "aucune version antérieure à $current"
@@ -95,7 +96,7 @@ rollback() {
 # l'envoi. Le verrou est attendu, donc la version servie n'est lue qu'après la
 # fin d'un receive encore en cours, jamais pendant.
 restore() {
-  [[ "$1" =~ ^[0-9a-f]{7,40}$ ]] || die "SHA invalide : $1"
+  valid_sha "$1" || die "SHA invalide : $1"
   lock -w "$LOCK_WAIT"
   [ -d "$RELEASES/$1" ] || die "version $1 absente"
   current="$(served_or_empty)"

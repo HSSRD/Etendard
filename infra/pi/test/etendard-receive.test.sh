@@ -150,7 +150,6 @@ expect_refused "refus du rollback avec verrou pris" /dev/null "autre déploiemen
 run status && ok "status fonctionne pendant un déploiement" || ko "status pendant un déploiement : $out"
 wait
 
-
 # --- restore <sha> : rollback automatique de deploy.yml --------------------
 # Après un rollback manuel, A est servie et B est plus récente : l'échec du
 # déploiement de C doit ramener A, la version d'avant l'envoi, et non B.
@@ -175,7 +174,7 @@ run "restore ccccccc" && grep -q 'retour à la version ccccccc' <<<"$out" && [ $
   && ok "restore attend la fin du verrou ($((SECONDS - start)) s)" || ko "restore avec verrou pris : $out"
 wait
 export ETENDARD_LOCK_WAIT=1
-hold_lock 4
+hold_lock 2
 expect_refused "restore, verrou toujours pris au bout du délai" /dev/null "autre déploiement" "restore aaaaaaa"
 wait
 unset ETENDARD_LOCK_WAIT
