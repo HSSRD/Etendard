@@ -1,0 +1,8 @@
+# Chemins dont toute modification exige la relecture de Flo (ruleset « Relecture de Flo »,
+# infra/agents/ruleset-relecture-flo.json, ADR 0008) : appliqués en root sur le Pi (#69),
+# exécutés avec les secrets de production, ou lisant la clé privée de hssrd-bot.
+/infra/pi/ @Florianrcht
+/.github/workflows/ @Florianrcht
+/.github/CODEOWNERS @Florianrcht
+/infra/agents/ @Florianrcht
+/scripts/jeton-bot.js @Florianrcht
