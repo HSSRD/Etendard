@@ -122,11 +122,14 @@ jobs:
       - name: Revenir à la version précédente
         id: rollback
         if: (failure() || cancelled()) && steps.before.outcome == 'success'
+        timeout-minutes: 3 # annulé, le job ne l'interrompt plus
         env:
           BEFORE: ${{ steps.before.outputs.sha }}
         run: |
           now="$(ssh florasp status || true)"
-          if [ -z "$now" ]; then
+          if [ -z "$BEFORE" ]; then
+            echo "::error::version d'avant l'envoi illisible, rollback non lancé"
+          elif [ -z "$now" ]; then
             echo "::error::version servie illisible, rollback non lancé"
           elif [ "$now" = "$BEFORE" ]; then
             echo "version servie inchangée ($now), rollback inutile"
