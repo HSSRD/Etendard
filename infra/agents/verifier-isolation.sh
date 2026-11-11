@@ -36,9 +36,13 @@ echo "== 2. Fichiers de Flo"
 for chemin in "$PROFIL" "$PROFIL/.ssh" "$PROFIL/AppData/Roaming/GitHub CLI/hosts.yml" "$PROFIL/.etendard" "$DEPOT_FLO"; do
   if ls "$chemin" >/dev/null 2>&1; then ko "$chemin est lisible"; else ok "$chemin est inaccessible"; fi
 done
-# Un dossier de Flo modifiable à la racine laisserait planter du code qu'il exécute (hooks git…).
-for dossier in /c/*/; do
-  case "$dossier" in /c/Users/ | /c/Windows/ | /c/Program*/ | /c/ProgramData/ | /c/EtendardAgent/) continue ;; esac
+# Un dossier de Flo modifiable laisserait planter du code qu'il exécute (hooks git, PATH…).
+# Mêmes dossiers que l'étape 4 du README, plus le dossier du jeton (lecture seule pour l'agent).
+for dossier in /c/*/ /d/*/ /e/*/ /c/ProgramData/floxf/ /c/EtendardAgent/gh/; do
+  [ -d "$dossier" ] || continue
+  case "$(basename "$dossier")" in
+    \$* | Windows | Users | ProgramData | "Program Files"* | WindowsApps | WpSystem | "System Volume Information" | "Documents and Settings" | EtendardAgent) continue ;;
+  esac
   if (: >"${dossier}test-isolation-$ID") 2>/dev/null; then
     rm -f "${dossier}test-isolation-$ID"
     ko "$dossier est modifiable"
@@ -56,8 +60,8 @@ git switch -q -c "$branche_wf" origin/main
 echo "# test d'isolation $ID" >>.github/workflows/ci.yml
 git commit -q -am "test: modification de workflow refusée (#70)"
 sortie=$(git push origin "$branche_wf" 2>&1)
-if [ $? -ne 0 ] && grep -qi "workflow" <<<"$sortie"; then
-  ok "push refusé : $(grep -i 'workflow' <<<"$sortie" | head -n 1)"
+if [ $? -ne 0 ] && grep -q "refusing to allow a GitHub App" <<<"$sortie"; then
+  ok "push refusé : $(grep "refusing to allow a GitHub App" <<<"$sortie" | head -n 1)"
 else
   ko "le push de $branche_wf n'a pas été refusé pour la permission workflows"
   git push -q origin --delete "$branche_wf" 2>/dev/null
@@ -85,7 +89,8 @@ if git push -q origin "$branche_pi" 2>/dev/null; then
   else
     ko "la PR $url a été mergée sans relecture de Flo : à annuler (revert) d'urgence"
   fi
-  gh pr close "$url" --delete-branch >/dev/null 2>&1 || true
+  [ -n "$url" ] && gh pr close "$url" >/dev/null
+  git push -q origin --delete "$branche_pi"
 else
   ko "push de $branche_pi impossible"
 fi

@@ -45,7 +45,7 @@ S'il y a **quoi que ce soit** de mauvais ou de discutable : pose les questions �
 
 ## A3. Lancer l'agent dans un nouveau worktree Orca
 
-Les agents tournent sous le compte Windows `etendard-agent`, avec l'identité GitHub `hssrd-bot` (ADR 0008, `infra/agents/README.md`), jamais sous le compte de Flo. Vérifie d'abord que son runtime Orca répond (`orca status --environment etendard-agent --json`) ; sinon, demande à Flo de relancer `orca serve` sous ce compte (étape 8 du README) et arrête-toi.
+Les agents tournent sous le compte Windows `etendard-agent`, avec l'identité GitHub `hssrd-bot` (ADR 0008, `infra/agents/README.md`), jamais sous le compte de Flo. Vérifie d'abord que son runtime Orca répond (`orca status --environment etendard-agent --json`) ; sinon, demande à Flo de relancer la tâche planifiée (`Start-ScheduledTask "Etendard - Orca des agents"`, étape 8 du README) et arrête-toi. Ne lance jamais un agent sous le compte de Flo.
 
 Choisis un slug court en kebab-case (ex. `hello-world-astro`), puis :
 

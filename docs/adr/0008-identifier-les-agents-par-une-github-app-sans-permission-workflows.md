@@ -14,8 +14,8 @@ Les agents du skill `ticket` tournent aussi en local, dans Orca. Lancés sous le
 - Créer une **GitHub App `hssrd-bot`** installée sur le seul repo `Etendard`, utilisée par tous les agents via un jeton d'installation, valable une heure.
 - Permissions : `contents: write`, `pull-requests: write`, `issues: write`, en lecture `actions`, `checks`, `statuses` (suivi de la CI, `pnpm captures:ci`) et métadonnées. **Pas de permission `workflows`** : un push modifiant `.github/workflows/` est refusé par GitHub, l'agent ne peut pas s'accorder de droits. Ni `administration`, ni `environments`, ni `deployments` : un agent ne peut ni changer un ruleset ni approuver un déploiement.
 - **Agents d'Actions** (0010) : jeton émis par `actions/create-github-app-token`, transmis à `claude-code-action` par son entrée `github_token`.
-- **Agents locaux (Orca)** : ils tournent sous un compte Windows dédié, `etendard-agent`, sans droit d'administrateur, servi par un runtime `orca serve` de ce compte appairé à l'Orca de Flo. Ce compte n'a ni le `gh` de Flo, ni ses clés SSH, ni la clé de l'App, ni accès au profil de Flo ou à ses dossiers hors profil. Une tâche planifiée du compte de Flo émet un jeton toutes les 30 minutes (`scripts/jeton-bot.js`, copie relue rangée dans son profil) et l'écrit dans la configuration `gh` des agents, qu'ils lisent sans pouvoir la modifier. Commits et PR sont au nom de `hssrd-bot[bot]`. Mise en place : `infra/agents/README.md`.
-- **Relecture de Flo obligatoire** sur les chemins de `.github/CODEOWNERS` : tout ce qui s'exécute ou fait consigne avec des privilèges (en root sur le Pi, avec les secrets de production, avec la clé de l'App, ou dans la session de Flo : skill `ticket`, `AGENTS.md`, `CLAUDE.md`) : ruleset « Relecture de Flo (CODEOWNERS) », sans exception pour l'App. Les autres PR d'agents peuvent être mergées par l'agent quand la CI est verte (skill `ticket`, B6 bis).
+- **Agents locaux (Orca)** : ils tournent sous un compte Windows dédié, `etendard-agent`, sans droit d'administrateur, servi par un runtime `orca serve` de ce compte, lancé en tâche planifiée hors du bureau de Flo (ni son presse-papiers ni ses fenêtres) et appairé à son Orca. Ce compte n'a ni le `gh` de Flo, ni ses clés SSH, ni la clé de l'App, ni accès au profil de Flo ou à ses dossiers hors profil. Une tâche planifiée du compte de Flo émet un jeton toutes les 30 minutes (`scripts/jeton-bot.js`, copie relue rangée dans son profil) et l'écrit dans la configuration `gh` des agents, qu'ils lisent sans pouvoir la modifier. Commits et PR sont au nom de `hssrd-bot[bot]`. Mise en place : `infra/agents/README.md`.
+- **Relecture de Flo obligatoire** sur les chemins de `.github/CODEOWNERS` : tout ce qui s'exécute ou fait consigne avec des privilèges (en root sur le Pi, avec les secrets de production, avec la clé de l'App, ou dans la session de Flo : skill `ticket`, `AGENTS.md`, `CLAUDE.md`, ADR) ; ruleset « Relecture de Flo (CODEOWNERS) », sans exception pour l'App.
 
 ## Alternatives écartées
 
@@ -30,5 +30,10 @@ Les agents du skill `ticket` tournent aussi en local, dans Orca. Lancés sous le
 - La clé privée de l'App est un secret des workflows d'agents et du seul profil Windows de Flo ; elle ne donne jamais accès à l'Environment `production` (0011).
 - Toute modification de workflow passe par Flo : l'agent prépare la PR sans le fichier de workflow et joint le correctif, que Flo pousse.
 - L'App n'a aucune exception dans la protection de `main`.
-- Après un redémarrage, Flo relance `orca serve` sous `etendard-agent` avant de lancer un ticket.
 - Le skill `ticket` est suivi dans le repo, pour que le clone des agents l'ait.
+
+## Risques résiduels
+
+- **Code du repo exécuté par Flo** : une PR d'agent hors CODEOWNERS (config, scripts, tests) s'exécute sous le compte de Flo dès qu'il lance `pnpm` sur `main`, avec accès à son `gh` et à la clé de l'App (point de vigilance de 0011). Le compte dédié ne couvre pas ce cas.
+- **Réseau** : `etendard-agent` garde l'accès réseau du PC (tailnet, LAN, Pi) ; seuls ses jetons et fichiers sont restreints.
+- **Phase A du skill** : elle lit tickets et commentaires (contenu non fiable, 0011) dans la session de Flo, avec son `gh`.
