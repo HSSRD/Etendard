@@ -1,6 +1,7 @@
 #!/bin/bash
-# Produit les preuves des critères 1 à 5 du ticket #4, à coller en commentaire, et du critère 4 du ticket #25.
-#   sudo bash verify.sh pi      sur le Pi, après install.sh (critères 1, 2, 3 et verrou ; en-têtes et journal)
+# Produit les preuves des critères 1 à 5 du ticket #4, à coller en commentaire, du critère 4 du ticket #25
+# et du critère 2 du ticket #36.
+#   sudo bash verify.sh pi      sur le Pi, après install.sh (critères 1, 2, 3 et verrou ; en-têtes, journal, cache)
 #   bash verify.sh ssh          sur le PC, avec la clé privée (critères 1, 4 et 5)
 # Variables du mode ssh : KEY (clé privée, défaut ~/.ssh/github-deploy),
 # HOST (défaut florasp), FLO (défaut flo@192.168.1.41), LAN_IP (défaut 192.168.1.41).
@@ -70,6 +71,14 @@ mode_pi() {
   # grep plutôt que tail : d'autres visites peuvent s'être intercalées.
   check "journal d'accès JSON, avec la requête $absent" '^\{.*"logger":"http\.log\.access' grep -F "\"uri\":\"$absent\"" "$log"
   check "journal à l'utilisateur caddy" '^caddy:caddy ' stat -c '%U:%G %a %n' "$log"
+
+  title "Ticket #36 — cache d'un an des fichiers de /_astro/"
+  # Un fichier réel du site servi : son nom porte l'empreinte de son contenu.
+  local asset
+  asset="$(find /srv/etendard/current/_astro -maxdepth 1 -type f -printf '%f\n' 2>/dev/null | head -n 1)"
+  check "Cache-Control sur /_astro/$asset, conforme au Caddyfile" '^conforme$' header "http://127.0.0.1:8080/_astro/$asset" Cache-Control
+  refute "pas de cache d'un an sur /" 'max-age=31536000' header http://127.0.0.1:8080/ Cache-Control
+  refute "pas de cache d'un an sur une 404 de /_astro/" 'max-age=31536000' header "http://127.0.0.1:8080/_astro$absent" Cache-Control
 
   title "Critère 2 — utilisateur deploy"
   check "utilisateur deploy, sans groupe secondaire" '^uid=[0-9]+\(deploy\) gid=[0-9]+\(deploy\) groups=[0-9]+\(deploy\)$' id deploy
