@@ -103,9 +103,17 @@ jobs:
             StrictHostKeyChecking yes
             ConnectTimeout 30
           EOF
+      # Sans version de départ, le rollback ne saurait pas où revenir : rien n'est
+      # envoyé si status échoue, sauf quand aucune version n'est encore servie.
       - name: Lire la version servie avant l'envoi
         id: before
-        run: echo "sha=$(ssh florasp status || true)" >> "$GITHUB_OUTPUT"
+        run: |
+          if sha="$(ssh florasp status 2> status.err)"; then
+            echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          elif ! grep -q 'aucune version servie' status.err; then
+            cat status.err >&2
+            exit 1
+          fi
       - name: Envoyer l'archive
         id: envoi
         run: ssh florasp < etendard.tar.gz
@@ -122,12 +130,12 @@ jobs:
       - name: Revenir à la version d'avant l'envoi
         id: rollback
         if: (failure() || cancelled()) && steps.before.outcome == 'success'
-        timeout-minutes: 4 # annulé, le job ne l'interrompt plus ; restore attend le verrou 2 min au plus
+        timeout-minutes: 3 # annulé, le job ne l'interrompt plus ; restore attend le verrou 2 min au plus
         env:
           BEFORE: ${{ steps.before.outputs.sha }}
         run: |
           if [ -z "$BEFORE" ]; then
-            echo "::error::version d'avant l'envoi illisible, rollback non lancé"
+            echo "::error::aucune version servie avant l'envoi, rollback impossible"
             exit 0
           fi
           out="$(ssh florasp restore "$BEFORE")"
