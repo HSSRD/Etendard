@@ -169,6 +169,8 @@ La Release est publiée par un job séparé, après le déploiement : le job `bu
 
 **Rollback automatique.** Si une étape échoue après la lecture de `status`, le job relit `status`. Il ne lance `rollback` que si la version servie a changé depuis : `rollback` revient à la version publiée avant celle servie, et le lancer alors que rien n'a changé ferait reculer le site d'une version de trop. Le job finit en échec dans tous les cas.
 
+Il en va de même si le job est annulé, à la main ou par son délai de 15 minutes : GitHub exécute encore l'étape de rollback après l'annulation, avec la même règle. L'étape « Vérifier la version servie » a son propre délai de 2 minutes : si `ssh florasp status` reste bloqué, elle échoue, et le rollback tourne bien avant le délai du job.
+
 **Rollback manuel.** Actions > deploy > Run workflow, sur `main`, case `rollback` cochée. Ou :
 
 ```bash

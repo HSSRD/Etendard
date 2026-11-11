@@ -109,16 +109,19 @@ jobs:
       - name: Envoyer l'archive
         id: envoi
         run: ssh florasp < etendard.tar.gz
+      # Délai propre : un status bloqué échoue ici, et le rollback tourne avant le délai du job.
       - name: Vérifier la version servie
+        timeout-minutes: 2
         run: |
           served="$(ssh florasp status)"
           echo "servie : $served — attendue : $GITHUB_SHA"
           [ "$served" = "$GITHUB_SHA" ]
       # N'annule que ce que ce job a changé : si la version servie est toujours
       # celle d'avant l'envoi, un rollback reviendrait une version trop loin.
+      # cancelled() : failure() vaut false si le job est annulé (à la main ou par son délai).
       - name: Revenir à la version précédente
         id: rollback
-        if: failure() && steps.before.outcome == 'success'
+        if: (failure() || cancelled()) && steps.before.outcome == 'success'
         env:
           BEFORE: ${{ steps.before.outputs.sha }}
         run: |
