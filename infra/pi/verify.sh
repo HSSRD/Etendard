@@ -40,9 +40,8 @@ header() {
     { line = $0; sub(/^[[:space:]]+/, "", line) }
     line == block { inside = 1; next }
     inside && line == "}" { inside = 0 }
-    inside && index(line, name " \"") == 1 && line ~ /"$/ {
-      print name ": " substr(line, length(name) + 3, length(line) - length(name) - 3)
-    }' "$HERE/Caddyfile")"
+    inside && index(line, name " \"") == 1 && sub(/"$/, "", line) { print name ": " substr(line, length(name) + 3) }
+  ' "$HERE/Caddyfile")"
   echo "$got"
   [ -n "$want" ] && [ "$got" = "$want" ] && echo conforme
 }
@@ -95,7 +94,7 @@ mode_pi() {
   done
   # La revalidation par ETag répond 304, avec le même en-tête.
   local etag
-  etag="$(curl -sSI http://127.0.0.1:8080/ | tr -d '\r' | sed -n 's/^etag: //Ip')"
+  etag="$(header http://127.0.0.1:8080/ ETag)"; etag="${etag#*: }"
   check "revalidation de / par ETag : 304" '^HTTP/1.1 304' curl -sSI -H "If-None-Match: $etag" http://127.0.0.1:8080/
   check "Cache-Control sur la 304 de /, conforme au Caddyfile" '^conforme$' \
     header http://127.0.0.1:8080/ Cache-Control @html -H "If-None-Match: $etag"
