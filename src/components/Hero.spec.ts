@@ -1,20 +1,13 @@
 import { statSync } from 'node:fs';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import {
+  cssToPixels,
   expectNoAxeViolations,
+  expectNoHorizontalScroll,
   schemes,
+  tabTo,
   themeBackground,
 } from '../../tests/helpers';
-
-/** Aucun défilement horizontal à la largeur du projet (375 px compris). */
-const expectNoHorizontalScroll = async (page: Page) => {
-  // clientWidth exclut la barre de défilement verticale, contrairement à innerWidth.
-  const overflow = await page.evaluate(() => {
-    const root = document.documentElement;
-    return root.scrollWidth - root.clientWidth;
-  });
-  expect(overflow).toBeLessThanOrEqual(0);
-};
 
 test('Hero : vidéo de fond décorative, muette, en boucle, qui couvre la section', async ({
   page,
@@ -162,15 +155,8 @@ for (const scheme of schemes) {
     });
     await page.mouse.move(0, 0);
 
-    // État focus clavier : Tab jusqu'au CTA, quel que soit l'ordre des éléments qui le précèdent.
-    for (
-      let i = 0;
-      i < 10 && !(await cta.evaluate((el) => el === document.activeElement));
-      i++
-    ) {
-      await page.keyboard.press('Tab');
-    }
-    await expect(cta).toBeFocused();
+    // État focus clavier : Tab jusqu'au CTA.
+    await tabTo(page, cta);
     await expect(cta).toHaveCSS('outline-style', 'solid');
     await expect(cta).toHaveCSS('outline-width', /^[1-9]/);
     // Contour de la couleur du fond du bouton : le décalage le rend distinct.
@@ -205,14 +191,8 @@ test('accueil : le Hero remplit l’écran sous le header, centré, et mène aux
   await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
   await expectNoHorizontalScroll(page);
 
-  const layout = await page.evaluate(() => {
-    // --header-height en pixels, même sonde que tests/accueil.spec.ts.
-    const probe = document.createElement('div');
-    probe.style.height = 'var(--header-height)';
-    document.body.append(probe);
-    const headerHeight = probe.getBoundingClientRect().height;
-    probe.remove();
-
+  const headerHeight = await cssToPixels(page, 'var(--header-height)');
+  const layout = await page.evaluate((headerHeight) => {
     const find = (selector: string) => {
       const element = document.querySelector(selector);
       if (!element) throw new Error(`${selector} introuvable`);
@@ -226,14 +206,13 @@ test('accueil : le Hero remplit l’écran sous le header, centré, et mène aux
       expectedHeight: window.innerHeight - headerHeight,
       section: box('#accueil'),
       projets: box('#projets'),
-      headerHeight,
       paddingTop: padding('Top'),
       contentWidth:
         find('.hero').clientWidth - padding('Left') - padding('Right'),
       title: box('.hero h1'),
       cta: box('.hero__cta'),
     };
-  });
+  }, headerHeight);
 
   expect(layout.section.height).toBeCloseTo(layout.expectedHeight, 0);
   expect(layout.projets.top).toBeCloseTo(layout.section.bottom, 0);
@@ -264,5 +243,5 @@ test('accueil : le Hero remplit l’écran sous le header, centré, et mène aux
     .poll(() =>
       page.locator('#projets').evaluate((el) => el.getBoundingClientRect().top),
     )
-    .toBeCloseTo(layout.headerHeight, 0);
+    .toBeCloseTo(headerHeight, 0);
 });

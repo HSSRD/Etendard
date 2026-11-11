@@ -1,5 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { expectNoAxeViolations, schemes, themeBackground } from './helpers';
+import {
+  cssToPixels,
+  expectNoAxeViolations,
+  schemes,
+  themeBackground,
+} from './helpers';
 
 test('la page d’accueil pose la structure de la one page', async ({ page }) => {
   await page.goto('/');
@@ -53,15 +58,7 @@ test('les ancres défilent en douceur et s’arrêtent sous le header', async ({
   await expect(page.locator('html')).toHaveCSS('scroll-behavior', 'smooth');
 
   // --header-height converti en pixels, comme getComputedStyle le renvoie.
-  const headerHeight = await page.evaluate(() => {
-    const probe = document.createElement('div');
-    probe.style.height = 'var(--header-height)';
-    document.body.append(probe);
-    const height = probe.getBoundingClientRect().height;
-    probe.remove();
-    return `${height}px`;
-  });
-  expect(headerHeight).not.toBe('0px');
+  const headerHeight = `${await cssToPixels(page, 'var(--header-height)')}px`;
   for (const id of ['accueil', 'projets']) {
     await expect(page.locator(`#${id}`)).toHaveCSS(
       'scroll-margin-top',

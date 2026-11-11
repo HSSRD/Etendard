@@ -1,5 +1,9 @@
 import { expect, test } from '@playwright/test';
-import { expectNoAxeViolations, schemes } from '../../tests/helpers';
+import {
+  expectNoAxeViolations,
+  expectNoHorizontalScroll,
+  schemes,
+} from '../../tests/helpers';
 
 const url = '/styleguide/site-footer';
 
@@ -23,12 +27,7 @@ test('le footer affiche l’éditeur, l’année et ses liens, sans débordement
     footer.getByRole('link', { name: 'Retour en haut' }),
   ).toHaveAttribute('href', '#accueil');
 
-  const overflow = await page.evaluate(
-    () =>
-      document.documentElement.scrollWidth -
-      document.documentElement.clientWidth,
-  );
-  expect(overflow).toBe(0);
+  await expectNoHorizontalScroll(page);
 });
 
 test('sur la one page, le footer suit <main> et « Retour en haut » remonte à l’accueil', async ({

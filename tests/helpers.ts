@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 /** Thèmes à émuler (`colorScheme`) : chaque page est testée dans les deux (ticket #10). */
 export const schemes = ['light', 'dark'] as const;
@@ -35,4 +35,44 @@ export const expectNoAxeViolations = async (page: Page) => {
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
     .analyze();
   expect(violations).toEqual([]);
+};
+
+/**
+ * Expression CSS de longueur (`var(--x)`, `calc(…)`) convertie en pixels par une sonde.
+ * Échoue sur 0 px : c'est ce que donnent un token inconnu ou une expression invalide.
+ */
+export const cssToPixels = async (page: Page, expression: string) => {
+  const pixels = await page.evaluate((value) => {
+    const probe = document.createElement('div');
+    probe.style.height = value;
+    document.body.append(probe);
+    const height = probe.getBoundingClientRect().height;
+    probe.remove();
+    return height;
+  }, expression);
+  expect(pixels, expression).toBeGreaterThan(0);
+  return pixels;
+};
+
+/** Aucun défilement horizontal à la largeur courante de la fenêtre. */
+export const expectNoHorizontalScroll = async (page: Page) => {
+  // clientWidth exclut la barre de défilement verticale, contrairement à innerWidth.
+  const overflow = await page.evaluate(() => {
+    const root = document.documentElement;
+    return root.scrollWidth - root.clientWidth;
+  });
+  expect(overflow).toBeLessThanOrEqual(0);
+};
+
+/** Tab jusqu'à `target`, en au plus `maxPresses` appuis, quel que soit l'ordre des éléments qui le précèdent. */
+export const tabTo = async (page: Page, target: Locator, maxPresses = 10) => {
+  for (
+    let i = 0;
+    i < maxPresses &&
+    !(await target.evaluate((element) => element === document.activeElement));
+    i++
+  ) {
+    await page.keyboard.press('Tab');
+  }
+  await expect(target).toBeFocused();
 };

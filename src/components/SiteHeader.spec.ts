@@ -1,7 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
 import {
+  cssToPixels,
   expectNoAxeViolations,
+  expectNoHorizontalScroll,
   schemes,
+  tabTo,
   themeBackground,
 } from '../../tests/helpers';
 
@@ -66,37 +69,27 @@ test('le header colle en haut, au-dessus du contenu, à la hauteur du token, sur
 
   // Hauteur du token, et chaque lien tient dans le header sans déborder à droite :
   // un retour à la ligne ferait sortir un lien du header.
-  const layout = await page.evaluate(() => {
-    const probe = document.createElement('div');
-    probe.style.height = 'var(--header-height)';
-    document.body.append(probe);
-    const tokenHeight = probe.getBoundingClientRect().height;
-    probe.remove();
-    const root = document.documentElement;
-    return {
-      tokenHeight,
-      headerHeight: document
-        .querySelector('.site-header')
-        ?.getBoundingClientRect().height,
-      links: [...document.querySelectorAll('.site-header a')].map((link) => {
-        const { bottom, right, top } = link.getBoundingClientRect();
-        return { bottom, right, top };
-      }),
-      scrollWidth: root.scrollWidth,
-      clientWidth: root.clientWidth,
-    };
-  });
-  expect(layout.tokenHeight).toBeGreaterThan(0);
-  expect(layout.headerHeight).toBe(layout.tokenHeight);
+  const tokenHeight = await cssToPixels(page, 'var(--header-height)');
+  const layout = await page.evaluate(() => ({
+    headerHeight: document
+      .querySelector('.site-header')
+      ?.getBoundingClientRect().height,
+    links: [...document.querySelectorAll('.site-header a')].map((link) => {
+      const { bottom, right, top } = link.getBoundingClientRect();
+      return { bottom, right, top };
+    }),
+    clientWidth: document.documentElement.clientWidth,
+  }));
+  expect(layout.headerHeight).toBe(tokenHeight);
   expect(layout.links).toHaveLength(3);
   for (const link of layout.links) {
     expect(link.top).toBeGreaterThanOrEqual(0);
     // Cible de tap d'au moins 24 px de haut (WCAG 2.5.8), grâce à la marge verticale.
     expect(link.bottom - link.top).toBeGreaterThanOrEqual(24);
-    expect(link.bottom).toBeLessThanOrEqual(layout.tokenHeight);
+    expect(link.bottom).toBeLessThanOrEqual(tokenHeight);
     expect(link.right).toBeLessThanOrEqual(layout.clientWidth);
   }
-  expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
+  await expectNoHorizontalScroll(page);
 
   await page.mouse.wheel(0, 2000);
   await expect
@@ -116,12 +109,8 @@ test('chaque lien du header a un focus visible au clavier', async ({
 }) => {
   await page.goto('/styleguide/site-header');
   const brand = header(page).getByRole('link', { name: 'Étendard' });
-  // Tab jusqu'au header, quel que soit le nombre d'éléments focusables avant lui.
-  for (let i = 0; i < 10; i++) {
-    await page.keyboard.press('Tab');
-    if (await brand.evaluate((element) => element === document.activeElement))
-      break;
-  }
+  // Tab jusqu'au header.
+  await tabTo(page, brand);
   for (const [index, name] of ['Étendard', 'Accueil', 'Projets'].entries()) {
     if (index > 0) await page.keyboard.press('Tab');
     const link = header(page).getByRole('link', { name, exact: true });
@@ -137,21 +126,12 @@ test('avec un texte agrandi à 200 %, le header ne déborde pas horizontalement'
 }) => {
   await page.goto('/styleguide/site-header');
   await page.addStyleTag({ content: 'html { font-size: 200%; }' });
-  const overflow = await page.evaluate(() => {
-    const root = document.documentElement;
-    return root.scrollWidth - root.clientWidth;
-  });
-  expect(overflow).toBeLessThanOrEqual(0);
+  await expectNoHorizontalScroll(page);
   // Chaque lien reste entier à l'écran, anneau de focus compris (décalage + épaisseur, en px).
-  const ring = await page.evaluate(() => {
-    const probe = document.createElement('div');
-    probe.style.height = 'calc(var(--focus-offset) + var(--focus-width))';
-    document.body.append(probe);
-    const height = probe.getBoundingClientRect().height;
-    probe.remove();
-    return height;
-  });
-  expect(ring).toBeGreaterThan(0);
+  const ring = await cssToPixels(
+    page,
+    'calc(var(--focus-offset) + var(--focus-width))',
+  );
   const links = await header(page).getByRole('link').all();
   expect(links).toHaveLength(3);
   const width = await page.evaluate(() => document.documentElement.clientWidth);
