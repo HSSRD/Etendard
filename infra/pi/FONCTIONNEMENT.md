@@ -128,7 +128,7 @@ Le script n'accepte que quatre demandes. Tout le reste est refusé.
 
 `restore <sha>` :
 
-- **attend le verrou** jusqu'à 2 minutes (`flock -w 120`) au lieu d'échouer : après l'annulation d'un job, l'envoi peut encore tourner sur le Pi. La version servie n'est lue qu'une fois cet envoi fini, jamais pendant. Au bout de 2 minutes, la demande échoue sans rien changer elle-même ; l'envoi encore en cours peut alors basculer ensuite : le job finit en erreur, vérifie la version servie à la main ;
+- **attend le verrou** jusqu'à 2 minutes (`flock -w 120`) au lieu d'échouer : après l'annulation d'un job, l'envoi peut encore tourner sur le Pi. La version servie n'est lue qu'une fois cet envoi fini, jamais pendant. Au bout de 2 minutes, `restore` abandonne sans rien changer et le job finit en erreur. L'envoi encore en cours peut alors basculer plus tard : vérifie la version servie à la main ;
 - **sert exactement `<sha>`**, que `deploy.yml` a lu avant l'envoi, et non la version précédente par date : après un rollback manuel, la version la plus récente n'est pas forcément celle d'avant ;
 - **ne fait rien si `<sha>` est déjà servie** (`version <sha> déjà servie`) ; sinon, bascule et affiche `retour à la version <sha> (depuis <servie>)` ;
 - refuse un SHA mal formé (même contrôle que `version.txt`) ou une version absente de `releases/`.
@@ -244,7 +244,7 @@ La clé d'hôte est lue sur le Pi lui-même, par le réseau local, plutôt que p
 
 ## Comment on sait que ça marche
 
-- **`test/etendard-receive.test.sh`** : 55 tests locaux (52 sous le bash de Git, qui simule `flock`), sur des archives saines et piégées, le verrou et `restore`. Ils n'ont pas besoin du Pi.
+- **`test/etendard-receive.test.sh`** : tests locaux sur des archives saines et piégées, le verrou et `restore`. Ils n'ont pas besoin du Pi.
 - **`verify.sh pi`**, sur le Pi, et **`verify.sh ssh`**, depuis le PC : ils rejouent les critères du ticket et affichent ✅ ou ❌. Le 2026-11-07, le bilan était de 20/0 et 21/0. Les sorties complètes sont dans le ticket #4.
 - **Tests Tailscale** : ils sont rejoués par la console à chaque modification de la politique.
 
