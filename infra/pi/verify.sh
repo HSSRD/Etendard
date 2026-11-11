@@ -95,11 +95,11 @@ mode_pi() {
   for url in / /index.html; do
     check "Cache-Control sur $url, conforme au Caddyfile" '^conforme$' header "http://127.0.0.1:8080$url" Cache-Control @html
   done
-  # La revalidation par ETag répond 304, avec le même en-tête.
+  # La revalidation par ETag répond 304 (statut vérifié ici, en-tête juste après).
   local etag
   etag="$(served http://127.0.0.1:8080/ ETag)"; etag="${etag#*: }"
   check "revalidation de / par ETag : 304" '^HTTP/1.1 304' curl -sSI -H "If-None-Match: $etag" http://127.0.0.1:8080/
-  check "Cache-Control sur la 304 de /, conforme au Caddyfile" '^conforme$' \
+  check "Cache-Control sur la revalidation de / (If-None-Match), conforme au Caddyfile" '^conforme$' \
     header http://127.0.0.1:8080/ Cache-Control @html -H "If-None-Match: $etag"
   check "Cache-Control sur /version.txt, conforme au Caddyfile" '^conforme$' header http://127.0.0.1:8080/version.txt Cache-Control /version.txt
 
