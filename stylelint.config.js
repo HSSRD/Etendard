@@ -12,7 +12,7 @@ const bemSelector = (fileName) => {
   );
 };
 
-// Les raccourcis autorisés (background, margin…) sont développés puis vérifiés.
+// Les raccourcis autorisés (margin, padding…) sont développés puis vérifiés.
 const strictProperties = [
   '/color$/',
   'fill',
@@ -35,6 +35,7 @@ const strictProperties = [
   'border-width',
   '/^border(-[a-z]+)*-(radius|width)$/',
   '/^outline-(width|offset)$/',
+  'column-rule-width',
   '/^(transition|animation)-(duration|delay)$/',
   'z-index',
 ];
@@ -81,7 +82,7 @@ export default {
         ignoreAtRules: ['@font-face'],
       },
     ],
-    // Raccourcis que le plugin ne sait pas développer : longhands obligatoires.
+    // Raccourcis que le plugin développe mal (valeurs ignorées) : longhands obligatoires.
     'property-disallowed-list': [
       [
         'font',
@@ -92,6 +93,10 @@ export default {
         'outline',
         'transition',
         'animation',
+        // `background: #f00 url(x.png)`, `scroll-padding: 2px` ou `column-rule: … 2px` passeraient.
+        'background',
+        '/^scroll-padding(-(block|inline))?$/',
+        'column-rule',
       ],
       { message: (p) => `« ${p} » : utilise les propriétés détaillées.` },
     ],
