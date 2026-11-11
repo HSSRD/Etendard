@@ -97,6 +97,7 @@ mode_pi() {
   done
   # La revalidation par ETag répond 304 (statut vérifié ici, en-tête juste après).
   local etag
+  check "ETag servi sur /" '^E[Tt]ag: "[^"]+"$' served http://127.0.0.1:8080/ ETag
   etag="$(served http://127.0.0.1:8080/ ETag)"; etag="${etag#*: }"
   check "revalidation de / par ETag : 304" '^HTTP/1.1 304' curl -sSI -H "If-None-Match: $etag" http://127.0.0.1:8080/
   check "Cache-Control sur la revalidation de / (If-None-Match), conforme au Caddyfile" '^conforme$' \
