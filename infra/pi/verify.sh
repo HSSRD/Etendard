@@ -78,6 +78,7 @@ mode_pi() {
   asset="$(find /srv/etendard/current/_astro -maxdepth 1 -type f -printf '%f\n' -quit)"
   check "Cache-Control sur /_astro/$asset, conforme au Caddyfile" '^conforme$' header "http://127.0.0.1:8080/_astro/$asset" Cache-Control
   refute "pas de cache d'un an sur /" 'max-age=31536000|immutable' header http://127.0.0.1:8080/ Cache-Control
+  refute "pas de cache d'un an sur /version.txt" 'max-age=31536000|immutable' header http://127.0.0.1:8080/version.txt Cache-Control
   refute "pas de cache d'un an sur une 404 de /_astro/" 'max-age=31536000|immutable' header "http://127.0.0.1:8080/_astro$absent" Cache-Control
 
   title "Critère 2 — utilisateur deploy"
