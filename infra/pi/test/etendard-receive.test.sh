@@ -58,6 +58,11 @@ expect_refused() { # <description> <archive> <motif du message>
   ok "$1"
 }
 
+expect_cmd_refused() { # <description> <commande SSH> <motif du message>
+  if run "$2"; then ko "$1 : acceptée"; return; fi
+  grep -q "$3" <<<"$out" && ok "$1" || ko "$1 : message inattendu ($out)"
+}
+
 # --- Réception, status, rollback -------------------------------------------
 reset
 run status && ko "status sans version" || ok "status sans version : erreur ($out)"
@@ -94,7 +99,7 @@ run rollback; run rollback; run status
 
 # --- Commandes refusées ------------------------------------------------------
 for cmd in "id" "bash" "status; id" "rollback x" "sh -c status" "scp -t /tmp" "internal-sftp"; do
-  run "$cmd" && ko "commande « $cmd » acceptée" || { grep -q 'commande refusée' <<<"$out" && ok "commande « $cmd » refusée" || ko "« $cmd » : $out"; }
+  expect_cmd_refused "commande « $cmd » refusée" "$cmd" "commande refusée"
 done
 
 # --- Archives piégées --------------------------------------------------------
@@ -132,7 +137,7 @@ done
 run "" "$WORK/v2.tar.gz"   # deux versions : seul le verrou peut empêcher le rollback
 hold_lock
 expect_refused "déploiement concurrent (verrou pris)" "$WORK/v2.tar.gz" "autre déploiement"
-run rollback && ko "rollback avec verrou pris" || { grep -q 'autre déploiement' <<<"$out" && ok "rollback refusé avec verrou pris" || ko "rollback avec verrou pris : $out"; }
+expect_cmd_refused "rollback refusé avec verrou pris" rollback "autre déploiement"
 run status && ok "status fonctionne pendant un déploiement" || ko "status pendant un déploiement : $out"
 release_lock
 
