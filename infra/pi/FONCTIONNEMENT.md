@@ -79,6 +79,16 @@ Astro écrit les feuilles de style dans `/_astro/`, sous un nom qui contient une
 
 `verify.sh pi` le contrôle sur un fichier réel de `/_astro/`.
 
+#### Le cache des pages HTML et de `version.txt` (#52)
+
+**Les pages HTML portent `Cache-Control: no-cache`.** Le navigateur (et Cloudflare) peut garder la page, mais doit la revalider à chaque visite : il renvoie son `ETag`, et Caddy répond `304 Not Modified`, sans corps, tant que la page n'a pas changé. Sans cet en-tête, un navigateur réutiliserait la page sans la redemander pendant une durée qu'il calcule lui-même (souvent 10 % de l'âge de `Last-Modified`, RFC 9111) : jusqu'à quelques jours après un déploiement. Cette ancienne page demanderait d'anciens fichiers de `/_astro/`, que le Pi ne sert plus dès le déploiement suivant (il ne sert que `current`) : sans eux en cache, la page s'afficherait sans style.
+
+Le matcher `@html` vise les chemins en `/` et en `.html`, c'est-à-dire les pages d'Astro, et non le type de la réponse : une `304` n'a pas de `Content-Type`, elle perdrait l'en-tête.
+
+**`version.txt` porte `Cache-Control: no-store`** : ni le navigateur ni Cloudflare ne le gardent, et le test de fumée lit toujours le SHA réellement servi (ADR 0006). Que Cloudflare le respecte reste à vérifier à la mise en ligne.
+
+`verify.sh pi` contrôle les deux en-têtes, et la `304` de `/`.
+
 #### Le journal d'accès
 
 Caddy écrit chaque requête, en JSON, dans `/var/log/caddy/etendard-access.log`. À 10 Mio, le fichier est renommé et compressé ; Caddy garde les 4 derniers. Le journal occupe donc au plus 50 Mio sur la carte SD. Il appartient à l'utilisateur `caddy`, sous lequel tourne le service : `install.sh` lui rend le dossier après `caddy validate`, qui, lancé en root, crée le fichier s'il n'existe pas.

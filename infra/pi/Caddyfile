@@ -27,6 +27,18 @@ http://:8080 {
 		match status 2xx 304
 	}
 
+	# Pages HTML revalidées à chaque visite (ETag, réponse 304 légère) : après un déploiement,
+	# un navigateur ne réutilise pas une ancienne page qui demanderait d'anciens /_astro/ (#52).
+	@html path */ *.html
+	header @html {
+		Cache-Control "no-cache"
+	}
+
+	# Jamais en cache : le test de fumée lit le SHA déployé à travers Cloudflare (ADR 0006).
+	header /version.txt {
+		Cache-Control "no-store"
+	}
+
 	# Journal d'accès JSON, 5 fichiers de 10 Mio au plus (le courant compris), anciens compressés.
 	log {
 		output file /var/log/caddy/etendard-access.log {
