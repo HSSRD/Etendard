@@ -75,7 +75,7 @@ Astro écrit les feuilles de style dans `/_astro/`, sous un nom qui contient une
 
 **Ce cache est sans risque.** Un fichier de `/_astro/` ne change jamais de contenu : si le CSS change, l'empreinte change, donc le nom aussi. La nouvelle page HTML pointe vers ce nouveau nom, que personne n'a encore en cache. L'ancien fichier reste en cache, mais plus aucune page ne le demande. Les autres fichiers (`/`, la vidéo, `favicon.svg`, `version.txt`) gardent un nom fixe : ils n'ont pas cet en-tête, sinon une nouvelle version mettrait jusqu'à un an à arriver.
 
-**Seules les réponses 200 et 304 le portent.** Une 404 sur `/_astro/` n'est pas gardée un an : sans cela, un fichier absent un instant, puis rendu par un rollback, resterait introuvable pour ce visiteur ou derrière Cloudflare.
+**Seules les réponses 2xx et 304 le portent.** Une 404 sur `/_astro/` n'est pas gardée un an : sans cela, un fichier absent un instant, puis rendu par un rollback, resterait introuvable pour ce visiteur ou derrière Cloudflare.
 
 `verify.sh pi` le contrôle sur un fichier réel de `/_astro/`.
 
