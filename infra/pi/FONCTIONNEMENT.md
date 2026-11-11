@@ -59,6 +59,7 @@ La CSP, directive par directive :
 - `default-src 'none'` : tout est interdit par défaut, scripts compris. Le site n'envoie aucun JavaScript ;
 - `style-src 'self'` : seulement les feuilles de style du site. Astro les écrit dans des fichiers `/_astro/*.css` et non dans un `<style>` de la page (`astro.config.mjs`), ce qui évite `'unsafe-inline'` ;
 - `img-src 'self'` : seulement les images du site ;
+- `media-src 'self'` : seulement les vidéos du site (la vidéo de bienvenue de la section d'accueil) ;
 - `base-uri 'none'` et `form-action 'none'` : pas de `<base>` qui détournerait les liens, ni de formulaire qui enverrait des données ;
 - `frame-ancestors 'none'` : aucun site ne peut afficher Étendard dans un cadre (protection contre le *clickjacking*).
 
