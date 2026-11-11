@@ -75,10 +75,10 @@ mode_pi() {
   title "Ticket #36 — cache d'un an des fichiers de /_astro/"
   # Un fichier réel du site servi : son nom porte l'empreinte de son contenu.
   local asset
-  asset="$(find /srv/etendard/current/_astro -maxdepth 1 -type f -printf '%f\n' 2>/dev/null | head -n 1)"
+  asset="$(find /srv/etendard/current/_astro -maxdepth 1 -type f -printf '%f\n' -quit)"
   check "Cache-Control sur /_astro/$asset, conforme au Caddyfile" '^conforme$' header "http://127.0.0.1:8080/_astro/$asset" Cache-Control
-  refute "pas de cache d'un an sur /" 'max-age=31536000' header http://127.0.0.1:8080/ Cache-Control
-  refute "pas de cache d'un an sur une 404 de /_astro/" 'max-age=31536000' header "http://127.0.0.1:8080/_astro$absent" Cache-Control
+  refute "pas de cache d'un an sur /" immutable curl -sSI http://127.0.0.1:8080/
+  refute "pas de cache d'un an sur une 404 de /_astro/" immutable curl -sSI "http://127.0.0.1:8080/_astro$absent"
 
   title "Critère 2 — utilisateur deploy"
   check "utilisateur deploy, sans groupe secondaire" '^uid=[0-9]+\(deploy\) gid=[0-9]+\(deploy\) groups=[0-9]+\(deploy\)$' id deploy

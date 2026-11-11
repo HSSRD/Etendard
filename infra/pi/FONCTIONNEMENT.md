@@ -77,7 +77,7 @@ Astro écrit les feuilles de style dans `/_astro/`, sous un nom qui contient une
 
 **Seules les réponses 200 et 304 le portent.** Une 404 sur `/_astro/` n'est pas gardée un an : sans cela, un fichier absent un instant, puis rendu par un rollback, resterait introuvable pour ce visiteur ou derrière Cloudflare.
 
-Comme le reste du `Caddyfile`, ce cache s'applique sur le Pi en relançant `install.sh`, et `verify.sh pi` le contrôle sur un fichier réel de `/_astro/`.
+`verify.sh pi` le contrôle sur un fichier réel de `/_astro/`.
 
 #### Le journal d'accès
 
