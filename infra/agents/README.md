@@ -81,9 +81,8 @@ foreach ($d in 'C:\04-Projets','C:\ProgramData\floxf') {
 $systeme = 'Windows','Users','ProgramData','Program Files','Program Files (x86)','WindowsApps','WpSystem','System Volume Information','Documents and Settings','EtendardAgent'
 $dossiers = Get-ChildItem C:\,D:\,E:\ -Directory -Force | Where-Object { $_.Name -notin $systeme -and $_.Name -notlike '$*' }
 foreach ($d in $dossiers) {
-  icacls $d.FullName /inheritance:d /Q              # les droits hérités deviennent explicites…
-  icacls $d.FullName /grant "floxf:(OI)(CI)F" /Q    # …Flo garde l'écriture (sans élévation)…
-  icacls $d.FullName /remove:g "*S-1-5-11" /Q       # …et les Utilisateurs authentifiés la perdent
+  icacls $d.FullName /inheritance:d /grant "floxf:(OI)(CI)F" /Q   # droits hérités rendus explicites, Flo garde l'écriture…
+  icacls $d.FullName /remove:g "*S-1-5-11" /Q                     # …et les Utilisateurs authentifiés la perdent
 }
 icacls C:\04-Projets   # attendu : floxf, SYSTEM, Administrateurs, rien d'autre
 ```

@@ -72,7 +72,7 @@ echo "== 4. Merge d'une PR qui touche infra/pi/"
 branche_pi="test-isolation-infra-pi-$ID"
 git switch -q -c "$branche_pi" origin/main
 echo "<!-- test d'isolation $ID -->" >>infra/pi/README.md
-git commit -q -am "test: merge refusé d'une PR infra/pi (#70)"
+git commit -q -am "test: merge refusé d'une PR infra/pi (#70) [skip ci]"
 if git push -q origin "$branche_pi" 2>/dev/null; then
   url=$(gh pr create -R "$REPO" --head "$branche_pi" \
     --title "test: merge refusé d'une PR infra/pi (#70)" \
