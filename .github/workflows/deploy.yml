@@ -109,7 +109,7 @@ jobs:
       - name: Envoyer l'archive
         id: envoi
         run: ssh florasp < etendard.tar.gz
-      # Délai propre : un status bloqué échoue ici, et le rollback tourne avant le délai du job.
+      # Un status bloqué échoue ici plutôt qu'au délai du job.
       - name: Vérifier la version servie
         timeout-minutes: 2
         run: |
