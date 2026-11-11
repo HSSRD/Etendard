@@ -6,7 +6,6 @@
 import { spawnSync } from 'node:child_process';
 import { sign } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { pathToFileURL } from 'node:url';
 
 const API = 'https://api.github.com';
 
@@ -121,7 +120,7 @@ const main = async () => {
   console.log(`Jeton hssrd-bot renouvelé dans ${ghConfigDir}.`);
 };
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+if (import.meta.main) {
   main().catch((error) => {
     console.error(error instanceof Error ? error.message : error);
     process.exit(1);

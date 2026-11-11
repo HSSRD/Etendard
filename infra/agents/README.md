@@ -55,9 +55,13 @@ Le profil `C:\Users\floxf` est déjà privé. Mais les dossiers créés à la ra
 « Utilisateurs authentifiés : Modification » : `etendard-agent` pourrait écrire dans le dépôt principal
 (`C:\04-Projets\HSSRD\Etendard\.git\hooks`, exécutés ensuite par le git de Flo) ou dans `C:\03-VSCode`.
 
+La boucle traite tous les dossiers de `C:\` hors dossiers système (aujourd'hui `C:\01-Steam` à `C:\05-OrcaSlicer`) ;
+relance-la après avoir créé un nouveau dossier à la racine :
+
 ```powershell
-foreach ($d in 'C:\01-Steam','C:\02-Wargaming','C:\03-VSCode','C:\04-Projets','C:\05-OrcaSlicer') {
-  icacls $d /inheritance:r /grant:r "floxf:(OI)(CI)F" "*S-1-5-18:(OI)(CI)F" "*S-1-5-32-544:(OI)(CI)F" /Q
+$systeme = 'Windows','Program Files','Program Files (x86)','ProgramData','Users','PerfLogs','Recovery','inetpub','EtendardAgent'
+Get-ChildItem C:\ -Directory | Where-Object { $_.Name -notin $systeme } | ForEach-Object {
+  icacls $_.FullName /inheritance:r /grant:r "floxf:(OI)(CI)F" "*S-1-5-18:(OI)(CI)F" "*S-1-5-32-544:(OI)(CI)F" /Q
 }
 icacls C:\04-Projets   # attendu : floxf, SYSTEM, Administrateurs, rien d'autre
 ```
@@ -98,7 +102,6 @@ Test-Path C:\EtendardAgent\gh\hosts.yml                                         
 ```
 
 La tâche tourne sous le compte de Flo (S4U : sans fenêtre ni mot de passe enregistré), donc seule elle lit la clé.
-Un jeton vit une heure : un renouvellement toutes les 30 minutes laisse toujours au moins 30 minutes de marge.
 
 ## 7. Outiller le compte `etendard-agent`
 
@@ -171,19 +174,8 @@ orca worktree create --environment etendard-agent --repo path:C:/Users/etendard-
   --prompt "Lance bash infra/agents/verifier-isolation.sh et poste sa sortie complète en commentaire de la PR du ticket #70."
 ```
 
-Le script attend environ 10 minutes (CI de sa PR de test) et doit finir par « Isolation vérifiée. ».
+Le script prend environ une minute et doit finir par « Isolation vérifiée. ».
 Le commentaire posté par `hssrd-bot` prouve à lui seul que les PR et commentaires des agents sont au nom du bot.
-
-## 11. Basculer le skill `ticket`
-
-Le skill est désormais suivi dans le repo (`.claude/skills/ticket/SKILL.md`) pour que le clone des agents l'ait.
-Avant le premier `git pull` qui l'apporte dans le dépôt principal, retire la copie non suivie :
-
-```powershell
-cd C:\04-Projets\HSSRD\Etendard
-Remove-Item .claude\skills\ticket\SKILL.md
-git pull
-```
 
 ## Révoquer
 

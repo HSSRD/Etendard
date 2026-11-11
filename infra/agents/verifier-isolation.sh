@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Vérifie l'isolation des agents (#70) depuis une session agent, dans un clone du repo.
-# Usage : bash infra/agents/verifier-isolation.sh [profil de Flo] [dépôt principal de Flo]
-# Ouvre puis ferme une PR de test qui touche infra/pi/ : compte environ 10 minutes (CI).
+# Usage : bash infra/agents/verifier-isolation.sh
+# Ouvre puis ferme une PR de test qui touche infra/pi/. Lance-le sur un arbre de travail propre.
 # N'affiche jamais de jeton.
 set -u
 
-PROFIL=${1:-C:/Users/floxf}
-DEPOT_FLO=${2:-C:/04-Projets/HSSRD/Etendard}
+PROFIL=C:/Users/floxf
+DEPOT_FLO=C:/04-Projets/HSSRD/Etendard
 REPO=HSSRD/Etendard
 ID=$(date +%s)
 echecs=0
@@ -33,19 +33,19 @@ else
 fi
 
 echo "== 2. Fichiers de Flo"
-if ls "$PROFIL" >/dev/null 2>&1; then
-  ko "le profil $PROFIL est lisible"
-else
-  ok "le profil $PROFIL est inaccessible"
-fi
-for fichier in "$PROFIL/.ssh" "$PROFIL/AppData/Roaming/GitHub CLI/hosts.yml" "$PROFIL/.etendard"; do
-  if ls "$fichier" >/dev/null 2>&1; then ko "$fichier est lisible"; else ok "$fichier est inaccessible"; fi
+for chemin in "$PROFIL" "$PROFIL/.ssh" "$PROFIL/AppData/Roaming/GitHub CLI/hosts.yml" "$PROFIL/.etendard" "$DEPOT_FLO"; do
+  if ls "$chemin" >/dev/null 2>&1; then ko "$chemin est lisible"; else ok "$chemin est inaccessible"; fi
 done
-if ls "$DEPOT_FLO" >/dev/null 2>&1; then
-  ko "le dépôt principal $DEPOT_FLO est lisible (hooks git exécutés sous Flo)"
-else
-  ok "le dépôt principal $DEPOT_FLO est inaccessible"
-fi
+# Un dossier de Flo modifiable à la racine laisserait planter du code qu'il exécute (hooks git…).
+for dossier in /c/*/; do
+  case "$dossier" in /c/Users/ | /c/Windows/ | /c/Program*/ | /c/ProgramData/ | /c/EtendardAgent/) continue ;; esac
+  if (: >"${dossier}test-isolation-$ID") 2>/dev/null; then
+    rm -f "${dossier}test-isolation-$ID"
+    ko "$dossier est modifiable"
+  else
+    ok "$dossier n'est pas modifiable"
+  fi
+done
 
 git fetch -q origin main
 retour=$(git rev-parse --abbrev-ref HEAD)
@@ -73,12 +73,15 @@ if git push -q origin "$branche_pi" 2>/dev/null; then
   url=$(gh pr create -R "$REPO" --head "$branche_pi" \
     --title "test: merge refusé d'une PR infra/pi (#70)" \
     --body "PR de test de l'isolation des agents (#70), fermée par le script.")
-  echo "PR de test : $url (attente de la CI pour que seul le ruleset de relecture bloque)"
-  gh pr checks "$url" --watch >/dev/null 2>&1
+  echo "PR de test : $url"
   sortie=$(gh pr merge "$url" --squash 2>&1)
-  if [ $? -ne 0 ]; then
-    ok "merge refusé : $(head -n 1 <<<"$sortie")"
-    gh pr view "$url" --json reviewDecision,mergeStateStatus -q '"      reviewDecision=\(.reviewDecision) mergeStateStatus=\(.mergeStateStatus)"'
+  refus=$?
+  # Sans attendre la CI : REVIEW_REQUIRED prouve que la relecture de Flo bloque, CI verte ou non.
+  decision=$(gh pr view "$url" --json reviewDecision -q .reviewDecision)
+  if [ "$refus" -ne 0 ] && [ "$decision" = "REVIEW_REQUIRED" ]; then
+    ok "merge refusé (reviewDecision=$decision) : $(head -n 1 <<<"$sortie")"
+  elif [ "$refus" -ne 0 ]; then
+    ko "merge refusé, mais sans relecture exigée (reviewDecision=${decision:-aucune}) : ruleset absent ?"
   else
     ko "la PR $url a été mergée sans relecture de Flo : à annuler (revert) d'urgence"
   fi
