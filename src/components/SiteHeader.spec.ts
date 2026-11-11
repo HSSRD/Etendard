@@ -80,7 +80,6 @@ test('le header colle en haut, au-dessus du contenu, à la hauteur du token, sur
     }),
     clientWidth: document.documentElement.clientWidth,
   }));
-  expect(tokenHeight).toBeGreaterThan(0);
   expect(layout.headerHeight).toBe(tokenHeight);
   expect(layout.links).toHaveLength(3);
   for (const link of layout.links) {
@@ -133,7 +132,6 @@ test('avec un texte agrandi à 200 %, le header ne déborde pas horizontalement'
     page,
     'calc(var(--focus-offset) + var(--focus-width))',
   );
-  expect(ring).toBeGreaterThan(0);
   const links = await header(page).getByRole('link').all();
   expect(links).toHaveLength(3);
   const width = await page.evaluate(() => document.documentElement.clientWidth);

@@ -59,7 +59,6 @@ test('les ancres défilent en douceur et s’arrêtent sous le header', async ({
 
   // --header-height converti en pixels, comme getComputedStyle le renvoie.
   const headerHeight = `${await cssToPixels(page, 'var(--header-height)')}px`;
-  expect(headerHeight).not.toBe('0px');
   for (const id of ['accueil', 'projets']) {
     await expect(page.locator(`#${id}`)).toHaveCSS(
       'scroll-margin-top',

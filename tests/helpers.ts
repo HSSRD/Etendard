@@ -37,16 +37,22 @@ export const expectNoAxeViolations = async (page: Page) => {
   expect(violations).toEqual([]);
 };
 
-/** Expression CSS de longueur (`var(--x)`, `calc(…)`) convertie en pixels par une sonde. */
-export const cssToPixels = (page: Page, expression: string) =>
-  page.evaluate((value) => {
+/**
+ * Expression CSS de longueur (`var(--x)`, `calc(…)`) convertie en pixels par une sonde.
+ * Échoue sur 0 px : c'est ce que donnent un token inconnu ou une expression invalide.
+ */
+export const cssToPixels = async (page: Page, expression: string) => {
+  const pixels = await page.evaluate((value) => {
     const probe = document.createElement('div');
     probe.style.height = value;
     document.body.append(probe);
-    const pixels = probe.getBoundingClientRect().height;
+    const height = probe.getBoundingClientRect().height;
     probe.remove();
-    return pixels;
+    return height;
   }, expression);
+  expect(pixels, expression).toBeGreaterThan(0);
+  return pixels;
+};
 
 /** Aucun défilement horizontal à la largeur courante de la fenêtre. */
 export const expectNoHorizontalScroll = async (page: Page) => {
