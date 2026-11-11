@@ -1,7 +1,7 @@
 # Chemins dont toute modification exige la relecture de Flo (ruleset « Relecture de Flo »,
 # infra/agents/ruleset-relecture-flo.json, ADR 0008) : tout ce qui s'exécute ou fait consigne
 # avec des privilèges — en root sur le Pi (#69), avec les secrets de production, avec la clé
-# privée de hssrd-bot, ou dans la session de Flo (skill ticket, AGENTS.md, CLAUDE.md à tout niveau, ADR).
+# privée de hssrd-bot, ou dans la session de Flo (skill ticket, AGENTS.md, CLAUDE.md, CLAUDE.local.md, .mcp.json, ADR).
 /infra/pi/ @Florianrcht
 /.github/workflows/ @Florianrcht
 /.github/CODEOWNERS @Florianrcht
@@ -10,4 +10,6 @@
 .claude/ @Florianrcht
 AGENTS.md @Florianrcht
 CLAUDE.md @Florianrcht
+CLAUDE.local.md @Florianrcht
+.mcp.json @Florianrcht
 /docs/adr/ @Florianrcht

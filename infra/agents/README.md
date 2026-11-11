@@ -6,7 +6,7 @@ Le compte de Flo garde seul la clé privée de l'App, son `gh` et ses clés SSH.
 
 ```text
 Compte floxf                                  Compte etendard-agent
-  %USERPROFILE%\.etendard\hssrd-bot.pem         (ni profil de Flo ni C:\04-Projets ; aucune écriture hors de son profil)
+  %USERPROFILE%\.etendard\hssrd-bot.pem         (ni profil de Flo ni C:\04-Projets ; dossiers de Flo non modifiables)
   tâche « Etendard - jeton hssrd-bot »          C:\EtendardAgent\gh\hosts.yml  (lecture seule)
     toutes les 10 min : jeton-bot.js  ──écrit──►  gh, git (gh auth setup-git)
   Orca (bureau) ──appairé (127.0.0.1)──────────► orca serve (tâche planifiée, hors du bureau de Flo)
@@ -81,10 +81,14 @@ icacls C:\ProgramData\Git /inheritance:r /grant:r "*S-1-5-18:(OI)(CI)F" "*S-1-5-
 foreach ($d in 'C:\04-Projets','C:\ProgramData\floxf') {
   icacls $d /inheritance:r /grant:r "floxf:(OI)(CI)F" "*S-1-5-18:(OI)(CI)F" "*S-1-5-32-544:(OI)(CI)F" /Q
 }
-$systeme = 'Windows','Users','ProgramData','Program Files','Program Files (x86)','WindowsApps','WpSystem','XboxGames','Recovery','System Volume Information','Documents and Settings','EtendardAgent'
+# Dossiers système exclus sur C: seulement ; sur D: et E:, seuls la corbeille et System Volume Information le sont.
+$systeme = 'Windows','Users','ProgramData','Program Files','Program Files (x86)','WindowsApps','WpSystem','XboxGames','Recovery','Documents and Settings','EtendardAgent'
 # Seuls les dossiers qui accordent encore un droit aux Utilisateurs authentifiés : une relance ne reparcourt pas les autres.
-$authentifies = { (Get-Acl $_.FullName).GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier]) | Where-Object { $_.IdentityReference.Value -eq 'S-1-5-11' } }
-$dossiers = Get-ChildItem C:\,D:\,E:\ -Directory -Force | Where-Object { $_.Name -notin $systeme -and $_.Name -notlike '$*' -and (& $authentifies) }
+$authentifies = { (Get-Acl -LiteralPath $_.FullName).GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier]) | Where-Object { $_.IdentityReference.Value -eq 'S-1-5-11' } }
+$dossiers = Get-ChildItem C:\,D:\,E:\ -Directory -Force | Where-Object {
+  $_.Name -notlike '$*' -and $_.Name -ne 'System Volume Information' -and
+  -not ($_.Parent.Name -eq 'C:\' -and $_.Name -in $systeme) -and (& $authentifies)
+}
 foreach ($d in $dossiers) {
   icacls $d.FullName /inheritance:d /grant "floxf:(OI)(CI)F" /Q   # droits hérités rendus explicites, Flo garde l'écriture…
   icacls $d.FullName /remove:g "*S-1-5-11" /Q                     # …et les Utilisateurs authentifiés la perdent
@@ -188,7 +192,8 @@ en tâche planifiée, dans une session sans bureau : un agent n'atteint ni le pr
 ```powershell
 $agent = Get-Credential etendard-agent
 $action = New-ScheduledTaskAction -Execute 'C:\Users\etendard-agent\AppData\Local\Programs\orca\resources\bin\orca.cmd' -Argument 'serve --bind 127.0.0.1'
-$reglages = New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero)   # si le runtime s'arrête : Start-ScheduledTask
+# Sans limite de durée, priorité normale (7 par défaut ralentirait pnpm et Playwright) ; s'il s'arrête : Start-ScheduledTask.
+$reglages = New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -Priority 5
 Register-ScheduledTask -TaskName "Etendard - Orca des agents" -Action $action -Trigger (New-ScheduledTaskTrigger -AtStartup) `
   -User $agent.UserName -Password $agent.GetNetworkCredential().Password -Settings $reglages
 Start-ScheduledTask "Etendard - Orca des agents"

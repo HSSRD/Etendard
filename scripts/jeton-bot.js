@@ -4,7 +4,7 @@
 // Usage : node jeton-bot.js <client ID> <installation ID> <clé .pem> <GH_CONFIG_DIR des agents>
 // Flo en exécute une copie relue, rangée dans son profil (infra/agents/README.md).
 import { sign } from 'node:crypto';
-import { readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 const API = 'https://api.github.com';
@@ -68,6 +68,7 @@ export const installationToken = async (
         repositories: ['Etendard'],
         permissions: PERMISSIONS,
       }),
+      signal: AbortSignal.timeout(10_000),
     },
   );
   if (!response.ok) {
@@ -110,15 +111,21 @@ const main = async () => {
     installationId,
     jwt(clientId, readFileSync(keyPath, 'utf8'), now),
   );
-  // Fichiers écrits à côté puis renommés : un `gh` d'agent ne lit jamais un fichier à moitié écrit.
   // Pas de `gh auth login` : lancé sous Flo, il toucherait aux identifiants Windows de son propre `gh`.
-  for (const [nom, contenu] of [
-    ['config.yml', 'version: "1"\n'],
-    ['hosts.yml', hostsYml(token)],
-  ]) {
-    const fichier = path.join(ghConfigDir, nom);
-    writeFileSync(`${fichier}.tmp`, contenu);
-    renameSync(`${fichier}.tmp`, fichier);
+  const config = path.join(ghConfigDir, 'config.yml');
+  if (!existsSync(config)) writeFileSync(config, 'version: "1"\n');
+  // Écrit à côté puis renommé : un `gh` d'agent ne lit jamais un fichier à moitié écrit. Sous
+  // Windows, le renommage échoue tant qu'un `gh` d'agent tient le fichier ouvert : on réessaie.
+  const hosts = path.join(ghConfigDir, 'hosts.yml');
+  writeFileSync(`${hosts}.tmp`, hostsYml(token));
+  for (let essai = 1; ; essai++) {
+    try {
+      renameSync(`${hosts}.tmp`, hosts);
+      break;
+    } catch (error) {
+      if (essai === 10) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
   }
   console.log(`Jeton hssrd-bot renouvelé dans ${ghConfigDir}.`);
 };

@@ -40,11 +40,12 @@ done
 # Mêmes dossiers que l'étape 4 du README, plus le dossier du jeton (lecture seule pour l'agent).
 for dossier in /c/*/ /d/*/ /e/*/ /c/ProgramData/floxf/ /c/EtendardAgent/gh/; do
   [ -d "$dossier" ] || continue
-  case "$(basename "$dossier")" in
-    \$* | Windows | Users | ProgramData | "Program Files"* | WindowsApps | WpSystem | XboxGames | Recovery | "System Volume Information" | "Documents and Settings" | EtendardAgent) continue ;;
+  case "$dossier" in
+    /?/\$*/ | /?/"System Volume Information"/) continue ;;
+    /c/Windows/ | /c/Users/ | /c/ProgramData/ | /c/"Program Files"*/ | /c/WindowsApps/ | /c/WpSystem/ | /c/XboxGames/ | /c/Recovery/ | /c/"Documents and Settings"/ | /c/EtendardAgent/) continue ;;
   esac
-  if (: >"${dossier}test-isolation-$ID") 2>/dev/null; then
-    rm -f "${dossier}test-isolation-$ID"
+  if (: >"${dossier}test-isolation-$ID") 2>/dev/null || mkdir "${dossier}test-isolation-$ID" 2>/dev/null; then
+    rm -rf "${dossier}test-isolation-$ID"
     ko "$dossier est modifiable"
   else
     ok "$dossier n'est pas modifiable"

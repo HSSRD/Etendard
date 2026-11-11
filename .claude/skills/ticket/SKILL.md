@@ -78,6 +78,7 @@ Objectif : **« PR ouverte, tous les critères d'acceptation vérifiés, code ch
 
 ## B2. Préparer
 
+0. Vérifie ton identité : `gh auth token | cut -c1-4` doit afficher `ghs_` (jeton de `hssrd-bot`, ADR 0008). Sinon, tu tournes sous le compte de Flo : n'écris rien sur GitHub, notifie « Ticket #N bloqué — agent lancé hors du compte etendard-agent » et arrête-toi.
 1. Relis le ticket (`gh issue view N -R HSSRD/Etendard --comments`), lis `AGENTS.md` / `CLAUDE.md` s'ils existent et les ADR cités. Ne contredis jamais un ADR accepté.
 2. Vérifie que tu es bien sur la branche `issue-N-<slug>` à jour avec `origin/main` (`git fetch && git rebase origin/main` si besoin).
 3. Marque le ticket en cours : `gh issue edit N -R HSSRD/Etendard --add-label en-cours` (ignore l'erreur si l'étiquette n'existe pas encore).
