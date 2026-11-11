@@ -39,16 +39,16 @@ export const expectNoAxeViolations = async (page: Page) => {
 
 /** Expression CSS de longueur (`var(--x)`, `calc(…)`) convertie en pixels par une sonde. */
 export const cssToPixels = (page: Page, expression: string) =>
-  page.evaluate((height) => {
+  page.evaluate((value) => {
     const probe = document.createElement('div');
-    probe.style.height = height;
+    probe.style.height = value;
     document.body.append(probe);
     const pixels = probe.getBoundingClientRect().height;
     probe.remove();
     return pixels;
   }, expression);
 
-/** Aucun défilement horizontal à la largeur de la fenêtre (375 px compris). */
+/** Aucun défilement horizontal à la largeur courante de la fenêtre. */
 export const expectNoHorizontalScroll = async (page: Page) => {
   // clientWidth exclut la barre de défilement verticale, contrairement à innerWidth.
   const overflow = await page.evaluate(() => {

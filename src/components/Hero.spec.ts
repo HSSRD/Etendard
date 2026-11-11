@@ -206,7 +206,6 @@ test('accueil : le Hero remplit l’écran sous le header, centré, et mène aux
       expectedHeight: window.innerHeight - headerHeight,
       section: box('#accueil'),
       projets: box('#projets'),
-      headerHeight,
       paddingTop: padding('Top'),
       contentWidth:
         find('.hero').clientWidth - padding('Left') - padding('Right'),
@@ -244,5 +243,5 @@ test('accueil : le Hero remplit l’écran sous le header, centré, et mène aux
     .poll(() =>
       page.locator('#projets').evaluate((el) => el.getBoundingClientRect().top),
     )
-    .toBeCloseTo(layout.headerHeight, 0);
+    .toBeCloseTo(headerHeight, 0);
 });

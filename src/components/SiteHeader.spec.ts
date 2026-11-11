@@ -110,7 +110,7 @@ test('chaque lien du header a un focus visible au clavier', async ({
 }) => {
   await page.goto('/styleguide/site-header');
   const brand = header(page).getByRole('link', { name: 'Étendard' });
-  // Tab jusqu'au header, quel que soit le nombre d'éléments focusables avant lui.
+  // Tab jusqu'au header.
   await tabTo(page, brand);
   for (const [index, name] of ['Étendard', 'Accueil', 'Projets'].entries()) {
     if (index > 0) await page.keyboard.press('Tab');
