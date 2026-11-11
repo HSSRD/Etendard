@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@12.17.0",
+  "packageManager": "pnpm@12.18.0",
   "engines": {
     "node": ">=26 <27"
   },
@@ -35,8 +35,8 @@
     "eslint-plugin-astro": "3.2.1",
     "eslint-plugin-jsx-a11y-x": "0.2.0",
     "globals": "17.14.0",
-    "html-validate": "11.18.0",
-    "knip": "6.44.1",
+    "html-validate": "11.19.0",
+    "knip": "6.44.2",
     "postcss-html": "2.0.0",
     "prettier": "^3.9.10",
     "prettier-plugin-astro": "1.1.2",
