@@ -6,7 +6,7 @@ Le compte de Flo garde seul la clé privée de l'App, son `gh` et ses clés SSH.
 
 ```text
 Compte floxf                                  Compte etendard-agent
-  %USERPROFILE%\.etendard\hssrd-bot.pem         (aucun accès au profil de Flo ni à C:\0x-*)
+  %USERPROFILE%\.etendard\hssrd-bot.pem         (ni profil de Flo ni C:\04-Projets ; aucune écriture hors de son profil)
   tâche « Etendard - jeton hssrd-bot »          C:\EtendardAgent\gh\hosts.yml  (lecture seule)
     toutes les 10 min : jeton-bot.js  ──écrit──►  gh, git (gh auth setup-git)
   Orca (bureau) ──appairé (127.0.0.1)──────────► orca serve (tâche planifiée, hors du bureau de Flo)
@@ -82,7 +82,9 @@ foreach ($d in 'C:\04-Projets','C:\ProgramData\floxf') {
   icacls $d /inheritance:r /grant:r "floxf:(OI)(CI)F" "*S-1-5-18:(OI)(CI)F" "*S-1-5-32-544:(OI)(CI)F" /Q
 }
 $systeme = 'Windows','Users','ProgramData','Program Files','Program Files (x86)','WindowsApps','WpSystem','XboxGames','Recovery','System Volume Information','Documents and Settings','EtendardAgent'
-$dossiers = Get-ChildItem C:\,D:\,E:\ -Directory -Force | Where-Object { $_.Name -notin $systeme -and $_.Name -notlike '$*' }
+# Seuls les dossiers qui accordent encore un droit aux Utilisateurs authentifiés : une relance ne reparcourt pas les autres.
+$authentifies = { (Get-Acl $_.FullName).GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier]) | Where-Object { $_.IdentityReference.Value -eq 'S-1-5-11' } }
+$dossiers = Get-ChildItem C:\,D:\,E:\ -Directory -Force | Where-Object { $_.Name -notin $systeme -and $_.Name -notlike '$*' -and (& $authentifies) }
 foreach ($d in $dossiers) {
   icacls $d.FullName /inheritance:d /grant "floxf:(OI)(CI)F" /Q   # droits hérités rendus explicites, Flo garde l'écriture…
   icacls $d.FullName /remove:g "*S-1-5-11" /Q                     # …et les Utilisateurs authentifiés la perdent
@@ -202,7 +204,7 @@ orca repo add --environment etendard-agent --path C:\Users\etendard-agent\Etenda
 Les worktrees, terminaux et agents créés avec `--environment etendard-agent` tournent alors sous ce compte ;
 ils s'affichent dans l'Orca de Flo comme ceux de la machine.
 
-## 9. Imposer la relecture de Flo sur `infra/pi/`, les workflows et ce dossier
+## 9. Imposer la relecture de Flo sur les chemins de `.github/CODEOWNERS`
 
 Depuis le dépôt principal, sur la branche de la PR :
 
@@ -213,7 +215,8 @@ gh api -X POST repos/HSSRD/Etendard/rulesets --input infra/agents/ruleset-relect
 Ce ruleset exige l'approbation d'un code owner (`.github/CODEOWNERS`) pour toute PR qui touche ces chemins.
 Le rôle Admin (Flo) peut le contourner pour ses propres PR, case à cocher au merge ; `hssrd-bot` n'a aucune exception.
 Le bot peut pousser sur toute branche, y compris celle d'une PR de Flo : avant de cocher le contournement,
-vérifie qu'aucun commit n'est de lui (`gh pr view <numéro> --json commits -q '.commits[].authors[].login'`).
+vérifie que la tête de la PR est ton propre commit, depuis ta copie locale de la branche
+(`gh pr view <numéro> --json headRefOid -q .headRefOid` doit valoir `git rev-parse HEAD`) ; l'auteur d'un commit, lui, se falsifie.
 Le ruleset « Bloque push main » reste inchangé (CI verte, branche à jour, squash) et s'applique à tous.
 
 Merge ensuite la PR du ticket #70 : `.github/CODEOWNERS` doit être sur `main` pour que le ruleset ait des chemins à protéger.

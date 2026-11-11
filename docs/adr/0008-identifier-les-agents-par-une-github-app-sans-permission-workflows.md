@@ -35,5 +35,5 @@ Les agents du skill `ticket` tournent aussi en local, dans Orca. Lancés sous le
 ## Risques résiduels
 
 - **Code du repo exécuté par Flo** : une PR d'agent hors CODEOWNERS (config, scripts, tests) s'exécute sous le compte de Flo dès qu'il lance `pnpm` sur `main`, avec accès à son `gh` et à la clé de l'App (point de vigilance de 0011). Le compte dédié ne couvre pas ce cas.
-- **Lecture et réseau** : `etendard-agent` lit encore les dossiers de Flo hors profil (sauf le dépôt principal) et garde l'accès réseau du PC (tailnet, LAN, Pi, services de Flo sur 127.0.0.1).
+- **Lecture et réseau** : `etendard-agent` lit encore les dossiers de Flo hors profil (sauf `C:\04-Projets` et `C:\ProgramData\floxf`) et garde l'accès réseau du PC (tailnet, LAN, Pi, services de Flo sur 127.0.0.1).
 - **Phase A du skill** : elle lit tickets et commentaires (contenu non fiable, 0011) dans la session de Flo, avec son `gh`.
