@@ -49,9 +49,9 @@ site() {
   tar -czf "$WORK/$1.tar.gz" -C "$dir" .
 }
 
-expect_refused() { # <description> <archive> <motif du message>
+expect_refused() { # <description> <archive> <motif du message> [commande SSH]
   local before; before="$(readlink "$ETENDARD_ROOT/current" 2>/dev/null)"
-  if run "" "$2"; then ko "$1 : acceptée"; return; fi
+  if run "${4:-}" "$2"; then ko "$1 : acceptée"; return; fi
   grep -q "$3" <<<"$out" || { ko "$1 : message inattendu ($out)"; return; }
   [ "$(readlink "$ETENDARD_ROOT/current" 2>/dev/null)" = "$before" ] || { ko "$1 : current modifié"; return; }
   [ -z "$(find "$ETENDARD_ROOT/releases" -mindepth 1 -name '.incoming*')" ] || { ko "$1 : dossier temporaire laissé"; return; }
@@ -94,7 +94,7 @@ run rollback; run rollback; run status
 
 # --- Commandes refusées ------------------------------------------------------
 for cmd in "id" "bash" "status; id" "rollback x" "sh -c status" "scp -t /tmp" "internal-sftp"; do
-  run "$cmd" && ko "commande « $cmd » acceptée" || { grep -q 'commande refusée' <<<"$out" && ok "commande « $cmd » refusée" || ko "« $cmd » : $out"; }
+  expect_refused "refus de la commande « $cmd »" /dev/null "commande refusée" "$cmd"
 done
 
 # --- Archives piégées --------------------------------------------------------
@@ -109,7 +109,7 @@ tar -czf "$WORK/abs.tar.gz" -P -C "$WORK/p1" version.txt "$WORK/p1/f"
 expect_refused "chemin absolu" "$WORK/abs.tar.gz" "chemin absolu"
 
 tar -czf "$WORK/dotdot.tar.gz" -P -C "$WORK/p1" version.txt ../p1/f
-expect_refused "chemin avec .." "$WORK/dotdot.tar.gz" "\.\."
+expect_refused "chemin avec .." "$WORK/dotdot.tar.gz" "chemin contenant"
 
 mkdir -p "$WORK/p2"; echo 1234567 > "$WORK/p2/version.txt"; ln -s /etc/passwd "$WORK/p2/lien"
 tar -czf "$WORK/symlink.tar.gz" -C "$WORK/p2" .
@@ -129,9 +129,10 @@ for bad in "ABCDEF1" "123456" "../../etc" "g123456" "$(printf 'a%.0s' {1..41})" 
   expect_refused "SHA invalide « $bad »" "$WORK/sha$n.tar.gz" "SHA invalide"
 done
 
+run "" "$WORK/v2.tar.gz"   # deux versions : seul le verrou peut empêcher le rollback
 hold_lock
-expect_refused "déploiement concurrent (verrou pris)" "$WORK/v2.tar.gz" "autre déploiement"
-run rollback && ko "rollback avec verrou pris" || ok "rollback refusé avec verrou pris"
+expect_refused "déploiement concurrent (verrou pris)" "$WORK/v1.tar.gz" "autre déploiement"
+expect_refused "refus du rollback avec verrou pris" /dev/null "autre déploiement" rollback
 run status && ok "status fonctionne pendant un déploiement" || ko "status pendant un déploiement : $out"
 release_lock
 
