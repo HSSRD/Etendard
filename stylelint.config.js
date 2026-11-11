@@ -12,7 +12,7 @@ const bemSelector = (fileName) => {
   );
 };
 
-// Les raccourcis autorisés (background, margin…) sont développés puis vérifiés.
+// Les raccourcis autorisés (margin, inset…) sont développés puis vérifiés.
 const strictProperties = [
   '/color$/',
   'fill',
@@ -35,6 +35,7 @@ const strictProperties = [
   'border-width',
   '/^border(-[a-z]+)*-(radius|width)$/',
   '/^outline-(width|offset)$/',
+  'column-rule-width',
   '/^(transition|animation)-(duration|delay)$/',
   'z-index',
 ];
@@ -92,6 +93,10 @@ export default {
         'outline',
         'transition',
         'animation',
+        // Non développés par le plugin : `background: #f00 url(x.png)` ou `scroll-padding: 2px` passeraient.
+        'background',
+        '/^scroll-padding(-(block|inline))?$/',
+        'column-rule',
       ],
       { message: (p) => `« ${p} » : utilise les propriétés détaillées.` },
     ],
