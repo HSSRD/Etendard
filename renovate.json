@@ -3,6 +3,7 @@
   "description": "Mises à jour des dépendances et des actions GitHub (ADR 0013).",
   "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
   "minimumReleaseAge": "3 days",
+  "rebaseWhen": "behind-base-branch",
   "vulnerabilityAlerts": {
     "description": "Correctifs de sécurité : même délai de 3 jours (ADR 0013), que pnpm impose aussi (pnpm-workspace.yaml).",
     "minimumReleaseAge": "3 days"

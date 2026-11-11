@@ -29,3 +29,4 @@ Les agents ajoutent facilement des dépendances et importent des paquets non dé
 - Dépendances à jour sans intervention pour les mineures et correctifs.
 - Chaque mise à jour mergée automatiquement part en production (0006) sans relecture humaine. Seuls `pnpm verify` et le délai de 3 jours protègent contre une régression ou un paquet malveillant.
 - La protection de `main` (0011) ne doit pas exiger de relecture humaine pour les PR de Renovate, sinon il ne peut pas merger seul.
+- `main` n'accepte qu'une PR à jour (0011) : Renovate rebase seul ses PR en retard (`rebaseWhen: behind-base-branch`) ; pour celles qu'il merge, il attend que `pnpm verify` repasse. Une branche qui porte le commit d'un autre auteur (PR « Playwright ») se met à jour à la main : voir `AGENTS.md`.

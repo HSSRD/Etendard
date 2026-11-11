@@ -63,5 +63,9 @@ L'image Docker de `ci.yml`, de `deploy.yml` et de `pnpm captures:maj` suit la ve
 `@playwright/test` : mets à jour les deux workflows (tag et empreinte `@sha256:`) en même temps que le paquet.
 Renovate (`renovate.json`, ADR 0013) le fait dans sa PR « Playwright » :
 régénère les captures dans sa branche (`pnpm captures:maj`) et commite-les ; le merge reste humain.
-Si Renovate recrée ensuite la branche (rebase), ce commit disparaît : relance `pnpm captures:maj`.
+Ce commit empêche Renovate de rebaser seul la branche ; s'il la recrée (case de rebase cochée), le commit disparaît : relance `pnpm captures:maj`.
+`main` n'accepte qu'une PR à jour : si elle est en retard, fusionne `origin/main` dans la branche (« Update branch »,
+ou en local en cas de conflit : `pnpm install` pour `pnpm-lock.yaml`, `pnpm captures:maj` pour les captures, ou sans Docker
+la version de la branche puis « Captures sans Docker »),
+récupère le résultat et refais les captures si la CI échoue sur `toHaveScreenshot`.
 Une version plus récente arrive dans une nouvelle PR : ferme l'ancienne et refais-y les captures.
