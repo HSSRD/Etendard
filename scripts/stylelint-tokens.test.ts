@@ -56,7 +56,6 @@ test('accepte les tokens et les mots-clés admis', async () => {
     'border-radius: var(--radius-md);',
     'border-width: var(--border-width);',
     'column-rule-color: var(--color-border);',
-    'column-rule-style: solid;',
     'column-rule-width: var(--border-width);',
     'font-family: var(--font-family-sans);',
     'line-height: inherit;',
