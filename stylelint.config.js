@@ -82,7 +82,7 @@ export default {
         ignoreAtRules: ['@font-face'],
       },
     ],
-    // Raccourcis que le plugin ne sait pas développer : longhands obligatoires.
+    // Raccourcis que le plugin développe mal (valeurs ignorées) : longhands obligatoires.
     'property-disallowed-list': [
       [
         'font',
