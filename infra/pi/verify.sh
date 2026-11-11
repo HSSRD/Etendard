@@ -124,6 +124,12 @@ mode_pi() {
   check "verrou flock : 2e opération refusée pendant un déploiement" 'autre déploiement' \
     runuser -u deploy -- env SSH_ORIGINAL_COMMAND=rollback /usr/local/bin/etendard-receive
   wait
+  # restore d'une version absente : prouve l'attente du verrou sans rien basculer.
+  runuser -u deploy -- flock /srv/etendard/.lock sleep 3 &
+  sleep 1
+  check "restore attend la fin d'un déploiement en cours" 'version 0000000 absente' \
+    runuser -u deploy -- env SSH_ORIGINAL_COMMAND="restore 0000000" /usr/local/bin/etendard-receive
+  wait
 
   title "Sentry intact (lecture seule)"
   check "ports 5000 et 8000 toujours servis" ':(5000|8000) ' ss -Hltn '( sport = :5000 or sport = :8000 )'
@@ -159,7 +165,7 @@ mode_ssh() {
     sftp -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=10 -b "$d/sftp-batch" "deploy@$host"
   check "redirection de port refusée" 'prohibited|refused|failed' "${ssh[@]}" -W 127.0.0.1:8080 "deploy@$host" </dev/null
 
-  title "Critère 5 — réception, status, rollback"
+  title "Critère 5 — réception, status, rollback, restore"
   check "envoi de la version $a" "version $a" "${ssh[@]}" "deploy@$host" < "$d/$a.tar.gz"
   check "status = $a" "^$a\$" "${ssh[@]}" "deploy@$host" status </dev/null
   check "page $a servie sur le Pi" "Page de test $a" ssh "$flo" curl -s http://127.0.0.1:8080/
@@ -169,6 +175,9 @@ mode_ssh() {
   check "rollback" "retour à la version $a" "${ssh[@]}" "deploy@$host" rollback </dev/null
   check "status = $a après rollback" "^$a\$" "${ssh[@]}" "deploy@$host" status </dev/null
   check "page $a de nouveau servie" "Page de test $a" ssh "$flo" curl -s http://127.0.0.1:8080/
+  check "restore $b" "retour à la version $b" "${ssh[@]}" "deploy@$host" restore "$b" </dev/null
+  check "restore $a" "retour à la version $a" "${ssh[@]}" "deploy@$host" restore "$a" </dev/null
+  check "status = $a après restore" "^$a\$" "${ssh[@]}" "deploy@$host" status </dev/null
 
   title "Durcissement — deux déploiements simultanés"
   ( sleep 5; cat "$d/$b.tar.gz" ) | "${ssh[@]}" "deploy@$host" > "$d/first.log" 2>&1 &

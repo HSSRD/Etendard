@@ -103,9 +103,20 @@ jobs:
             StrictHostKeyChecking yes
             ConnectTimeout 30
           EOF
+      # Sans version de départ, le rollback ne saurait pas où revenir : rien n'est
+      # envoyé si status échoue, sauf quand aucune version n'est encore servie.
       - name: Lire la version servie avant l'envoi
         id: before
-        run: echo "sha=$(ssh florasp status || true)" >> "$GITHUB_OUTPUT"
+        timeout-minutes: 1
+        run: |
+          if sha="$(ssh florasp status 2> status.err)"; then
+            echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          elif grep -q 'aucune version servie' status.err; then
+            echo "::warning::aucune version servie avant l'envoi : pas de rollback possible"
+          else
+            cat status.err >&2
+            exit 1
+          fi
       - name: Envoyer l'archive
         id: envoi
         run: ssh florasp < etendard.tar.gz
@@ -116,29 +127,19 @@ jobs:
           served="$(ssh florasp status)"
           echo "servie : $served — attendue : $GITHUB_SHA"
           [ "$served" = "$GITHUB_SHA" ]
-      # N'annule que ce que ce job a changé : si la version servie est toujours
-      # celle d'avant l'envoi, un rollback reviendrait une version trop loin.
+      # restore attend la fin d'un envoi encore en cours sur le Pi (annulation),
+      # puis sert la version d'avant l'envoi ; il ne fait rien si elle l'est déjà.
       # cancelled() : failure() vaut false si le job est annulé (à la main ou par son délai).
-      - name: Revenir à la version précédente
+      - name: Revenir à la version d'avant l'envoi
         id: rollback
-        if: (failure() || cancelled()) && steps.before.outcome == 'success'
-        timeout-minutes: 3 # annulé, le job ne l'interrompt plus
+        if: (failure() || cancelled()) && steps.before.outputs.sha != ''
+        timeout-minutes: 3 # annulé, le job ne l'interrompt plus ; restore attend le verrou 2 min au plus
         env:
           BEFORE: ${{ steps.before.outputs.sha }}
         run: |
-          now="$(ssh florasp status || true)"
-          if [ -z "$now" ]; then
-            echo "::error::version servie illisible, rollback non lancé"
-          elif [ "$now" = "$BEFORE" ]; then
-            echo "version servie inchangée ($now), rollback inutile"
-          elif [ -z "$BEFORE" ] && [ "$now" != "$GITHUB_SHA" ]; then
-            # Sans version de départ, seule la version de ce job prouve la bascule.
-            echo "::error::version d'avant l'envoi illisible et $now servie, rollback non lancé"
-          else
-            ssh florasp rollback
-            echo "effectue=true" >> "$GITHUB_OUTPUT"
-            echo "servie après rollback : $(ssh florasp status)"
-          fi
+          out="$(ssh florasp restore "$BEFORE")"
+          echo "$out"
+          case "$out" in "retour à la version"*) echo "effectue=true" >> "$GITHUB_OUTPUT" ;; esac
       # Version servie en fin de job, reprise dans l'e-mail de résultat.
       - &servi
         name: Lire la version servie en fin de job

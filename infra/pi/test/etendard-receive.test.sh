@@ -11,20 +11,28 @@ trap 'rm -rf "$WORK"' EXIT
 export MSYS=winsymlinks:sys   # bash de Git : vrais liens symboliques au lieu de copies
 export ETENDARD_ROOT="$WORK/srv"
 
-# hold_lock / release_lock : un autre déploiement tient le verrou.
+# hold_lock <s> : un autre déploiement tient le verrou pendant <s> secondes ;
+# `wait` attend qu'il le rende.
 # Le bash de Git n'a pas flock : un substitut simule alors un verrou pris tant
-# qu'un fichier témoin existe. Sous Linux, le vrai flock est utilisé.
+# qu'un fichier témoin existe (et l'attend avec -w). Sous Linux, le vrai flock est utilisé.
 if command -v flock >/dev/null; then
-  hold_lock() { flock "$ETENDARD_ROOT/.lock" sleep 2 & sleep 0.5; }
-  release_lock() { wait; }
+  real_flock=1
+  hold_lock() { flock "$ETENDARD_ROOT/.lock" sleep "$1" & sleep 0.5; }
 else
+  real_flock=
   mkdir "$WORK/bin"
-  printf '#!/bin/sh\n[ ! -e "$ETENDARD_ROOT/.lock.held" ]\n' > "$WORK/bin/flock"
+  cat > "$WORK/bin/flock" <<'SH'
+#!/bin/sh
+left=0; [ "$1" = -w ] && left="$2"
+while [ -e "$ETENDARD_ROOT/.lock.held" ]; do
+  [ "$left" -gt 0 ] || exit 1
+  sleep 1; left=$((left - 1))
+done
+SH
   chmod +x "$WORK/bin/flock"
   export PATH="$WORK/bin:$PATH"
-  hold_lock() { touch "$ETENDARD_ROOT/.lock.held"; }
-  release_lock() { rm -f "$ETENDARD_ROOT/.lock.held"; }
-  echo "note - flock simulé (bash de Git) ; le vrai verrou est testé sur le Pi par verify.sh"
+  hold_lock() { touch "$ETENDARD_ROOT/.lock.held"; (sleep "$1"; rm -f "$ETENDARD_ROOT/.lock.held") & }
+  echo "note - flock simulé (bash de Git) ; le vrai verrou est testé par la CI (Linux) et sur le Pi par verify.sh"
 fi
 
 pass=0 fail=0
@@ -91,9 +99,15 @@ kept="$(ls "$ETENDARD_ROOT/releases" | sort | tr '\n' ' ')"
 [ "$kept" = "3333333 4444444 5555555 6666666 7777777 " ] && ok "5 dernières versions gardées" || ko "versions gardées : $kept"
 run rollback; run rollback; run status
 [ "$out" = 5555555 ] && ok "deux rollbacks : 5555555" || ko "deux rollbacks : $out"
+run rollback; run rollback   # 3333333 servie, la plus ancienne gardée
+site k8 8888888; run "" "$WORK/k8.tar.gz"
+[ -d "$ETENDARD_ROOT/releases/3333333" ] && ok "ménage : la version remplacée est gardée, même ancienne" \
+  || ko "ménage : version remplacée supprimée ($(ls "$ETENDARD_ROOT/releases" | tr '\n' ' '))"
+run "restore 3333333"; run status
+[ "$out" = 3333333 ] && ok "restore de la version remplacée" || ko "restore de la version remplacée : $out"
 
 # --- Commandes refusées ------------------------------------------------------
-for cmd in "id" "bash" "status; id" "rollback x" "sh -c status" "scp -t /tmp" "internal-sftp"; do
+for cmd in "id" "bash" "status; id" "rollback x" "restore" "restore;id" "sh -c status" "scp -t /tmp" "internal-sftp"; do
   expect_refused "refus de la commande « $cmd »" /dev/null "commande refusée" "$cmd"
 done
 
@@ -130,11 +144,55 @@ for bad in "ABCDEF1" "123456" "../../etc" "g123456" "$(printf 'a%.0s' {1..41})" 
 done
 
 run "" "$WORK/v2.tar.gz"   # deux versions : seul le verrou peut empêcher le rollback
-hold_lock
+hold_lock 2
 expect_refused "déploiement concurrent (verrou pris)" "$WORK/v1.tar.gz" "autre déploiement"
 expect_refused "refus du rollback avec verrou pris" /dev/null "autre déploiement" rollback
 run status && ok "status fonctionne pendant un déploiement" || ko "status pendant un déploiement : $out"
-release_lock
+wait
+
+# --- restore <sha> : rollback automatique de deploy.yml --------------------
+# Après un rollback manuel, A est servie et B est plus récente : l'échec du
+# déploiement de C doit ramener A, la version d'avant l'envoi, et non B.
+reset
+site v3 ccccccc
+run "" "$WORK/v1.tar.gz"; sleep 1; run "" "$WORK/v2.tar.gz"; run rollback
+sleep 1; run "" "$WORK/v3.tar.gz"
+run "restore aaaaaaa" && grep -q 'retour à la version aaaaaaa (depuis ccccccc)' <<<"$out" \
+  && ok "restore ($out)" || ko "restore : $out"
+run status; [ "$out" = aaaaaaa ] && ok "status = version d'avant l'envoi, pas la plus récente" || ko "status après restore : $out"
+run "restore aaaaaaa" && grep -q 'déjà servie' <<<"$out" \
+  && ok "restore de la version servie : rien ne change" || ko "restore de la version servie : $out"
+expect_refused "restore d'une version absente" /dev/null "version ddddddd absente" "restore ddddddd"
+for bad in "ABCDEF1" "../../etc" "aaaaaaa x" ""; do
+  expect_refused "restore, SHA invalide « $bad »" /dev/null "SHA invalide" "restore $bad"
+done
+
+# Un receive tient le verrou : restore l'attend au lieu d'échouer.
+hold_lock 2
+start=$SECONDS
+run "restore ccccccc" && grep -q 'retour à la version ccccccc' <<<"$out" && [ $((SECONDS - start)) -ge 1 ] \
+  && ok "restore attend la fin du verrou ($((SECONDS - start)) s)" || ko "restore avec verrou pris : $out"
+wait
+export ETENDARD_LOCK_WAIT=1
+hold_lock 2
+expect_refused "restore, verrou toujours pris au bout du délai" /dev/null "autre déploiement" "restore aaaaaaa"
+wait
+unset ETENDARD_LOCK_WAIT
+
+# Annulation pendant l'envoi : le receive bascule après le début du rollback,
+# qui l'attend puis rétablit la version d'avant l'envoi.
+if [ -n "$real_flock" ]; then
+  run "restore aaaaaaa"
+  ( sleep 2; cat "$WORK/v2.tar.gz" ) | SSH_ORIGINAL_COMMAND="" "$SCRIPT" > "$WORK/receive.log" 2>&1 &
+  sleep 0.5
+  run "restore aaaaaaa" && grep -q "retour à la version aaaaaaa (depuis bbbb" <<<"$out" \
+    && ok "restore pendant un receive : attend sa bascule puis la défait" || ko "restore pendant un receive : $out"
+  wait
+  grep -q 'publiée\|réactivée' "$WORK/receive.log" && ok "le receive concurrent a abouti" || ko "receive concurrent : $(cat "$WORK/receive.log")"
+  run status; [ "$out" = aaaaaaa ] && ok "status = version d'avant l'envoi" || ko "status : $out"
+else
+  echo "note - restore pendant un vrai receive : testé avec le vrai flock seulement (CI Linux)"
+fi
 
 echo
 echo "$pass réussis, $fail échoués"

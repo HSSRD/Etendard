@@ -117,17 +117,25 @@ command="/usr/local/bin/etendard-receive",restrict ssh-ed25519 AAAA… github-de
 
 ### `etendard-receive`, la seule porte d'entrée
 
-Le script n'accepte que trois demandes. Tout le reste est refusé.
+Le script n'accepte que quatre demandes. Tout le reste est refusé.
 
 | Demande | Effet |
 |---|---|
 | aucune, archive sur l'entrée standard : `ssh deploy@florasp < site.tar.gz` | publie une nouvelle version |
-| `rollback` | revient à la version publiée juste avant celle servie |
+| `rollback` | revient à la version publiée juste avant celle servie (rollback manuel) |
+| `restore <sha>` | attend la fin d'un déploiement en cours, puis sert la version `<sha>` (rollback automatique, #54) |
 | `status` | affiche le SHA servi |
+
+`restore <sha>` :
+
+- **attend le verrou** jusqu'à 2 minutes (`flock -w 120`) au lieu d'échouer : après l'annulation d'un job, l'envoi peut encore tourner sur le Pi. La version servie n'est lue qu'une fois cet envoi fini, jamais pendant. Au bout de 2 minutes, `restore` abandonne sans rien changer et le job finit en erreur. L'envoi encore en cours peut alors basculer plus tard : vérifie la version servie à la main ;
+- **sert exactement `<sha>`**, que `deploy.yml` a lu avant l'envoi, et non la version précédente par date : après un rollback manuel, la version la plus récente n'est pas forcément celle d'avant ;
+- **ne fait rien si `<sha>` est déjà servie** (`version <sha> déjà servie`) ; sinon, bascule et affiche `retour à la version <sha> (depuis <servie>)` ;
+- refuse un SHA mal formé (même contrôle que `version.txt`) ou une version absente de `releases/`.
 
 Une publication se déroule ainsi :
 
-1. **Verrou `flock`.** Si un déploiement est déjà en cours, la demande est refusée tout de suite, ce qui évite que deux merges rapprochés se mélangent. `status` reste possible pendant ce temps.
+1. **Verrou `flock`.** Si un déploiement est déjà en cours, la demande est refusée tout de suite, ce qui évite que deux merges rapprochés se mélangent (`rollback` aussi ; seul `restore` attend). `status` reste possible pendant ce temps.
 2. **Contrôle de l'archive, avant toute extraction.** Le script refuse :
    - un chemin absolu ;
    - un `..` ;
@@ -137,7 +145,7 @@ Une publication se déroule ainsi :
 3. **Extraction**, avec des droits remis à plat : lecture pour tous, écriture pour `deploy` seul.
 4. **Lecture de `version.txt`**, validé par `^[0-9a-f]{7,40}$`, c'est-à-dire un SHA git. Ce SHA devient le nom du dossier `releases/<sha>`, d'où cette rigueur.
 5. **Bascule atomique** : le lien `current.tmp` est renommé en `current`. Caddy sert l'ancienne version ou la nouvelle, jamais un état intermédiaire.
-6. **Ménage** : les 5 versions les plus récentes sont gardées, et celle qui est servie n'est jamais supprimée.
+6. **Ménage** : les 5 versions les plus récentes sont gardées. Ni la version publiée ni celle qu'elle remplace ne sont supprimées, même plus anciennes (après des rollbacks manuels) : `restore` doit pouvoir y revenir. Il peut donc rester 6 versions.
 
 En cas d'erreur, rien ne change : le dossier temporaire est supprimé et `current` ne bouge pas.
 
@@ -177,7 +185,7 @@ Le dépôt contient une version générique de la politique, avec des valeurs `�
 
 La Release est publiée par un job séparé, après le déploiement : le job `build` exécute les scripts du repo et ne reçoit donc qu'un jeton en lecture.
 
-**Rollback automatique.** Si une étape échoue après la lecture de `status`, ou si le job est annulé (à la main ou par son délai), le job relit `status`. Il ne lance `rollback` que si la version servie a changé depuis (si la première lecture n'a rien rendu, seulement si la version servie est celle du job) : `rollback` revient à la version publiée avant celle servie, et le lancer alors que rien n'a changé ferait reculer le site d'une version de trop. Le job finit en échec (ou annulé) dans tous les cas. L'étape « Vérifier la version servie » a son propre délai, plus court que celui du job : si `ssh florasp status` y reste bloqué, elle échoue, et le rollback tourne sans attendre le délai du job.
+**Rollback automatique (#54).** Si une étape échoue après la lecture de `status`, ou si le job est annulé (à la main ou par son délai), le job lance `ssh florasp restore <version lue avant l'envoi>`, en un seul appel. Le Pi attend la fin d'un envoi encore en cours, puis sert cette version si elle ne l'est plus : le site revient exactement à la version d'avant l'envoi, et rien ne bouge si l'envoi n'a rien changé. Si `status` échoue avant l'envoi, le job s'arrête sans rien envoyer : il ne saurait pas où revenir. Seule exception, aucune version encore servie (premier déploiement) : l'envoi a lieu, mais aucun rollback n'est possible. Le job finit en échec (ou annulé) dans tous les cas. L'étape « Vérifier la version servie » a son propre délai, plus court que celui du job : si `ssh florasp status` y reste bloqué, elle échoue, et le rollback tourne sans attendre le délai du job.
 
 **Rollback manuel.** Actions > deploy > Run workflow, sur `main`, case `rollback` cochée. Ou :
 
@@ -236,7 +244,7 @@ La clé d'hôte est lue sur le Pi lui-même, par le réseau local, plutôt que p
 
 ## Comment on sait que ça marche
 
-- **`test/etendard-receive.test.sh`** : 38 tests locaux, sur des archives saines et piégées. Ils n'ont pas besoin du Pi.
+- **`test/etendard-receive.test.sh`** : tests locaux sur des archives saines et piégées, le verrou et `restore`. Ils n'ont pas besoin du Pi.
 - **`verify.sh pi`**, sur le Pi, et **`verify.sh ssh`**, depuis le PC : ils rejouent les critères du ticket et affichent ✅ ou ❌. Le 2026-11-07, le bilan était de 20/0 et 21/0. Les sorties complètes sont dans le ticket #4.
 - **Tests Tailscale** : ils sont rejoués par la console à chaque modification de la politique.
 
