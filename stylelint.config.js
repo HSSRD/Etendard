@@ -12,7 +12,7 @@ const bemSelector = (fileName) => {
   );
 };
 
-// Les raccourcis autorisés (margin, inset…) sont développés puis vérifiés.
+// Les raccourcis autorisés (margin, padding…) sont développés puis vérifiés.
 const strictProperties = [
   '/color$/',
   'fill',

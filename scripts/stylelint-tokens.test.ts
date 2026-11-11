@@ -52,12 +52,16 @@ test('signale chaque valeur en dur et chaque raccourci non vérifiable', async (
 
 test('accepte les tokens et les mots-clés admis', async () => {
   const warnings = await lint([
+    'background-color: var(--color-surface);',
     'border-radius: var(--radius-md);',
     'border-width: var(--border-width);',
+    'column-rule-color: var(--color-border);',
+    'column-rule-style: solid;',
     'column-rule-width: var(--border-width);',
     'font-family: var(--font-family-sans);',
     'line-height: inherit;',
     'outline-width: var(--focus-width);',
+    'scroll-padding-top: var(--space-4);',
     'transition-duration: var(--duration-fast), var(--duration-base);',
     'z-index: auto;',
   ]);
