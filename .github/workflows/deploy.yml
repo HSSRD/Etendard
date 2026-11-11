@@ -107,6 +107,7 @@ jobs:
       # envoyé si status échoue, sauf quand aucune version n'est encore servie.
       - name: Lire la version servie avant l'envoi
         id: before
+        timeout-minutes: 1
         run: |
           if sha="$(ssh florasp status 2> status.err)"; then
             echo "sha=$sha" >> "$GITHUB_OUTPUT"

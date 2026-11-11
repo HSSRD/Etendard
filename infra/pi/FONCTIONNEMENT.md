@@ -128,7 +128,7 @@ Le script n'accepte que quatre demandes. Tout le reste est refusé.
 
 `restore <sha>` :
 
-- **attend le verrou** jusqu'à 2 minutes (`flock -w 120`) au lieu d'échouer : après l'annulation d'un job, l'envoi peut encore tourner sur le Pi. La version servie n'est lue qu'une fois cet envoi fini, jamais pendant. Au bout de 2 minutes, la demande échoue sans rien changer ;
+- **attend le verrou** jusqu'à 2 minutes (`flock -w 120`) au lieu d'échouer : après l'annulation d'un job, l'envoi peut encore tourner sur le Pi. La version servie n'est lue qu'une fois cet envoi fini, jamais pendant. Au bout de 2 minutes, la demande échoue sans rien changer elle-même ; l'envoi encore en cours peut alors basculer ensuite : le job finit en erreur, vérifie la version servie à la main ;
 - **sert exactement `<sha>`**, que `deploy.yml` a lu avant l'envoi, et non la version précédente par date : après un rollback manuel, la version la plus récente n'est pas forcément celle d'avant ;
 - **ne fait rien si `<sha>` est déjà servie** (`version <sha> déjà servie`) ; sinon, bascule et affiche `retour à la version <sha> (depuis <servie>)` ;
 - refuse un SHA mal formé (même contrôle que `version.txt`) ou une version absente de `releases/`.

@@ -22,7 +22,7 @@ Workflow `deploy.yml`, déclenché au push sur `main` et par `workflow_dispatch`
 
 Côté Pi :
 - Clé SSH à commande forcée : `command="/usr/local/bin/etendard-receive",restrict`. Même volée, elle ne donne aucun shell.
-- `etendard-receive` : extraction dans `/srv/etendard/releases/<sha>/`, bascule atomique du lien `current`, conservation des 5 dernières versions, arguments `rollback` (manuel) et `restore <sha>` (automatique, #54).
+- `etendard-receive` : extraction dans `/srv/etendard/releases/<sha>/`, bascule atomique du lien `current`, conservation des 5 dernières versions (et de celle remplacée), arguments `rollback` (manuel) et `restore <sha>` (automatique, #54).
 - **ACL Tailscale** : `tag:ci` ne joint que le Pi, port 22.
 
 ## Alternatives écartées

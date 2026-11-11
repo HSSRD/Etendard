@@ -124,15 +124,12 @@ mode_pi() {
   check "verrou flock : 2e opération refusée pendant un déploiement" 'autre déploiement' \
     runuser -u deploy -- env SSH_ORIGINAL_COMMAND=rollback /usr/local/bin/etendard-receive
   wait
-  if served="$(runuser -u deploy -- env SSH_ORIGINAL_COMMAND=status /usr/local/bin/etendard-receive 2>/dev/null)"; then
-    runuser -u deploy -- flock /srv/etendard/.lock sleep 3 &
-    sleep 1
-    check "restore attend la fin d'un déploiement en cours" "version $served déjà servie" \
-      runuser -u deploy -- env SSH_ORIGINAL_COMMAND="restore $served" /usr/local/bin/etendard-receive
-    wait
-  else
-    echo "note - aucune version servie : restore se vérifie après le premier déploiement (relance verify.sh pi)"
-  fi
+  # restore d'une version absente : prouve l'attente du verrou sans rien basculer.
+  runuser -u deploy -- flock /srv/etendard/.lock sleep 3 &
+  sleep 1
+  check "restore attend la fin d'un déploiement en cours" 'version 0000000 absente' \
+    runuser -u deploy -- env SSH_ORIGINAL_COMMAND="restore 0000000" /usr/local/bin/etendard-receive
+  wait
 
   title "Sentry intact (lecture seule)"
   check "ports 5000 et 8000 toujours servis" ':(5000|8000) ' ss -Hltn '( sport = :5000 or sport = :8000 )'
