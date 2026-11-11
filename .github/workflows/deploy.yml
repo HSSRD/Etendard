@@ -110,7 +110,9 @@ jobs:
         run: |
           if sha="$(ssh florasp status 2> status.err)"; then
             echo "sha=$sha" >> "$GITHUB_OUTPUT"
-          elif ! grep -q 'aucune version servie' status.err; then
+          elif grep -q 'aucune version servie' status.err; then
+            echo "::warning::aucune version servie avant l'envoi : pas de rollback possible"
+          else
             cat status.err >&2
             exit 1
           fi
@@ -129,15 +131,11 @@ jobs:
       # cancelled() : failure() vaut false si le job est annulé (à la main ou par son délai).
       - name: Revenir à la version d'avant l'envoi
         id: rollback
-        if: (failure() || cancelled()) && steps.before.outcome == 'success'
+        if: (failure() || cancelled()) && steps.before.outputs.sha != ''
         timeout-minutes: 3 # annulé, le job ne l'interrompt plus ; restore attend le verrou 2 min au plus
         env:
           BEFORE: ${{ steps.before.outputs.sha }}
         run: |
-          if [ -z "$BEFORE" ]; then
-            echo "::error::aucune version servie avant l'envoi, rollback impossible"
-            exit 0
-          fi
           out="$(ssh florasp restore "$BEFORE")"
           echo "$out"
           case "$out" in "retour à la version"*) echo "effectue=true" >> "$GITHUB_OUTPUT" ;; esac
