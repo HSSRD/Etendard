@@ -1,6 +1,6 @@
 #!/bin/bash
-# Produit les preuves des critères 1 à 5 du ticket #4, à coller en commentaire, du critère 4 du ticket #25
-# et du critère 2 du ticket #36.
+# Produit les preuves des critères 1 à 5 du ticket #4, à coller en commentaire, du critère 4 du ticket #25,
+# du critère 2 du ticket #36 et du critère 3 du ticket #52.
 #   sudo bash verify.sh pi      sur le Pi, après install.sh (critères 1, 2, 3 et verrou ; en-têtes, journal, cache)
 #   bash verify.sh ssh          sur le PC, avec la clé privée (critères 1, 4 et 5)
 # Variables du mode ssh : KEY (clé privée, défaut ~/.ssh/github-deploy),
@@ -30,12 +30,19 @@ probe() {
 check() { probe attendu "$@"; }
 refute() { probe interdit "$@"; }
 
-# header <url> <nom> : affiche l'en-tête servi, puis « conforme » s'il est identique à celui du
-# Caddyfile de ce dossier (une config modifiée mais pas rechargée ne l'est pas).
+# header <url> <nom> [matcher [options curl…]] : affiche l'en-tête servi, puis « conforme » s'il est
+# identique à celui du bloc « header [matcher] { » du Caddyfile de ce dossier (une config modifiée
+# mais pas rechargée ne l'est pas). Sans matcher, le bloc des en-têtes de sécurité.
 header() {
   local got want
-  got="$(curl -sSI "$1" | tr -d '\r' | grep -i "^$2:")"
-  want="$(sed -n "s|^[[:space:]]*$2 \"\(.*\)\"$|$2: \1|p" "$HERE/Caddyfile")"
+  got="$(curl -sSI "${@:4}" "$1" | tr -d '\r' | grep -i "^$2:")"
+  want="$(awk -v name="$2" -v block="header ${3:+$3 }{" '
+    { line = $0; sub(/^[[:space:]]+/, "", line) }
+    line == block { inside = 1; next }
+    inside && line == "}" { inside = 0 }
+    inside && index(line, name " \"") == 1 && line ~ /"$/ {
+      print name ": " substr(line, length(name) + 3, length(line) - length(name) - 3)
+    }' "$HERE/Caddyfile")"
   echo "$got"
   [ -n "$want" ] && [ "$got" = "$want" ] && echo conforme
 }
@@ -76,11 +83,23 @@ mode_pi() {
   # Un fichier réel du site servi : son nom porte l'empreinte de son contenu.
   local asset
   asset="$(find /srv/etendard/current/_astro -maxdepth 1 -type f -printf '%f\n' -quit)"
-  check "Cache-Control sur /_astro/$asset, conforme au Caddyfile" '^conforme$' header "http://127.0.0.1:8080/_astro/$asset" Cache-Control
+  check "Cache-Control sur /_astro/$asset, conforme au Caddyfile" '^conforme$' header "http://127.0.0.1:8080/_astro/$asset" Cache-Control '/_astro/*'
   # Ni sur un nom fixe, ni sur une 404 de /_astro/.
   for url in / /version.txt "/_astro$absent"; do
     refute "pas de cache d'un an sur $url" 'max-age=31536000|immutable' header "http://127.0.0.1:8080$url" Cache-Control
   done
+
+  title "Ticket #52 — pages HTML revalidées, version.txt jamais en cache"
+  for url in / /index.html; do
+    check "Cache-Control sur $url, conforme au Caddyfile" '^conforme$' header "http://127.0.0.1:8080$url" Cache-Control @html
+  done
+  # La revalidation par ETag répond 304, avec le même en-tête.
+  local etag
+  etag="$(curl -sSI http://127.0.0.1:8080/ | tr -d '\r' | sed -n 's/^etag: //Ip')"
+  check "revalidation de / par ETag : 304" '^HTTP/1.1 304' curl -sSI -H "If-None-Match: $etag" http://127.0.0.1:8080/
+  check "Cache-Control sur la 304 de /, conforme au Caddyfile" '^conforme$' \
+    header http://127.0.0.1:8080/ Cache-Control @html -H "If-None-Match: $etag"
+  check "Cache-Control sur /version.txt, conforme au Caddyfile" '^conforme$' header http://127.0.0.1:8080/version.txt Cache-Control /version.txt
 
   title "Critère 2 — utilisateur deploy"
   check "utilisateur deploy, sans groupe secondaire" '^uid=[0-9]+\(deploy\) gid=[0-9]+\(deploy\) groups=[0-9]+\(deploy\)$' id deploy
