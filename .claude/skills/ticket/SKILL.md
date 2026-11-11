@@ -60,7 +60,7 @@ orca worktree create --environment etendard-agent \
 ```
 
 - Ne passe pas `--base-branch` : le worktree part de la branche par défaut (`main`).
-- Prompt de l'agent : « Tu es l'agent du ticket #N du repo HSSRD/Etendard. Exécute la **phase B** du skill `ticket` (`.claude/skills/ticket/SKILL.md`) pour le ticket N, en mode goal, sans t'arrêter avant la fin. Décisions prises avec Flo lors du challenge : <réponses de A2, ou « aucune remarque »>. »
+- Prompt de l'agent : « Tu es l'agent du ticket #N du repo HSSRD/Etendard. Commence par `git fetch origin && git rebase origin/main` : le clone des agents peut être en retard, et les consignes à lire sont celles de `main`. Exécute ensuite la **phase B** du skill `ticket` (`.claude/skills/ticket/SKILL.md`) pour le ticket N, en mode goal, sans t'arrêter avant la fin. Décisions prises avec Flo lors du challenge : <réponses de A2, ou « aucune remarque »>. »
 - Marque le worktree en cours : `orca worktree set --environment etendard-agent --worktree branch:issue-N-<slug> --workspace-status in-progress --json`.
 - Réponds à l'utilisateur en 2-3 lignes : worktree créé, agent lancé, il sera notifié à la fin. **La phase A s'arrête là.**
 
@@ -152,8 +152,8 @@ orca worktree set --worktree current --pr <numéro PR> --workspace-status in-rev
 Tu agis sur GitHub en tant que `hssrd-bot`, sans permission `workflows` (ADR 0008). Si le push est refusé parce qu'un commit modifie `.github/workflows/` (« refusing to allow a GitHub App to create or update workflow ») :
 
 - ne cherche aucun contournement (autre jeton, autre remote, API) ;
-- regroupe la modification des workflows dans un dernier commit, pousse la branche sans lui (`git push -u origin HEAD~1:refs/heads/issue-N-<slug>`) et ouvre la PR ;
-- joins ce commit à la PR en commentaire, sous forme de correctif (`git format-patch -1 --stdout` dans un bloc `diff`), avec la commande pour Flo : `gh pr checkout <numéro PR>`, `git am` sur le correctif, `git push` ;
+- regroupe la modification des workflows dans un dernier commit, garde-le en correctif (`git format-patch -1 --stdout > ../workflow-N.patch`), retire-le (`git reset --hard HEAD~1`), puis pousse la branche (`git push -u origin issue-N-<slug>`) et ouvre la PR ;
+- joins le correctif à la PR en commentaire (bloc `diff`), avec la commande pour Flo : `gh pr checkout <numéro PR>`, `git am` sur le correctif, `git push` ; récupère ensuite son commit par `git pull` ;
 - la PR ne peut être mergée qu'après ce push de Flo : passe en B7 avec « Ticket #N : PR prête, Flo doit pousser la modification de workflow ».
 
 Corps de PR : résumé, tableau critère → comment il a été vérifié, ce que l'auto-revue a changé (premier passage, tour 1, tour 2), pistes non appliquées avec leur raison, tickets créés pour les cas hors périmètre, points d'attention, puis `Fixes #N`.

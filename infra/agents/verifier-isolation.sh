@@ -41,7 +41,7 @@ done
 for dossier in /c/*/ /d/*/ /e/*/ /c/ProgramData/floxf/ /c/EtendardAgent/gh/; do
   [ -d "$dossier" ] || continue
   case "$(basename "$dossier")" in
-    \$* | Windows | Users | ProgramData | "Program Files"* | WindowsApps | WpSystem | "System Volume Information" | "Documents and Settings" | EtendardAgent) continue ;;
+    \$* | Windows | Users | ProgramData | "Program Files"* | WindowsApps | WpSystem | XboxGames | Recovery | "System Volume Information" | "Documents and Settings" | EtendardAgent) continue ;;
   esac
   if (: >"${dossier}test-isolation-$ID") 2>/dev/null; then
     rm -f "${dossier}test-isolation-$ID"
@@ -51,12 +51,23 @@ for dossier in /c/*/ /d/*/ /e/*/ /c/ProgramData/floxf/ /c/EtendardAgent/gh/; do
   fi
 done
 
+if mkdir /c/ProgramData/Git/test-isolation-$ID 2>/dev/null; then
+  rmdir /c/ProgramData/Git/test-isolation-$ID
+  ko "C:/ProgramData/Git est modifiable (configuration système du git de Flo)"
+elif [ -d /c/ProgramData/Git ]; then
+  ok "C:/ProgramData/Git existe et n'est pas modifiable"
+else
+  ko "C:/ProgramData/Git n'existe pas : le compte agent pourrait le créer"
+fi
+
+# Les sections 3 et 4 créent des commits de test : jamais sur une branche de travail.
+git diff --quiet HEAD || { echo "Arbre de travail modifié : lance le script sur un worktree propre."; exit 1; }
 git fetch -q origin main
 retour=$(git rev-parse --abbrev-ref HEAD)
 
 echo "== 3. Push d'une modification de .github/workflows/"
 branche_wf="test-isolation-workflows-$ID"
-git switch -q -c "$branche_wf" origin/main
+git switch -q -c "$branche_wf" origin/main || exit 1
 echo "# test d'isolation $ID" >>.github/workflows/ci.yml
 git commit -q -am "test: modification de workflow refusée (#70)"
 sortie=$(git push origin "$branche_wf" 2>&1)
@@ -70,7 +81,7 @@ git switch -q "$retour" && git branch -q -D "$branche_wf"
 
 echo "== 4. Merge d'une PR qui touche infra/pi/"
 branche_pi="test-isolation-infra-pi-$ID"
-git switch -q -c "$branche_pi" origin/main
+git switch -q -c "$branche_pi" origin/main || exit 1
 echo "<!-- test d'isolation $ID -->" >>infra/pi/README.md
 git commit -q -am "test: merge refusé d'une PR infra/pi (#70) [skip ci]"
 if git push -q origin "$branche_pi" 2>/dev/null; then

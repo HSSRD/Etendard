@@ -3,11 +3,12 @@
 // le compte des agents ne reçoit que le jeton, valable une heure. N'affiche jamais le jeton.
 // Usage : node jeton-bot.js <client ID> <installation ID> <clé .pem> <GH_CONFIG_DIR des agents>
 // Flo en exécute une copie relue, rangée dans son profil (infra/agents/README.md).
-import { spawnSync } from 'node:child_process';
 import { sign } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readFileSync, renameSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 
 const API = 'https://api.github.com';
+const BOT = 'hssrd-bot[bot]';
 
 /** Permissions du jeton : celles de l'App, sans `workflows` (ADR 0008). */
 export const PERMISSIONS = {
@@ -80,6 +81,22 @@ export const installationToken = async (
   return token;
 };
 
+/**
+ * Configuration `gh` (format multi-comptes, `version: "1"`) : le bot, connecté en HTTPS.
+ * @param {string} token
+ */
+export const hostsYml = (token) =>
+  [
+    'github.com:',
+    '    users:',
+    `        ${BOT}:`,
+    `            oauth_token: ${token}`,
+    '    git_protocol: https',
+    `    oauth_token: ${token}`,
+    `    user: ${BOT}`,
+    '',
+  ].join('\n');
+
 const main = async () => {
   const [clientId, installationId, keyPath, ghConfigDir] =
     process.argv.slice(2);
@@ -93,30 +110,16 @@ const main = async () => {
     installationId,
     jwt(clientId, readFileSync(keyPath, 'utf8'), now),
   );
-  // `gh` écrit lui-même sa configuration dans le dossier des agents ; le jeton passe par stdin.
-  // Un GH_TOKEN hérité ferait refuser `gh auth login` : il est retiré.
-  const env = { ...process.env, GH_CONFIG_DIR: ghConfigDir };
-  delete env.GH_TOKEN;
-  delete env.GITHUB_TOKEN;
-  const login = spawnSync(
-    'gh',
-    [
-      'auth',
-      'login',
-      '--hostname',
-      'github.com',
-      '--git-protocol',
-      'https',
-      '--insecure-storage',
-      '--with-token',
-    ],
-    {
-      input: token,
-      env,
-      stdio: ['pipe', 'inherit', 'inherit'],
-    },
-  );
-  if (login.status !== 0) throw new Error('gh auth login a échoué.');
+  // Fichiers écrits à côté puis renommés : un `gh` d'agent ne lit jamais un fichier à moitié écrit.
+  // Pas de `gh auth login` : lancé sous Flo, il toucherait aux identifiants Windows de son propre `gh`.
+  for (const [nom, contenu] of [
+    ['config.yml', 'version: "1"\n'],
+    ['hosts.yml', hostsYml(token)],
+  ]) {
+    const fichier = path.join(ghConfigDir, nom);
+    writeFileSync(`${fichier}.tmp`, contenu);
+    renameSync(`${fichier}.tmp`, fichier);
+  }
   console.log(`Jeton hssrd-bot renouvelé dans ${ghConfigDir}.`);
 };
 

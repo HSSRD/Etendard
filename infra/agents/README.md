@@ -8,7 +8,7 @@ Le compte de Flo garde seul la clé privée de l'App, son `gh` et ses clés SSH.
 Compte floxf                                  Compte etendard-agent
   %USERPROFILE%\.etendard\hssrd-bot.pem         (aucun accès au profil de Flo ni à C:\0x-*)
   tâche « Etendard - jeton hssrd-bot »          C:\EtendardAgent\gh\hosts.yml  (lecture seule)
-    toutes les 30 min : jeton-bot.js  ──écrit──►  gh, git (gh auth setup-git)
+    toutes les 10 min : jeton-bot.js  ──écrit──►  gh, git (gh auth setup-git)
   Orca (bureau) ──appairé (127.0.0.1)──────────► orca serve (tâche planifiée, hors du bureau de Flo)
                                                   → worktrees, terminaux, agents claude
 ```
@@ -75,10 +75,13 @@ des « Utilisateurs authentifiés », sans toucher aux autres droits : les dossi
 (`WindowsApps`, `WpSystem`…) gardent les leurs. Relance-la après avoir créé un dossier à la racine d'un disque.
 
 ```powershell
+# C:\ProgramData\Git\config serait lue comme configuration système par le git de Flo : le dossier est créé fermé.
+New-Item -ItemType Directory -Force C:\ProgramData\Git | Out-Null
+icacls C:\ProgramData\Git /inheritance:r /grant:r "*S-1-5-18:(OI)(CI)F" "*S-1-5-32-544:(OI)(CI)F" "*S-1-5-32-545:(OI)(CI)RX" /Q
 foreach ($d in 'C:\04-Projets','C:\ProgramData\floxf') {
   icacls $d /inheritance:r /grant:r "floxf:(OI)(CI)F" "*S-1-5-18:(OI)(CI)F" "*S-1-5-32-544:(OI)(CI)F" /Q
 }
-$systeme = 'Windows','Users','ProgramData','Program Files','Program Files (x86)','WindowsApps','WpSystem','System Volume Information','Documents and Settings','EtendardAgent'
+$systeme = 'Windows','Users','ProgramData','Program Files','Program Files (x86)','WindowsApps','WpSystem','XboxGames','Recovery','System Volume Information','Documents and Settings','EtendardAgent'
 $dossiers = Get-ChildItem C:\,D:\,E:\ -Directory -Force | Where-Object { $_.Name -notin $systeme -and $_.Name -notlike '$*' }
 foreach ($d in $dossiers) {
   icacls $d.FullName /inheritance:d /grant "floxf:(OI)(CI)F" /Q   # droits hérités rendus explicites, Flo garde l'écriture…
@@ -98,7 +101,7 @@ icacls C:\EtendardAgent /inheritance:r /grant:r "floxf:(OI)(CI)F" "*S-1-5-18:(OI
 
 `etendard-agent` lit le jeton sans pouvoir le remplacer.
 
-## 6. Émettre le jeton toutes les 30 minutes **(admin)**
+## 6. Émettre le jeton toutes les 10 minutes **(admin)**
 
 Depuis le dépôt principal, sur la branche relue de la PR (étape 0, ou `main` après merge), copie le script dans le
 profil de Flo : la tâche n'exécute jamais une version du repo qu'un agent aurait pu modifier.
@@ -111,11 +114,10 @@ $action = New-ScheduledTaskAction -Execute "$env:APPDATA\fnm\aliases\default\nod
   -Argument "`"$env:USERPROFILE\.etendard\jeton-bot.js`" $clientId $installationId `"$env:USERPROFILE\.etendard\hssrd-bot.pem`" C:\EtendardAgent\gh"
 $declencheurs = @(
   (New-ScheduledTaskTrigger -AtStartup),
-  (New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 30))
+  (New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 10))
 )
 $compte = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType S4U -RunLevel Limited
-$reglages = New-ScheduledTaskSettingsSet -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Minutes 5) `
-  -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)   # au démarrage, le réseau peut manquer
+$reglages = New-ScheduledTaskSettingsSet -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Minutes 5)
 Register-ScheduledTask -TaskName "Etendard - jeton hssrd-bot" -Action $action -Trigger $declencheurs -Principal $compte -Settings $reglages
 Start-ScheduledTask "Etendard - jeton hssrd-bot"; Start-Sleep 10
 Get-ScheduledTaskInfo "Etendard - jeton hssrd-bot" | Select-Object LastRunTime, LastTaskResult   # 0 attendu
@@ -123,6 +125,7 @@ Test-Path C:\EtendardAgent\gh\hosts.yml                                         
 ```
 
 La tâche tourne sous le compte de Flo (S4U : sans fenêtre ni mot de passe enregistré), donc seule elle lit la clé.
+Un échec (réseau absent au démarrage) n'est pas relancé par Windows : la répétition toutes les 10 minutes le rattrape.
 
 ## 7. Outiller le compte `etendard-agent`
 
@@ -146,7 +149,12 @@ git config --global user.email "$id+hssrd-bot[bot]@users.noreply.github.com"
 
 # Node 26 et pnpm (même version que le poste de Flo), Claude Code, Orca : installations propres au compte.
 winget install --id Schniz.fnm --scope user   # puis rouvrir la fenêtre
-fnm install 26; fnm default 26; npm install -g corepack; corepack enable   # Node 26 ne fournit plus corepack
+fnm install 26; fnm default 26
+# Node dans le PATH du compte (sans `fnm env`), pour cette fenêtre et pour les terminaux d'`orca serve`.
+$node = "$env:APPDATA\fnm\aliases\default"
+[Environment]::SetEnvironmentVariable('Path', "$node;" + [Environment]::GetEnvironmentVariable('Path', 'User'), 'User')
+$env:Path = "$node;$env:Path"
+npm install -g corepack; corepack enable   # Node 26 ne fournit plus corepack
 irm https://claude.ai/install.ps1 | iex       # puis `claude` une fois pour se connecter
 # Orca : lancer l'installeur Windows d'Orca dans cette session (installation par utilisateur).
 
@@ -178,7 +186,7 @@ en tâche planifiée, dans une session sans bureau : un agent n'atteint ni le pr
 ```powershell
 $agent = Get-Credential etendard-agent
 $action = New-ScheduledTaskAction -Execute 'C:\Users\etendard-agent\AppData\Local\Programs\orca\resources\bin\orca.cmd' -Argument 'serve --bind 127.0.0.1'
-$reglages = New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
+$reglages = New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero)   # si le runtime s'arrête : Start-ScheduledTask
 Register-ScheduledTask -TaskName "Etendard - Orca des agents" -Action $action -Trigger (New-ScheduledTaskTrigger -AtStartup) `
   -User $agent.UserName -Password $agent.GetNetworkCredential().Password -Settings $reglages
 Start-ScheduledTask "Etendard - Orca des agents"
@@ -204,14 +212,18 @@ gh api -X POST repos/HSSRD/Etendard/rulesets --input infra/agents/ruleset-relect
 
 Ce ruleset exige l'approbation d'un code owner (`.github/CODEOWNERS`) pour toute PR qui touche ces chemins.
 Le rôle Admin (Flo) peut le contourner pour ses propres PR, case à cocher au merge ; `hssrd-bot` n'a aucune exception.
+Le bot peut pousser sur toute branche, y compris celle d'une PR de Flo : avant de cocher le contournement,
+vérifie qu'aucun commit n'est de lui (`gh pr view <numéro> --json commits -q '.commits[].authors[].login'`).
 Le ruleset « Bloque push main » reste inchangé (CI verte, branche à jour, squash) et s'applique à tous.
+
+Merge ensuite la PR du ticket #70 : `.github/CODEOWNERS` doit être sur `main` pour que le ruleset ait des chemins à protéger.
 
 ## 10. Vérifier depuis une session agent
 
 ```powershell
 orca worktree create --environment etendard-agent --repo path:C:/Users/etendard-agent/Etendard `
-  --name verif-isolation --base-branch origin/issue-70-identite-agents --no-parent --agent claude `
-  --prompt "Lance bash infra/agents/verifier-isolation.sh et poste sa sortie complète en commentaire de la PR du ticket #70."
+  --name verif-isolation --no-parent --agent claude `
+  --prompt "Lance git fetch origin && git reset --hard origin/main, puis bash infra/agents/verifier-isolation.sh, et poste sa sortie complète en commentaire du ticket #70."
 ```
 
 Le script prend environ une minute et doit finir par « Isolation vérifiée. ».

@@ -1,6 +1,6 @@
 import { generateKeyPairSync, verify } from 'node:crypto';
 import { describe, expect, test } from 'vitest';
-import { installationToken, jwt, PERMISSIONS } from './jeton-bot.js';
+import { hostsYml, installationToken, jwt, PERMISSIONS } from './jeton-bot.js';
 
 const { privateKey, publicKey } = generateKeyPairSync('rsa', {
   modulusLength: 2048,
@@ -60,5 +60,22 @@ describe('installationToken', () => {
         Response.json({ message: 'Bad credentials' }, { status: 401 }),
       ),
     ).rejects.toThrow('GitHub a refusé le jeton (401)');
+  });
+});
+
+describe('hostsYml', () => {
+  test('configuration gh multi-comptes du bot, lue telle quelle par gh 2.103', () => {
+    expect(hostsYml('ghs_x')).toBe(
+      [
+        'github.com:',
+        '    users:',
+        '        hssrd-bot[bot]:',
+        '            oauth_token: ghs_x',
+        '    git_protocol: https',
+        '    oauth_token: ghs_x',
+        '    user: hssrd-bot[bot]',
+        '',
+      ].join('\n'),
+    );
   });
 });
