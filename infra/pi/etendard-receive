@@ -4,8 +4,9 @@
 # command="/usr/local/bin/etendard-receive",restrict). L'action vient de
 # SSH_ORIGINAL_COMMAND :
 #   (vide)    lit une archive .tar.gz sur l'entrée standard et la publie
-#   rollback  revient à la version précédente
-#   status    affiche le SHA servi
+#   rollback       revient à la version précédente
+#   restore <sha>  attend la fin d'un déploiement en cours, puis sert <sha>
+#   status         affiche le SHA servi
 set -euo pipefail
 umask 022
 
@@ -13,6 +14,7 @@ ROOT="${ETENDARD_ROOT:-/srv/etendard}"   # surchargé uniquement par les tests
 RELEASES="$ROOT/releases"
 CURRENT="$ROOT/current"
 KEEP=5
+LOCK_WAIT="${ETENDARD_LOCK_WAIT:-120}"   # secondes ; surchargé uniquement par les tests
 
 die() { echo "etendard-receive: $*" >&2; exit 1; }
 
@@ -32,13 +34,17 @@ switch_to() {
   mv -T "$CURRENT.tmp" "$CURRENT"   # rename(2) : bascule atomique
 }
 
+# lock : refuse si le verrou est pris ; lock -w <s> : l'attend au plus <s> secondes.
 lock() {
   exec 9>"$ROOT/.lock"
-  flock -n 9 || die "un autre déploiement est en cours"
+  flock "${@:--n}" 9 || die "un autre déploiement est en cours"
 }
+
+served_or_empty() { basename "$(readlink "$CURRENT" 2>/dev/null)"; }
 
 receive() {
   lock
+  replaced="$(served_or_empty)"
   incoming="$(mktemp -d "$RELEASES/.incoming.XXXXXX")"
   trap 'rm -rf "$incoming"' EXIT
   archive="$incoming/site.tar.gz"
@@ -69,8 +75,9 @@ receive() {
   touch "$RELEASES/$sha"   # date de publication, utilisée par rollback et le ménage
   switch_to "$sha"
 
+  # La version remplacée est gardée, même ancienne : restore doit pouvoir y revenir.
   releases_by_date | tail -n +$((KEEP + 1)) | while read -r old; do
-    [ "$old" = "$sha" ] || rm -rf "${RELEASES:?}/$old"
+    [ "$old" = "$sha" ] || [ "$old" = "$replaced" ] || rm -rf "${RELEASES:?}/$old"
   done
   echo "version $sha publiée"
 }
@@ -84,6 +91,22 @@ rollback() {
   echo "retour à la version $previous (depuis $current)"
 }
 
+# Rollback automatique de deploy.yml : sert exactement <sha>, la version d'avant
+# l'envoi. Le verrou est attendu, donc la version servie n'est lue qu'après la
+# fin d'un receive encore en cours, jamais pendant.
+restore() {
+  [[ "$1" =~ ^[0-9a-f]{7,40}$ ]] || die "SHA invalide : $1"
+  lock -w "$LOCK_WAIT"
+  [ -d "$RELEASES/$1" ] || die "version $1 absente"
+  current="$(served_or_empty)"
+  if [ "$current" = "$1" ]; then
+    echo "version $1 déjà servie"
+  else
+    switch_to "$1"
+    echo "retour à la version $1 (depuis ${current:-aucune})"
+  fi
+}
+
 status() {
   current_sha
 }
@@ -91,6 +114,7 @@ status() {
 case "${SSH_ORIGINAL_COMMAND:-}" in
   "") receive ;;
   rollback) rollback ;;
+  "restore "*) restore "${SSH_ORIGINAL_COMMAND#restore }" ;;
   status) status ;;
   *) die "commande refusée : ${SSH_ORIGINAL_COMMAND}" ;;
 esac
