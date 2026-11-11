@@ -30,12 +30,15 @@ probe() {
 check() { probe attendu "$@"; }
 refute() { probe interdit "$@"; }
 
+# served <url> <nom> [options curl…] : la ligne de l'en-tête servi.
+served() { curl -sSI "${@:3}" "$1" | tr -d '\r' | grep -i "^$2:"; }
+
 # header <url> <nom> [matcher [options curl…]] : affiche l'en-tête servi, puis « conforme » s'il est
 # identique à celui du bloc « header [matcher] { » du Caddyfile de ce dossier (une config modifiée
 # mais pas rechargée ne l'est pas). Sans matcher, le bloc des en-têtes de sécurité.
 header() {
   local got want
-  got="$(curl -sSI "${@:4}" "$1" | tr -d '\r' | grep -i "^$2:")"
+  got="$(served "$1" "$2" "${@:4}")"
   want="$(awk -v name="$2" -v block="header ${3:+$3 }{" '
     { line = $0; sub(/^[[:space:]]+/, "", line) }
     line == block { inside = 1; next }
@@ -94,7 +97,7 @@ mode_pi() {
   done
   # La revalidation par ETag répond 304, avec le même en-tête.
   local etag
-  etag="$(header http://127.0.0.1:8080/ ETag)"; etag="${etag#*: }"
+  etag="$(served http://127.0.0.1:8080/ ETag)"; etag="${etag#*: }"
   check "revalidation de / par ETag : 304" '^HTTP/1.1 304' curl -sSI -H "If-None-Match: $etag" http://127.0.0.1:8080/
   check "Cache-Control sur la 304 de /, conforme au Caddyfile" '^conforme$' \
     header http://127.0.0.1:8080/ Cache-Control @html -H "If-None-Match: $etag"
