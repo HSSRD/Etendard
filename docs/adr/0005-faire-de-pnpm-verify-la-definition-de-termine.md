@@ -1,6 +1,6 @@
 # 0005. Faire de `pnpm verify` la définition unique de « terminé »
 
-- Statut : Proposé, adapté par [0015](0015-construire-le-site-et-les-apps-avec-expo.md) (`tsc` au lieu de `astro check`, plus de Stylelint ni de plugins Astro, export des bundles iOS et Android)
+- Statut : Proposé, adapté par [0015](0015-construire-le-site-et-les-apps-avec-expo.md) (`tsc` au lieu de `astro check`, plus de Stylelint ni de plugins Astro et Vue, export des bundles iOS et Android)
 - Date : 2026-11-07
 
 ## Contexte
@@ -9,16 +9,16 @@ Les agents travaillent seuls et doivent savoir sans ambiguïté quand leur trava
 
 ## Décision
 
-- `pnpm verify:fast` : `astro check` + ESLint + Stylelint + Vitest. Lancée après chaque modification (hook Stop, 0012) et en pre-push (Lefthook).
-- `pnpm verify` : `verify:fast` + Knip + dependency-cruiser + build + `html-validate` + Playwright. **Une tâche n'est terminée que si `pnpm verify` passe.** C'est la commande exécutée par la CI (0010) et avant déploiement (0006).
-- Lint : ESLint 10 (+ plugins astro, vue, accessibilité), Prettier 3 (+ plugin astro), Stylelint (0004).
+- `pnpm verify:fast` : `tsc` + ESLint + Prettier + Vitest. Lancée après chaque modification (hook Stop, 0012) et en pre-push (Lefthook).
+- `pnpm verify` : `verify:fast` + `test:infra` + Knip + dependency-cruiser + build + `html-validate` + export natif (`build:natif`) + Playwright + `html-validate` du styleguide. **Une tâche n'est terminée que si `pnpm verify` passe.** C'est la commande exécutée par la CI (0010) et avant déploiement (0006).
+- Lint : ESLint 10 (`typescript-eslint` strict, `react-hooks`, règles maison sur les styles : 0015), Prettier 3. Avec Astro, ESLint avait les plugins astro, vue et accessibilité, Prettier son plugin astro, et Stylelint vérifiait le CSS (0004).
 - **Knip** : code, exports et dépendances inutilisés (les agents laissent souvent l'ancien code).
-- **dependency-cruiser** : règles d'architecture exécutables (un composant n'importe jamais une page, `ui/` n'importe jamais de contenu, pas de cycle).
+- **dependency-cruiser** : règles d'architecture exécutables (un composant n'importe jamais une page, pas de cycle).
 - Git : Lefthook (pre-commit : format + lint des fichiers modifiés ; commit-msg : commitlint ; pre-push : `verify:fast`), Conventional Commits, merge en squash.
 
 ## Alternatives écartées
 
-- **Biome** : prise en charge partielle d'Astro et Vue.
+- **Biome** : prise en charge partielle d’Astro et Vue à l’époque. Depuis 0015, les règles maison sur les styles restent des sélecteurs ESLint (`docs/dependances.md`).
 - **Oxlint** : à ajouter plus tard si la vitesse du lint devient un problème.
 - **Husky** : Lefthook regroupe tous les hooks dans un seul fichier de configuration et les exécute en parallèle.
 - **Changesets, release-please** : inutiles en déploiement continu ; notes de version générées depuis les titres de PR.
