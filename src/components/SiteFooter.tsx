@@ -2,7 +2,8 @@
 import { Text, View } from 'react-native';
 import { TextLink } from '@/lib/anchors';
 import { themedStyles } from '@/theme/theme';
-import { borderWidth, fontSize, layout, space } from '@/theme/tokens';
+import { borderWidth, fontSize, space } from '@/theme/tokens';
+import { pageStyles } from '@/layouts/page-styles';
 import { paragraph, useTypography } from '@/theme/typography';
 
 interface Props {
@@ -16,7 +17,7 @@ export default function SiteFooter({ year = new Date().getFullYear() }: Props) {
   const text = [typography.body, styles.text];
   return (
     <View role="contentinfo" style={styles.footer}>
-      <View style={styles.inner}>
+      <View style={[pageStyles.column, styles.inner]}>
         <Text role={paragraph} style={[text, styles.tagline]}>
           Étendard, la vitrine des projets HSSRD
         </Text>
@@ -46,15 +47,11 @@ const useStyles = themedStyles((colors) => ({
   footer: { borderTopColor: colors.border, borderTopWidth: borderWidth },
   inner: {
     alignItems: 'center',
-    alignSelf: 'center',
     columnGap: space[5],
     flexDirection: 'row',
     flexWrap: 'wrap',
-    maxWidth: layout.contentMaxWidth,
-    paddingHorizontal: space[4],
     paddingVertical: space[6],
     rowGap: space[2],
-    width: '100%',
   },
   text: { color: colors.textMuted, fontSize: fontSize.sm },
   tagline: { color: colors.text },

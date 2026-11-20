@@ -12,17 +12,25 @@ import {
   type TextStyle,
   type ViewStyle,
 } from 'react-native';
-import { palettes, type ColorName, type Colors, type Scheme } from './tokens';
+import {
+  colorNames,
+  palettes,
+  type ColorName,
+  type Colors,
+  type Scheme,
+} from './tokens';
 
 /** `textMuted` → `--color-text-muted`. */
 export const cssVariable = (name: ColorName) =>
   `--color-${name.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}`;
 
-const colorNames = Object.keys(palettes.light) as ColorName[];
-
 const webColors = Object.fromEntries(
   colorNames.map((name) => [name, `var(${cssVariable(name)})`]),
 ) as Colors;
+
+/** Couleurs d'un thème : variables CSS sur le web (le thème suit le CSS), valeurs sur iOS et Android. */
+const colorsFor = (scheme: Scheme) =>
+  Platform.OS === 'web' ? webColors : palettes[scheme];
 
 const SchemeContext = createContext<Scheme | null>(null);
 
@@ -44,8 +52,8 @@ export const themedStyles = <T extends Record<string, ViewStyle | TextStyle>>(
     return () => sheet;
   }
   const sheets = {
-    light: StyleSheet.create(make(palettes.light)),
-    dark: StyleSheet.create(make(palettes.dark)),
+    light: StyleSheet.create(make(colorsFor('light'))),
+    dark: StyleSheet.create(make(colorsFor('dark'))),
   };
   return function useThemedStyles() {
     return sheets[useScheme()];
@@ -54,14 +62,8 @@ export const themedStyles = <T extends Record<string, ViewStyle | TextStyle>>(
 
 /** Fond de chaque thème, quel que soit le thème du parent. */
 const scopeStyles = StyleSheet.create({
-  light: {
-    backgroundColor:
-      Platform.OS === 'web' ? webColors.background : palettes.light.background,
-  },
-  dark: {
-    backgroundColor:
-      Platform.OS === 'web' ? webColors.background : palettes.dark.background,
-  },
+  light: { backgroundColor: colorsFor('light').background },
+  dark: { backgroundColor: colorsFor('dark').background },
 });
 
 interface ThemeScopeProps {

@@ -10,7 +10,8 @@ import {
   lineHeight,
 } from './tokens';
 
-const heading = (size: number) => ({
+const heading = (size: number, color: string) => ({
+  color,
   fontFamily: fontFamily.sans,
   fontSize: size,
   fontWeight: fontWeight.bold,
@@ -25,9 +26,9 @@ export const useTypography = themedStyles((colors) => ({
     fontWeight: fontWeight.regular,
     lineHeight: leading(fontSize.base, lineHeight.base),
   },
-  h1: { ...heading(fontSize['3xl']), color: colors.text },
-  h2: { ...heading(fontSize['2xl']), color: colors.text },
-  h3: { ...heading(fontSize.xl), color: colors.text },
+  h1: heading(fontSize['3xl'], colors.text),
+  h2: heading(fontSize['2xl'], colors.text),
+  h3: heading(fontSize.xl, colors.text),
   link: { color: colors.accent, textDecorationLine: 'underline' },
   code: { fontFamily: fontFamily.mono },
 }));

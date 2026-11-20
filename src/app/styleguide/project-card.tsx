@@ -22,7 +22,7 @@ export default function ProjectCardPage() {
       title="ProjectCard — Styleguide — Étendard"
       description="Composant ProjectCard d’Étendard : la carte d’un projet."
     >
-      <View style={pageStyles.page}>
+      <View style={[pageStyles.column, pageStyles.page]}>
         <Text role="heading" aria-level={1} style={typography.h1}>
           ProjectCard
         </Text>

@@ -15,7 +15,7 @@ export default function SiteFooterPage() {
       footer={<SiteFooter year={2026} />}
     >
       {/* Cible du lien « Retour en haut », comme la section d'accueil de la one page. */}
-      <View style={pageStyles.page}>
+      <View style={[pageStyles.column, pageStyles.page]}>
         <Text role="heading" aria-level={1} id="accueil" style={typography.h1}>
           SiteFooter
         </Text>

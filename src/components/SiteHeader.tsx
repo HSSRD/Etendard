@@ -12,6 +12,7 @@ import {
   space,
   zIndex,
 } from '@/theme/tokens';
+import { pageStyles } from '@/layouts/page-styles';
 import { useTypography } from '@/theme/typography';
 
 const links = [
@@ -25,7 +26,7 @@ export default function SiteHeader() {
   const link = [typography.body, styles.link];
   return (
     <View role="banner" style={styles.header}>
-      <View style={styles.inner}>
+      <View style={[pageStyles.column, styles.inner]}>
         <TextLink
           href="#accueil"
           dataSet={{ hover: 'underline' }}
@@ -67,16 +68,12 @@ const useStyles = themedStyles((colors) => ({
   },
   inner: {
     alignItems: 'center',
-    alignSelf: 'center',
     columnGap: space[4],
     flexDirection: 'row',
     flexGrow: 1,
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    maxWidth: layout.contentMaxWidth,
-    paddingHorizontal: space[4],
     paddingVertical: space[2],
-    width: '100%',
   },
   // Marge verticale : cible de tap plus haute que la ligne de texte.
   link: { paddingVertical: space[1] },

@@ -49,6 +49,11 @@ const main = (/** @type {string | undefined} */ dir) => {
     rmSync(path.join(dir, 'styleguide'), { recursive: true, force: true });
     rmSync(path.join(dir, 'styleguide.html'), { force: true });
   }
+  for (const folder of Object.values(folders)) {
+    mkdirSync(path.join(dir, folder), { recursive: true });
+  }
+  /** URL des fichiers déjà écrits : chaque page répète les mêmes blocs. */
+  const written = new Set();
   /** @type {(ext: 'css' | 'js', content: string) => string} */
   const write = (ext, content) => {
     const hash = createHash('sha256')
@@ -56,8 +61,8 @@ const main = (/** @type {string | undefined} */ dir) => {
       .digest('hex')
       .slice(0, 16);
     const url = `/${folders[ext]}/inline-${hash}.${ext}`;
-    mkdirSync(path.join(dir, folders[ext]), { recursive: true });
-    writeFileSync(path.join(dir, url), content);
+    if (!written.has(url)) writeFileSync(path.join(dir, url), content);
+    written.add(url);
     return url;
   };
   for (const page of pages(dir)) {

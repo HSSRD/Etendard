@@ -2,9 +2,7 @@
 // Seulement ce que StyleSheet ne sait pas écrire : variables du thème, défilement vers les ancres,
 // focus visible, survol, lien d'évitement. Les composants s'y accrochent par des attributs data-*.
 import { cssVariable } from './theme';
-import { focus, layout, palettes, type ColorName } from './tokens';
-
-const colorNames = Object.keys(palettes.light) as ColorName[];
+import { colorNames, focus, layout, palettes } from './tokens';
 
 /** `--color-x: light-dark(clair, sombre)` : le thème suit `color-scheme`. */
 const variables = colorNames

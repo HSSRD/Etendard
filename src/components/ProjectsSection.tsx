@@ -3,13 +3,14 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { projectGroups } from '@/lib/projects';
 import { layout, space } from '@/theme/tokens';
+import { pageStyles } from '@/layouts/page-styles';
 import { useTypography } from '@/theme/typography';
 import ProjectCard from './ProjectCard';
 
 export default function ProjectsSection() {
   const typography = useTypography();
   return (
-    <View testID="projects-section" style={styles.section}>
+    <View testID="projects-section" style={[pageStyles.column, styles.section]}>
       <Text role="heading" aria-level={2} style={typography.h2}>
         Projets
       </Text>
@@ -35,12 +36,8 @@ const unitBasis = (layout.twoColumns - 2 * space[4] - space[5]) / 2;
 
 const styles = StyleSheet.create({
   section: {
-    alignSelf: 'center',
-    maxWidth: layout.contentMaxWidth,
-    paddingHorizontal: space[4],
     paddingVertical: space[8],
     rowGap: space[6],
-    width: '100%',
   },
   group: { rowGap: space[6] },
   units: {

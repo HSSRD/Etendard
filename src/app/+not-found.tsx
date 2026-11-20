@@ -13,7 +13,7 @@ export default function NotFound() {
       description="Cette page n’existe pas sur Étendard."
       noindex
     >
-      <View style={pageStyles.page}>
+      <View style={[pageStyles.column, pageStyles.page]}>
         <Text role="heading" aria-level={1} style={typography.h1}>
           Page introuvable
         </Text>

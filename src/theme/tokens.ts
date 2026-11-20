@@ -32,6 +32,7 @@ export const palettes = {
 export type Scheme = keyof typeof palettes;
 export type ColorName = keyof (typeof palettes)['light'];
 export type Colors = Record<ColorName, string>;
+export const colorNames = Object.keys(palettes.light) as ColorName[];
 
 /** Section d'accueil, toujours sombre : fond sous la vidéo et voile posé dessus. */
 export const hero = {
@@ -78,6 +79,12 @@ export const layout = {
   /** Largeur à partir de laquelle les cartes de projets passent sur deux colonnes. */
   twoColumns: 768,
 } as const;
+
+/** Hauteur d'un écran sous le header (web) ; iOS et Android la calculent avec la fenêtre. */
+export const screenBelowHeader = css<number | undefined>(
+  `calc(100svh - ${layout.headerHeight}px)`,
+  undefined,
+);
 
 export const fontSize = {
   sm: 14,

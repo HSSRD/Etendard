@@ -16,7 +16,6 @@ export default function BaseLayout({
   footer,
   children,
 }: BaseLayoutProps) {
-  // Page hors index des moteurs de recherche : par défaut, tout le styleguide.
   const pathname = usePathname();
   const hidden = noindex ?? /^\/styleguide(\/|$)/.test(pathname);
   const typography = useTypography();

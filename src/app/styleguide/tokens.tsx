@@ -13,7 +13,7 @@ import { ThemeScope, themedStyles } from '@/theme/theme';
 import {
   borderWidth,
   fontSize,
-  palettes,
+  colorNames,
   radius,
   shadow,
   space,
@@ -27,9 +27,7 @@ const themes: { scheme: Scheme; label: string }[] = [
   { scheme: 'dark', label: 'Thème sombre' },
 ];
 /** Couleurs affichées en pastille ; l'ombre est montrée par les pastilles elles-mêmes. */
-const colors = (Object.keys(palettes.light) as ColorName[]).filter(
-  (name) => name !== 'shadow',
-);
+const colors = colorNames.filter((name) => name !== 'shadow');
 const texts = ['text', 'textMuted', 'accent'] as const;
 const grounds = ['background', 'surface'] as const;
 const sizes = Object.keys(fontSize) as (keyof typeof fontSize)[];
@@ -42,7 +40,7 @@ export default function TokensPage() {
       title="Tokens — Styleguide — Étendard"
       description="Design tokens d’Étendard : couleurs, typographie et espacements."
     >
-      <View style={pageStyles.page}>
+      <View style={[pageStyles.column, pageStyles.page]}>
         <Text role="heading" aria-level={1} style={typography.h1}>
           Tokens
         </Text>
@@ -102,7 +100,7 @@ function Theme({ scheme, label }: { scheme: Scheme; label: string }) {
           <View
             role="listitem"
             key={ground}
-            style={[styles.ground, styles[ground]]}
+            style={[styles.ground, swatches[ground]]}
           >
             {texts.map((text) => (
               <Text
@@ -182,8 +180,6 @@ const useStyles = themedStyles((c) => ({
     boxShadow: shadow(c).md,
     padding: space[4],
   },
-  background: { backgroundColor: c.background },
-  surface: { backgroundColor: c.surface },
   bar: { backgroundColor: c.accent, height: space[4] },
 }));
 
@@ -194,11 +190,12 @@ const useSwatches = themedStyles(
     ) as Record<ColorName, ViewStyle>,
 );
 
-const useTextColors = themedStyles((c) => ({
-  text: { color: c.text },
-  textMuted: { color: c.textMuted },
-  accent: { color: c.accent },
-}));
+const useTextColors = themedStyles(
+  (c) =>
+    Object.fromEntries(
+      texts.map((name) => [name, { color: c[name] }]),
+    ) as Record<(typeof texts)[number], TextStyle>,
+);
 
 const sizeStyles = StyleSheet.create(
   Object.fromEntries(

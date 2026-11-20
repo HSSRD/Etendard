@@ -14,7 +14,7 @@ export default function ProjectsSectionPage() {
       description="Composant ProjectsSection d’Étendard : la section des projets."
     >
       {/* Aligné sur le contenu centré de la section. */}
-      <View style={pageStyles.page}>
+      <View style={[pageStyles.column, pageStyles.page]}>
         <Text role="heading" aria-level={1} style={typography.h1}>
           ProjectsSection
         </Text>

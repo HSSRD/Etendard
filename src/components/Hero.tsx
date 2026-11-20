@@ -1,7 +1,13 @@
 // Section d'accueil de la one page (ticket #13) : seul titre de niveau 1 de la page et appel à
 // descendre vers les projets, sur une vidéo de fond (ticket #22) voilée, aux bords assombris,
 // dont le bas se fond dans le fond de la page. Toujours en thème sombre.
-import { Platform, Text, useWindowDimensions, View } from 'react-native';
+import {
+  Platform,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { TextLink } from '@/lib/anchors';
 import { ThemeScope, themedStyles } from '@/theme/theme';
 import {
@@ -12,23 +18,28 @@ import {
   hero,
   layout,
   radius,
+  screenBelowHeader,
   space,
 } from '@/theme/tokens';
 import { paragraph, useTypography } from '@/theme/typography';
 import HeroVideo from './HeroVideo';
 
 export default function Hero() {
-  const page = useStyles();
+  const styles = useStyles();
   const { height } = useWindowDimensions();
   // iOS et Android : l'écran sous le header (sur le web, la hauteur vient du CSS, sans JavaScript).
   const fill = Platform.OS !== 'web' && {
     minHeight: height - layout.headerHeight,
   };
   return (
-    <View testID="hero" style={[page.hero, fill]}>
+    <View testID="hero" style={[styles.hero, fill]}>
       <HeroVideo />
-      <View testID="hero-overlay" style={page.overlay} aria-hidden />
-      <ThemeScope scheme="dark" style={page.transparent}>
+      <View
+        testID="hero-overlay"
+        style={[StyleSheet.absoluteFill, styles.overlay]}
+        aria-hidden
+      />
+      <ThemeScope scheme="dark" style={styles.transparent}>
         <Content />
       </ThemeScope>
     </View>
@@ -69,7 +80,7 @@ const useStyles = themedStyles((colors) => ({
   hero: {
     backgroundColor: hero.shade,
     justifyContent: 'center',
-    minHeight: css(`calc(100svh - ${layout.headerHeight}px)`, undefined),
+    minHeight: screenBelowHeader,
     paddingHorizontal: space[4],
     paddingVertical: space[9],
   },
@@ -84,11 +95,6 @@ const useStyles = themedStyles((colors) => ({
       ),
       `radial-gradient(transparent 45%, ${hero.shade})`,
     ].join(', '),
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-    right: 0,
-    top: 0,
   },
   transparent: { backgroundColor: 'transparent' },
   content: { alignItems: 'center', rowGap: space[5] },

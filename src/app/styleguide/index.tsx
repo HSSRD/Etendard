@@ -21,7 +21,7 @@ export default function Styleguide() {
       title="Styleguide — Étendard"
       description="Styleguide d’Étendard : chaque composant dans chacun de ses états."
     >
-      <View style={pageStyles.page}>
+      <View style={[pageStyles.column, pageStyles.page]}>
         <Text role="heading" aria-level={1} style={typography.h1}>
           Styleguide
         </Text>
