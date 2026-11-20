@@ -81,13 +81,13 @@ mode_pi() {
   check "journal d'accès JSON, avec la requête $absent" '^\{.*"logger":"http\.log\.access' grep -F "\"uri\":\"$absent\"" "$log"
   check "journal à l'utilisateur caddy" '^caddy:caddy ' stat -c '%U:%G %a %n' "$log"
 
-  title "Ticket #36 — cache d'un an des fichiers de /_astro/"
+  title "Tickets #36 et #76 — cache d'un an des fichiers de /_expo/static/"
   # Un fichier réel du site servi : son nom porte l'empreinte de son contenu.
   local asset
-  asset="$(find /srv/etendard/current/_astro -maxdepth 1 -type f -printf '%f\n' -quit)"
-  check "Cache-Control sur /_astro/$asset, conforme au Caddyfile" '^conforme$' header "http://127.0.0.1:8080/_astro/$asset" Cache-Control '/_astro/*'
-  # Ni sur un nom fixe, ni sur une 404 de /_astro/.
-  for url in / /version.txt "/_astro$absent"; do
+  asset="$(find /srv/etendard/current/_expo/static -type f -printf '%P\n' -quit)"
+  check "Cache-Control sur /_expo/static/$asset, conforme au Caddyfile" '^conforme$' header "http://127.0.0.1:8080/_expo/static/$asset" Cache-Control '/_expo/static/*'
+  # Ni sur un nom fixe, ni sur une 404 de /_expo/static/.
+  for url in / /version.txt "/_expo/static$absent"; do
     refute "pas de cache d'un an sur $url" 'max-age=31536000|immutable' header "http://127.0.0.1:8080$url" Cache-Control
   done
 

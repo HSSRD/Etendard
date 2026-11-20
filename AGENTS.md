@@ -1,12 +1,14 @@
 # AGENTS.md
 
-Site vitrine statique : Astro 7, TypeScript strict, CSS natif. Node 26, pnpm (versions figées).
+Vitrine web, iOS et Android dans une seule base : Expo SDK 58 (Expo Router, React Native, React Native Web),
+TypeScript strict. Le web est exporté en statique (ADR 0015). Node 26, pnpm (versions figées).
 Lis `docs/adr/` avant toute modification structurelle. Ne contredis jamais un ADR accepté : propose un nouvel ADR.
 
 ## Commandes
 
-- `pnpm dev` : serveur de développement (styleguide compris, sur `/styleguide`).
-- `pnpm verify:fast` : `astro check`, ESLint, Prettier, Stylelint, Vitest. Lance-la après chaque modification.
+- `pnpm dev` : serveur de développement Expo (`w` : web, styleguide sur `/styleguide` ; Expo Go : iOS et Android).
+- `pnpm build` : valide le contenu (Zod), exporte le web dans `dist/`, sort les styles et scripts en ligne en fichiers.
+- `pnpm verify:fast` : `tsc`, ESLint, Prettier, Vitest. Lance-la après chaque modification.
 - `pnpm verify` : `verify:fast`, `pnpm test:infra`, Knip, dependency-cruiser, build, `html-validate`, Playwright.
 - `pnpm test:infra` : tests de `infra/pi/etendard-receive` (sous Windows, le script prend lui-même le bash de Git).
 - `pnpm exec playwright test src/components/X.spec.ts` : boucle courte sur un composant.
@@ -36,26 +38,36 @@ tout changement visuel d'un composant de la page change aussi ces captures. Une 
 s'écrit `expect.soft(…).toHaveScreenshot(…)` : le test va jusqu'au bout, le run produit toutes ses
 captures en écart et échoue quand même.
 
+## Structure
+
+- `src/app/` : routes d'Expo Router (`index.tsx` : la one page ; `+html.tsx` : gabarit HTML du web ; `styleguide/`).
+- `src/components/`, `src/layouts/` (`BaseLayout`), `src/lib/` (ancres et liens, projets), `src/theme/` (tokens, thème),
+  `src/content/projects.ts` (fiches validées au build par `src/lib/validate-projects.ts`).
+- Variante d'une plateforme : `X.web.tsx` (web) à côté de `X.tsx` (iOS et Android), mêmes props.
+
 ## Composants
 
 Chaque composant est un trio colocalisé :
 
-- `src/components/X.astro` ;
+- `src/components/X.tsx` ;
 - `src/components/X.spec.ts` : test Playwright de la page styleguide (DOM, axe, capture par état) ;
-- `src/pages/styleguide/x.astro` : chaque état du composant, lien ajouté dans `src/pages/styleguide/index.astro`.
+- `src/app/styleguide/x.tsx` : chaque état du composant, lien ajouté dans `src/app/styleguide/index.tsx`.
 
 Les pages `/styleguide` ne sont publiées que si `STYLEGUIDE=1`. Un composant n'importe jamais une page.
+Les tests visent les rôles, les textes et les `testID` (rendus en `data-testid`), pas les classes générées.
 
-## CSS
+## Styles
 
-- Aucune valeur en dur : couleurs, espacements, positions, ombres, typographie (taille, famille, graisse, interligne),
-  rayons, épaisseurs de bordure, d'outline et de `column-rule`, `outline-offset`, durées et délais, `z-index` passent par les tokens (`var(--…)`).
-  Pas de `calc()`, de `clamp()`, de dégradé ni de valeur de repli `var(--x, …)` dans un composant : définis un token.
-  `font`, `text-decoration`, `-webkit-text-stroke`, `background`, `border` (et ses côtés), `outline`, `column-rule`,
-  `scroll-padding` (et ses axes), `transition` et `animation` sont interdits : utilise les propriétés détaillées.
-- BEM : `MonBloc.astro` définit le bloc `.mon-bloc` (`HeroCTA.astro` → `.hero-cta`), ses éléments `.mon-bloc__x`, ses modificateurs `.mon-bloc--y`.
-- Pas de globales Node (`process`, `Buffer`…) dans `src/` : utilise `import.meta.env`.
-- Propriétés par ordre alphabétique, variables CSS en premier (`stylelint --fix` les range).
+- Aucune valeur en dur : couleurs, espacements, tailles, rayons, épaisseurs, ombres, `zIndex` viennent de
+  `src/theme/tokens.ts` (ESLint le vérifie dans `StyleSheet.create` et `themedStyles`, seuls 0 et 1 sont admis).
+- Tout style passe par `StyleSheet.create`, ou `themedStyles` s'il dépend des couleurs du thème : jamais d'objet
+  `style` en ligne. Sur le web, il deviendrait un attribut `style`, refusé par la CSP du Caddyfile (`tests/csp.spec.ts`).
+- Chaque `Text` reçoit sa police (`useTypography`) : React Native n'en hérite pas d'un `View`.
+- Sémantique par `role` et `aria-*` (`role="heading"` + `aria-level`, `banner`, `main`, `contentinfo`, `region`,
+  `article`, `list`, `listitem`, `paragraph` de `src/theme/typography.ts`) ; liens par `TextLink` (`src/lib/anchors.tsx`).
+- Valeur propre au web (`calc()`, `clamp()`, `sticky`) : `css(web, natif)` de `tokens.ts`. Focus, survol, ancres :
+  feuille générée `src/theme/web-css.ts`, accrochée par `dataSet` (`data-*`).
+- Pas de globales Node (`process`, `Buffer`…) dans `src/`.
 
 ## Playwright
 

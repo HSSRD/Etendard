@@ -1,8 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
 import {
-  cssToPixels,
   expectNoAxeViolations,
+  expectNoInlineCode,
   expectNoHorizontalScroll,
+  headerHeight,
   schemes,
   tabTo,
   themeBackground,
@@ -10,7 +11,8 @@ import {
 
 const pages = ['/styleguide/site-header', '/'];
 
-const header = (page: Page) => page.locator('body > header.site-header');
+// Le header précède immédiatement <main>, dans la racine rendue par Expo.
+const header = (page: Page) => page.locator('header:has(+ main#contenu)');
 const nav = (page: Page) =>
   page.getByRole('navigation', { name: 'Navigation principale' });
 
@@ -19,7 +21,6 @@ for (const url of pages) {
     await page.goto(url);
 
     // Inséré dans l'emplacement header du layout, juste avant <main>.
-    await expect(page.locator('body > header + main#contenu')).toHaveCount(1);
     await expect(header(page)).toHaveCount(1);
     await expect(
       header(page).getByRole('link', { name: 'Étendard', exact: true }),
@@ -41,7 +42,6 @@ test.describe('sans JavaScript', () => {
   }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/styleguide/site-header');
-    await expect(page.locator('script')).toHaveCount(0);
 
     await nav(page).getByRole('link', { name: 'Projets' }).click();
     await expect(page).toHaveURL(/#projets$/);
@@ -69,12 +69,11 @@ test('le header colle en haut, au-dessus du contenu, à la hauteur du token, sur
 
   // Hauteur du token, et chaque lien tient dans le header sans déborder à droite :
   // un retour à la ligne ferait sortir un lien du header.
-  const tokenHeight = await cssToPixels(page, 'var(--header-height)');
+  const tokenHeight = await headerHeight(page);
   const layout = await page.evaluate(() => ({
-    headerHeight: document
-      .querySelector('.site-header')
-      ?.getBoundingClientRect().height,
-    links: [...document.querySelectorAll('.site-header a')].map((link) => {
+    headerHeight: document.querySelector('header')?.getBoundingClientRect()
+      .height,
+    links: [...document.querySelectorAll('header a')].map((link) => {
       const { bottom, right, top } = link.getBoundingClientRect();
       return { bottom, right, top };
     }),
@@ -99,7 +98,7 @@ test('le header colle en haut, au-dessus du contenu, à la hauteur du token, sur
   // Peint au-dessus du contenu qui défile dessous.
   expect(
     await page.evaluate(() =>
-      document.elementFromPoint(1, 1)?.closest('.site-header'),
+      document.elementFromPoint(1, 1)?.closest('header'),
     ),
   ).toBeTruthy();
 });
@@ -128,10 +127,17 @@ test('avec un texte agrandi à 200 %, le header ne déborde pas horizontalement'
   await page.addStyleTag({ content: 'html { font-size: 200%; }' });
   await expectNoHorizontalScroll(page);
   // Chaque lien reste entier à l'écran, anneau de focus compris (décalage + épaisseur, en px).
-  const ring = await cssToPixels(
-    page,
-    'calc(var(--focus-offset) + var(--focus-width))',
-  );
+  const brand = header(page).getByRole('link', { name: 'Étendard' });
+  await tabTo(page, brand);
+  const ring = await brand.evaluate((link) => {
+    const style = getComputedStyle(link);
+    return (
+      Number.parseFloat(style.outlineOffset) +
+      Number.parseFloat(style.outlineWidth)
+    );
+  });
+  expect(ring).toBeGreaterThan(0);
+  await brand.blur();
   const links = await header(page).getByRole('link').all();
   expect(links).toHaveLength(3);
   const width = await page.evaluate(() => document.documentElement.clientWidth);
@@ -175,6 +181,7 @@ for (const scheme of schemes) {
       await themeBackground(page, scheme),
     );
     await expectNoAxeViolations(page);
+    await expectNoInlineCode(page, '/styleguide/site-header');
     await expect(header(page)).toHaveScreenshot(`site-header-${scheme}.png`);
   });
 }

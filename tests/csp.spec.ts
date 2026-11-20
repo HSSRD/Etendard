@@ -32,6 +32,16 @@ test('la one page s’affiche sans violation de la CSP de Caddy', async ({
   });
 
   await page.goto('/');
+  // Les scripts d'Expo ont tourné : React a hydraté le header pré-rendu.
+  await expect
+    .poll(() =>
+      page
+        .getByRole('banner')
+        .evaluate((header) =>
+          Object.keys(header).some((key) => key.startsWith('__reactFiber')),
+        ),
+    )
+    .toBe(true);
   const body = page.locator('body');
   for (const scheme of schemes) {
     await page.emulateMedia({ colorScheme: scheme });

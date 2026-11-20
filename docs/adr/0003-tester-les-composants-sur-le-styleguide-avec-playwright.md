@@ -1,6 +1,6 @@
 # 0003. Tester les composants sur les pages `/styleguide` avec Playwright, sans Storybook
 
-- Statut : Proposé
+- Statut : Proposé, adapté par [0015](0015-construire-le-site-et-les-apps-avec-expo.md) (pages `/styleguide` rendues par l’export web d’Expo)
 - Date : 2026-11-07
 
 ## Contexte

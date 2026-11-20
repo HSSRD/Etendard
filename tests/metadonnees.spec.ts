@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { hexToRgb } from './helpers';
 
-test('l’icône référencée est un SVG servi aux couleurs de tokens.css', async ({
+test('l’icône référencée est un SVG servi aux couleurs des tokens', async ({
   page,
   request,
 }) => {

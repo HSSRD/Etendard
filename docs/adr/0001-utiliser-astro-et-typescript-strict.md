@@ -1,6 +1,6 @@
 # 0001. Utiliser Astro 7 et TypeScript strict, Vue seulement à la première île
 
-- Statut : Proposé
+- Statut : Remplacé par [0015](0015-construire-le-site-et-les-apps-avec-expo.md)
 - Date : 2026-11-07
 
 ## Contexte

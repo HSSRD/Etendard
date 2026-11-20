@@ -1,9 +1,9 @@
-/// <reference types="vitest/config" />
-import { getViteConfig } from 'astro/config';
+import { defineConfig } from 'vitest/config';
 
-// Config Vite d'Astro : alias `@/` et modules `astro:*` disponibles dans les tests.
 // Vitest teste la logique TypeScript ; les *.spec.ts sont des tests Playwright (ADR 0003).
-export default getViteConfig({
+// react-native est remplacé par react-native-web : les modules du thème s'importent sous Node.
+export default defineConfig({
+  resolve: { alias: { 'react-native': 'react-native-web' } },
   test: {
     include: ['src/**/*.test.ts', 'scripts/**/*.test.ts'],
     passWithNoTests: true,

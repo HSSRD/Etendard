@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test';
 import {
-  cssToPixels,
   expectNoAxeViolations,
+  expectNoInlineCode,
+  headerHeight,
   schemes,
   themeBackground,
 } from './helpers';
@@ -23,8 +24,29 @@ test('la page d’accueil pose la structure de la one page', async ({ page }) =>
   const main = page.locator('main#contenu');
   await expect(main.locator('section#accueil h1')).toHaveText('Étendard');
   await expect(main.locator('section#projets h2')).toHaveText('Projets');
-  await expect(page.locator('script')).toHaveCount(0);
   await expect(page.locator('meta[name="robots"]')).toHaveCount(0);
+  await expectNoInlineCode(page, '/');
+});
+
+test.describe('sans JavaScript', () => {
+  test.use({ javaScriptEnabled: false });
+
+  // Rendu statique (ADR 0015) : titre, accueil et projets sont dans le HTML exporté.
+  test('le HTML pré-rendu montre le titre, l’accueil et les projets', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    await expect(page).toHaveTitle('Étendard');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+      'Étendard',
+    );
+    await expect(page.getByRole('heading', { level: 3 })).toHaveText([
+      'Hussard',
+      'Overwatch',
+      'Sentry',
+    ]);
+    await expect(page.getByRole('contentinfo')).toContainText('HSSRD');
+  });
 });
 
 test('le lien d’évitement apparaît au clavier et mène au contenu', async ({
@@ -43,7 +65,7 @@ test('le lien d’évitement apparaît au clavier et mène au contenu', async ({
   for (const scheme of schemes) {
     await page.emulateMedia({ colorScheme: scheme });
     await expect.soft(page).toHaveScreenshot(`lien-evitement-${scheme}.png`, {
-      mask: [page.locator('.site-footer')],
+      mask: [page.getByRole('contentinfo')],
     });
   }
 
@@ -57,23 +79,13 @@ test('les ancres défilent en douceur et s’arrêtent sous le header', async ({
   await page.goto('/');
   await expect(page.locator('html')).toHaveCSS('scroll-behavior', 'smooth');
 
-  // --header-height converti en pixels, comme getComputedStyle le renvoie.
-  const headerHeight = `${await cssToPixels(page, 'var(--header-height)')}px`;
+  const height = `${await headerHeight(page)}px`;
   for (const id of ['accueil', 'projets']) {
-    await expect(page.locator(`#${id}`)).toHaveCSS(
-      'scroll-margin-top',
-      headerHeight,
-    );
+    await expect(page.locator(`#${id}`)).toHaveCSS('scroll-margin-top', height);
   }
 
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(page.locator('html')).toHaveCSS('scroll-behavior', 'auto');
-  const durations = await page.evaluate(() =>
-    ['--duration-fast', '--duration-base'].map((token) =>
-      getComputedStyle(document.documentElement).getPropertyValue(token),
-    ),
-  );
-  expect(durations).toEqual(['0s', '0s']);
 });
 
 for (const scheme of schemes) {
@@ -90,7 +102,7 @@ for (const scheme of schemes) {
     await expect(page).toHaveScreenshot(`accueil-${scheme}.png`, {
       fullPage: true,
       // L'année du footer change chaque 1er janvier ; le footer a ses propres captures.
-      mask: [page.locator('.site-footer')],
+      mask: [page.getByRole('contentinfo')],
     });
   });
 }

@@ -13,7 +13,6 @@ test('le footer affiche l’éditeur, l’année et ses liens, sans débordement
   await page.goto(url);
   const footer = page.getByRole('contentinfo');
 
-  await expect(footer).toContainClass('site-footer');
   await expect(footer).toContainText('Étendard, la vitrine des projets HSSRD');
   await expect(footer).toContainText('© 2026 HSSRD');
 
@@ -36,7 +35,7 @@ test('sur la one page, le footer suit <main> et « Retour en haut » remonte à 
   // Défilement instantané : le défilement doux est déjà testé par accueil.spec.ts.
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
-  const footer = page.locator('main#contenu + footer.site-footer');
+  const footer = page.locator('main#contenu + footer');
   // Année du build ; la précédente n'est admise que le 1er janvier (build lancé la veille).
   const now = new Date();
   const years = [now.getFullYear()];

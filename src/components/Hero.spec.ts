@@ -1,9 +1,9 @@
 import { statSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import {
-  cssToPixels,
   expectNoAxeViolations,
   expectNoHorizontalScroll,
+  headerHeight,
   schemes,
   tabTo,
   themeBackground,
@@ -14,7 +14,7 @@ test('Hero : vidéo de fond décorative, muette, en boucle, qui couvre la sectio
 }) => {
   await page.goto('/styleguide/hero');
 
-  const video = page.locator('.hero__video');
+  const video = page.getByTestId('hero-video');
   for (const attribute of ['autoplay', 'muted', 'loop', 'playsinline']) {
     await expect(video).toHaveAttribute(attribute, '');
   }
@@ -62,7 +62,7 @@ test('Hero : vidéo de fond décorative, muette, en boucle, qui couvre la sectio
   // Cadrage : la vidéo occupe toute la section, recadrée sans déformation.
   const [videoBox, heroBox] = await Promise.all([
     video.boundingBox(),
-    page.locator('.hero').boundingBox(),
+    page.getByTestId('hero').boundingBox(),
   ]);
   expect(videoBox).toEqual(heroBox);
   await expect(video).toHaveCSS('object-fit', 'cover');
@@ -75,7 +75,7 @@ test('Hero, mouvement réduit : la vidéo n’est pas chargée, seul le poster s
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/styleguide/hero');
 
-  const video = page.locator('.hero__video');
+  const video = page.getByTestId('hero-video');
   await expect(video).toBeVisible();
   // Aucune source ne s'applique : NETWORK_NO_SOURCE, rien n'est lu ni téléchargé.
   await expect
@@ -95,29 +95,27 @@ for (const scheme of schemes) {
   }) => {
     await page.emulateMedia({ colorScheme: scheme, reducedMotion: 'reduce' });
     await page.goto('/styleguide/hero');
+    const hero = page.getByTestId('hero');
 
-    // Contenu en thème sombre (couleurs light-dark()) quel que soit le thème de la page.
-    await expect(page.locator('.hero__content')).toHaveCSS(
+    // Contenu en thème sombre quel que soit le thème de la page.
+    await expect(hero.locator('[data-theme]')).toHaveCSS(
       'color-scheme',
       'dark',
     );
-    await expect(page.locator('.hero')).toHaveCSS(
-      'background-color',
-      'rgb(0, 0, 0)',
-    );
+    await expect(hero).toHaveCSS('background-color', 'rgb(0, 0, 0)');
 
     // Bas de la section fondu dans le fond de la page, du thème de la page, sur le seul
     // padding bas : le texte, toujours clair, ne passe jamais sur le fondu (thème clair).
-    const { fade, paddingBottom } = await page
-      .locator('.hero')
-      .evaluate((hero) => ({
-        fade: getComputedStyle(hero, '::after').backgroundImage,
-        paddingBottom: getComputedStyle(hero).paddingBottom,
-      }));
-    expect(fade).toContain(
-      `linear-gradient(rgba(0, 0, 0, 0) calc(100% - ${paddingBottom}), ${await themeBackground(page, scheme)})`,
+    const paddingBottom = await hero.evaluate(
+      (element) => getComputedStyle(element).paddingBottom,
     );
-    expect(fade).toContain('radial-gradient(');
+    const fade = page.getByTestId('hero-overlay');
+    await expect(fade).toHaveCSS(
+      'background-image',
+      new RegExp(
+        `^linear-gradient\\(rgba\\(0, 0, 0, 0\\) calc\\(100% - ${paddingBottom}\\), ${(await themeBackground(page, scheme)).replace(/[()]/g, '\\$&')}\\), radial-gradient\\(`,
+      ),
+    );
   });
 
   test(`Hero, thème ${scheme} : contenu, accessibilité et capture`, async ({
@@ -127,13 +125,13 @@ for (const scheme of schemes) {
     await page.emulateMedia({ colorScheme: scheme, reducedMotion: 'reduce' });
     await page.goto('/styleguide/hero');
 
-    const hero = page.locator('.hero');
+    const hero = page.getByTestId('hero');
     await expect(hero.getByRole('heading', { level: 1 })).toHaveText(
       'Étendard',
     );
     // Espace insécable avant « ! » : textContent, car toHaveText normalise les espaces.
-    expect((await hero.locator('.hero__lead').textContent())?.trim()).toBe(
-      'Bienvenue\u00a0! Voici le site qui regroupe tous les projets de Hussard.',
+    expect((await hero.getByRole('paragraph').textContent())?.trim()).toBe(
+      'Bienvenue ! Voici le site qui regroupe tous les projets de Hussard.',
     );
     const cta = hero.getByRole('link', {
       name: 'Découvrir les projets',
@@ -187,32 +185,34 @@ test('accueil : le Hero remplit l’écran sous le header, centré, et mène aux
   page,
 }) => {
   await page.goto('/');
-  await expect(page.locator('section#accueil > .hero')).toHaveCount(1);
+  await expect(
+    page.locator('section#accueil > [data-testid="hero"]'),
+  ).toHaveCount(1);
   await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
   await expectNoHorizontalScroll(page);
 
-  const headerHeight = await cssToPixels(page, 'var(--header-height)');
-  const layout = await page.evaluate((headerHeight) => {
+  const height = await headerHeight(page);
+  const layout = await page.evaluate((height) => {
     const find = (selector: string) => {
       const element = document.querySelector(selector);
       if (!element) throw new Error(`${selector} introuvable`);
       return element;
     };
     const box = (selector: string) => find(selector).getBoundingClientRect();
-    const heroStyle = getComputedStyle(find('.hero'));
+    const hero = '[data-testid="hero"]';
+    const heroStyle = getComputedStyle(find(hero));
     const padding = (side: 'Top' | 'Left' | 'Right') =>
       Number.parseFloat(heroStyle[`padding${side}`]);
     return {
-      expectedHeight: window.innerHeight - headerHeight,
+      expectedHeight: window.innerHeight - height,
       section: box('#accueil'),
       projets: box('#projets'),
       paddingTop: padding('Top'),
-      contentWidth:
-        find('.hero').clientWidth - padding('Left') - padding('Right'),
-      title: box('.hero h1'),
-      cta: box('.hero__cta'),
+      contentWidth: find(hero).clientWidth - padding('Left') - padding('Right'),
+      title: box(`${hero} h1`),
+      cta: box(`${hero} a`),
     };
-  }, headerHeight);
+  }, height);
 
   expect(layout.section.height).toBeCloseTo(layout.expectedHeight, 0);
   expect(layout.projets.top).toBeCloseTo(layout.section.bottom, 0);
@@ -228,7 +228,10 @@ test('accueil : le Hero remplit l’écran sous le header, centré, et mène aux
   for (const element of [layout.title, layout.cta]) {
     expect(element.left + element.width / 2).toBeCloseTo(sectionCenter, 0);
   }
-  await expect(page.locator('.hero__lead')).toHaveCSS('text-align', 'center');
+  await expect(page.getByTestId('hero').getByRole('paragraph')).toHaveCSS(
+    'text-align',
+    'center',
+  );
 
   // L'appel à l'action fait défiler jusqu'à #projets, arrêtée sous le header.
   // La page est allongée pour que le défilement soit possible tant qu'elle est courte.
@@ -243,5 +246,5 @@ test('accueil : le Hero remplit l’écran sous le header, centré, et mène aux
     .poll(() =>
       page.locator('#projets').evaluate((el) => el.getBoundingClientRect().top),
     )
-    .toBeCloseTo(headerHeight, 0);
+    .toBeCloseTo(height, 0);
 });
