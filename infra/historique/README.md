@@ -51,7 +51,6 @@ gh release list -R HSSRD/Etendard --limit 500 --json tagName -q '.[].tagName' \
 git ls-remote --tags https://github.com/HSSRD/Etendard.git \
   | sed 's|.*refs/tags/||; s|\^{}$||' | sort -u \
   | while read -r t; do gh api -X DELETE "repos/HSSRD/Etendard/git/refs/tags/$t"; done
-git ls-remote --tags https://github.com/HSSRD/Etendard.git   # n'affiche plus rien
 ```
 
 ## 4. Réécrire l'historique (critère 3)
@@ -60,7 +59,7 @@ git ls-remote --tags https://github.com/HSSRD/Etendard.git   # n'affiche plus ri
 bash infra/historique/reseau-prive.sh reecrire "$V"
 ```
 
-Le script vérifie qu'il n'y a plus ni PR ouverte, ni autre branche que `main`, ni tag. Il clone le repo dans `~/etendard-reecriture`, lance `git filter-repo --sensitive-data-removal --replace-text` (fichiers et messages de commit, y compris `refs/pull/*`), puis compte les valeurs dans `git log --all -p` : il s'arrête si une seule reste. Il affiche le nombre de commits avant et après (identique) et le **premier commit modifié**, à garder pour l'étape 8.
+Le script contrôle les préalables des étapes 1 à 3, réécrit un clone neuf dans `~/etendard-reecriture`, recompte les valeurs (il s'arrête s'il en reste une) et affiche le **premier commit modifié**, à garder pour l'étape 8.
 
 Avant de pousser, regarde un fichier réécrit, par exemple `git -C ~/etendard-reecriture log -p -1 -- infra/pi/verify.sh`.
 
@@ -121,3 +120,5 @@ Note le numéro de la demande en commentaire du ticket #31. Une fois la purge fa
 ## 9. Preuves
 
 Colle en commentaire du ticket #31 la sortie finale de `verifier` (elle ne contient que des numéros de valeur, des compteurs et des liens), le lien du déploiement vert de l'étape 5 et le numéro de la demande au support.
+
+Une fois la purge confirmée, retire ce dossier `infra/historique/` par une PR : il ne sert qu'une fois.

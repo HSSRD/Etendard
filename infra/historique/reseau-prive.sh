@@ -46,14 +46,12 @@ compter() {
   done
 }
 
-# Commande de git filter-repo : git filter-repo (pip ou paquet), sinon le module Python.
+# Commande de git filter-repo : git filter-repo (paquet, ou pip avec Scripts dans le PATH), sinon py -3.
 filter_repo() {
   if git filter-repo --version > /dev/null 2>&1; then
     FR=(git filter-repo)
   elif py -3 -m git_filter_repo --version > /dev/null 2>&1; then
     FR=(py -3 -m git_filter_repo)
-  elif python3 -m git_filter_repo --version > /dev/null 2>&1; then
-    FR=(python3 -m git_filter_repo)
   else
     die "git filter-repo introuvable : voir « Installer git filter-repo » dans infra/historique/README.md"
   fi
@@ -83,11 +81,8 @@ mode_reecrire() {
   "${FR[@]}" --sensitive-data-removal --replace-text "$FICHIER" --replace-message "$FICHIER"
 
   RESTE=0
-  local h
-  h="$(mktemp)"
-  git log --all -p > "$h"
-  compter "Lignes de l'historique réécrit qui contiennent une valeur (attendu : 0)" "$h"
-  rm "$h"
+  git log --all -p > "$d/historique"
+  compter "Lignes de l'historique réécrit qui contiennent une valeur (attendu : 0)" "$d/historique"
   echo "Commits de main : $avant avant, $(git rev-list --count HEAD) après"
   echo "Premier commit modifié (pour le support) : $(cat .git/filter-repo/first-changed-commits)"
   [ "$RESTE" -eq 0 ] || die "des valeurs restent dans l'historique réécrit : ne pousse pas"
@@ -96,8 +91,6 @@ mode_reecrire() {
 
 mode_verifier() {
   lire_valeurs "${1:?usage : bash reseau-prive.sh verifier <valeurs>}"
-  d="$(mktemp -d)"
-  trap 'rm -rf "$d"' EXIT
   RESTE=0
 
   git clone -q "$URL" "$d/clone"
@@ -136,14 +129,17 @@ mode_verifier() {
 
   # Hors bilan : ces références ne disparaissent qu'à la demande du support GitHub (critère 6).
   git -C "$d/clone" fetch -q origin '+refs/pull/*:refs/pull/*'
-  local avant=$RESTE
+  local bilan=$RESTE
   git -C "$d/clone" log --all -p > "$d/pull"
   compter "refs/pull/* gardées par GitHub (critère 6, purge par le support)" "$d/pull"
-  RESTE=$avant
 
-  echo "Bilan : $RESTE occurrence(s) hors refs/pull/*"
-  [ "$RESTE" -eq 0 ]
+  echo "Bilan : $bilan occurrence(s) hors refs/pull/*"
+  [ "$bilan" -eq 0 ]
 }
+
+# Dossier de travail, supprimé à la sortie.
+d="$(mktemp -d)"
+trap 'rm -rf "$d"' EXIT
 
 case "${1:-}" in
   reecrire) shift; mode_reecrire "$@" ;;
