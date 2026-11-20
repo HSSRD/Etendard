@@ -12,6 +12,8 @@ export const pageStyles = StyleSheet.create({
   },
   /** Contenu d'une page simple, dans la colonne. */
   page: { paddingVertical: space[6], rowGap: space[6] },
+  /** Titre au-dessus d'une section qui porte son propre padding. */
+  heading: { paddingTop: space[6] },
   /** Un état d'un composant : son titre, puis le composant. */
   state: { rowGap: space[4] },
   /** Panneau d'un thème (ThemeScope), aux coins de sa bordure. */
