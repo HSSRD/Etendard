@@ -5,8 +5,8 @@ import { z } from 'zod';
 const text = z.string().trim().min(1);
 
 const projectSchema = z.strictObject({
-  /** Identifiant en kebab-case, référencé par les `units` d'un autre projet. */
-  id: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'kebab-case attendu'),
+  /** Identifiant unique, référencé par les `units` d'un autre projet. */
+  id: text,
   title: text,
   /** Une phrase. */
   summary: text,

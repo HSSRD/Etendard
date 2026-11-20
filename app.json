@@ -4,11 +4,9 @@
     "slug": "etendard",
     "scheme": "etendard",
     "version": "0.0.0",
-    "orientation": "default",
     "userInterfaceStyle": "automatic",
     "web": {
-      "output": "static",
-      "bundler": "metro"
+      "output": "static"
     },
     "plugins": [
       [

@@ -88,11 +88,6 @@ describe('validateProjects', () => {
       'title',
     ],
     [
-      'un identifiant hors kebab-case',
-      [fiche('A b', 1, ['b']), fiche('b', 1)],
-      'kebab-case attendu',
-    ],
-    [
       'un champ inconnu',
       [{ ...fiche('a', 1, ['b']), titre: 'faute' }, fiche('b', 1)],
       'titre',
