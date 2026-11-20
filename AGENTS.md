@@ -9,7 +9,9 @@ Lis `docs/adr/` avant toute modification structurelle. Ne contredis jamais un AD
 - `pnpm dev` : serveur de développement Expo (`w` : web, styleguide sur `/styleguide` ; Expo Go : iOS et Android).
 - `pnpm build` : valide le contenu (Zod), exporte le web dans `dist/`, sort les styles et scripts en ligne en fichiers.
 - `pnpm verify:fast` : `tsc`, ESLint, Prettier, Vitest. Lance-la après chaque modification.
-- `pnpm verify` : `verify:fast`, `pnpm test:infra`, Knip, dependency-cruiser, build, `html-validate`, Playwright.
+- `pnpm verify` : `verify:fast`, `pnpm test:infra`, Knip, dependency-cruiser, build, `pnpm build:natif`, `html-validate`, Playwright.
+- `pnpm build:natif` : exporte les bundles iOS et Android dans `dist-natif/` (jamais livré) ; échoue si un module
+  manque côté natif (`X.web.tsx` sans `X.tsx`). `expo-doctor` (réseau) se lance à la main, hors de `pnpm verify`.
 - `pnpm test:infra` : tests de `infra/pi/etendard-receive` (sous Windows, le script prend lui-même le bash de Git).
 - `pnpm exec playwright test src/components/X.spec.ts` : boucle courte sur un composant.
 - `pnpm captures:maj [fichiers]` : régénère les captures de référence dans Docker.

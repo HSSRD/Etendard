@@ -48,6 +48,7 @@ export default defineConfig(
     ignores: [
       'dist/',
       'dist-styleguide/',
+      'dist-natif/',
       '.expo/',
       'test-results/',
       'playwright-report/',
