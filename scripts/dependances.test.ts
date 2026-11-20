@@ -35,15 +35,19 @@ test('une version est exacte, sauf la plage que pose `expo install` pour le SDK'
   );
   // Posés par `expo install` hors de bundledNativeModules.json : le SDK lui-même et l'outillage TypeScript.
   const fromExpoInstall = new Set(['expo', 'typescript', '@types/react']);
-  // Seule la forme est vérifiée : une mise à jour d'Expo peut relever sa plage sans changer package.json.
-  const offRule = Object.entries(declared).filter(
-    ([name, version]) =>
-      !/^\d+\.\d+\.\d+$/.test(version) &&
-      !(
-        (name in sdk || fromExpoInstall.has(name)) &&
-        /^[~^]\d+\.\d+\.\d+$/.test(version)
-      ),
-  );
+  // Opérateur et version mineure : une mise à jour d'Expo peut relever le correctif sans changer package.json.
+  const minor = (version: string) =>
+    /^([~^]?\d+\.\d+)\.\d+$/.exec(version)?.[1];
+  const offRule = Object.entries(declared).filter(([name, version]) => {
+    if (Object.hasOwn(sdk, name)) {
+      return (
+        minor(version) === undefined ||
+        minor(version) !== minor(sdk[name] ?? '')
+      );
+    }
+    if (fromExpoInstall.has(name)) return !/^~\d+\.\d+\.\d+$/.test(version);
+    return !/^\d+\.\d+\.\d+$/.test(version);
+  });
 
   expect(offRule).toEqual([]);
 });

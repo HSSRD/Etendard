@@ -49,7 +49,7 @@ captures en écart et échoue quand même.
   `src/content/projects.ts` (fiches validées au build par `src/lib/validate-projects.ts`).
 - Variante d'une plateforme : `X.web.tsx` (web) à côté de `X.tsx` (iOS et Android), mêmes props.
 - `docs/dependances.md` : raison de chaque dépendance et configuration. Une dépendance ajoutée ou retirée y met à jour
-  sa ligne ; versions et classement suivent ADR 0013 (`scripts/dependances.test.ts` vérifie la liste et les versions).
+  sa ligne ; versions et classement suivent ADR 0013 (`scripts/dependances.test.ts` vérifie la liste des dépendances et leurs versions).
 
 ## Composants
 

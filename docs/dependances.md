@@ -19,7 +19,7 @@ Essai de retrait commun à six paquets (`@expo/metro-runtime`, `expo-constants`,
 `react-dom`) : « Native module peer dependencies must be installed directly ». D’où la règle des pairs d’ADR 0013 : un pair obligatoire que le SDK versionne est déclaré.
 
 Pairs obligatoires non déclarés, hors de cette règle : `vite` (pair de `vitest`), `playwright-core` (pair d’`@axe-core/playwright`,
-même version que `@playwright/test`, qui l’apporte par `playwright`) et `@expo/log-box` (pair d’`expo-router`, dépendance d’`expo`).
+même version que `@playwright/test`, qui l’apporte par `playwright`) et `@expo/log-box` (pair d’`expo-router` et d’`@expo/metro-runtime`, dépendance d’`expo`).
 Aucun n’est dans `bundledNativeModules.json` : leur version suit le paquet qui les apporte.
 
 ## Dépendances
