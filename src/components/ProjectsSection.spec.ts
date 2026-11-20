@@ -19,9 +19,7 @@ test('Projets, puis Hussard, puis Overwatch et Sentry, titres h1 → h2 → h3',
 }) => {
   await page.goto('/styleguide/projects-section');
 
-  const section = page
-    .locator('section#projets')
-    .getByTestId('projects-section');
+  const section = page.locator('#projets').getByTestId('projects-section');
   await expect(section.getByRole('heading', { level: 2 })).toHaveText(
     'Projets',
   );
@@ -39,9 +37,9 @@ test('Projets, puis Hussard, puis Overwatch et Sentry, titres h1 → h2 → h3',
 test('la one page insère la section dans #projets', async ({ page }) => {
   await page.goto('/');
   await expect(
-    page.locator('section#projets > [data-testid="projects-section"]'),
+    page.locator('#projets > [data-testid="projects-section"]'),
   ).toHaveCount(1);
-  expect(await headingLevels(page, 'section#projets')).toEqual([2, 3, 3, 3]);
+  expect(await headingLevels(page, '#projets')).toEqual([2, 3, 3, 3]);
 });
 
 test('aucune adresse, aucun port ni lien vers les repos privés', async ({
@@ -91,7 +89,8 @@ test('à 767 px, les cartes sont encore empilées', async ({ page }) => {
   const cards = page.getByTestId('project-units').first().locator('> article');
   const first = await cards.first().boundingBox();
   const second = await cards.nth(1).boundingBox();
-  expect(second?.x).toBe(first?.x);
+  if (!first || !second) throw new Error('deux cartes visibles attendues');
+  expect(second.x).toBe(first.x);
 });
 
 for (const scheme of schemes) {

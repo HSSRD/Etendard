@@ -28,10 +28,10 @@ import HeroVideo from './HeroVideo';
 export default function Hero() {
   const styles = useStyles();
   const { height } = useWindowDimensions();
-  const { top } = useSafeAreaInsets();
+  const { top, bottom } = useSafeAreaInsets();
   // iOS et Android : l'écran sous le header (sur le web, la hauteur vient du CSS, sans JavaScript).
   const fill = Platform.OS !== 'web' && {
-    minHeight: height - top - layout.headerHeight,
+    minHeight: height - top - bottom - layout.headerHeight,
   };
   return (
     <View testID="hero" style={[styles.hero, fill]}>

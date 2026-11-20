@@ -1,4 +1,4 @@
-// Structure commune des pages sur iOS et Android (ADR 0015) : header fixe sous la barre d'état,
+// Structure commune des pages sur iOS et Android (ADR 0015) : dans les zones sûres, header fixe,
 // puis le contenu et le footer dans un ScrollView que les liens « #x » font défiler.
 // Le <head> et le lien d'évitement n'existent que sur le web (BaseLayout.web.tsx).
 import type { ReactNode } from 'react';
@@ -23,7 +23,7 @@ export default function BaseLayout({
 }: BaseLayoutProps) {
   const styles = useStyles();
   return (
-    <SafeAreaView edges={['top']} style={styles.page}>
+    <SafeAreaView style={styles.page}>
       <AnchorScrollView header={header} style={styles.page}>
         {children}
         {footer}

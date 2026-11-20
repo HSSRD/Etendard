@@ -12,12 +12,12 @@ export const groupProjects = (projects: Project[]) => {
   const units = new Set(projects.flatMap((project) => project.units ?? []));
   return projects
     .filter((project) => !units.has(project.id))
-    .toSorted(byOrder)
+    .sort(byOrder)
     .map((root) => ({
       root,
       units: projects
         .filter((project) => root.units?.includes(project.id))
-        .toSorted(byOrder),
+        .sort(byOrder),
     }));
 };
 

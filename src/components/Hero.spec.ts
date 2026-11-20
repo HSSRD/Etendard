@@ -185,9 +185,7 @@ test('accueil : le Hero remplit l’écran sous le header, centré, et mène aux
   page,
 }) => {
   await page.goto('/');
-  await expect(
-    page.locator('section#accueil > [data-testid="hero"]'),
-  ).toHaveCount(1);
+  await expect(page.locator('#accueil > [data-testid="hero"]')).toHaveCount(1);
   await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
   await expectNoHorizontalScroll(page);
 

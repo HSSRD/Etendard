@@ -83,6 +83,11 @@ describe('validateProjects', () => {
       'body[0]',
     ],
     [
+      'un identifiant entouré d’espaces',
+      [fiche('a', 1, ['b ']), { ...fiche('b', 1), id: 'b ' }],
+      'texte vide ou entouré d’espaces',
+    ],
+    [
       'un titre manquant',
       [{ ...fiche('a', 1, ['b']), title: '' }, fiche('b', 1)],
       'title',

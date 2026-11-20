@@ -66,11 +66,11 @@ export function AnchorScrollView({
   );
 }
 
-/** Cible d'ancre : une région (<section id> sur le web), jointe par un lien « #id ». */
+/** Cible d'ancre (élément à id sur le web), jointe par un lien « #id ». */
 export function AnchorTarget({
   id,
   ...props
-}: Omit<ViewProps, 'id' | 'role'> & { id: string }) {
+}: Omit<ViewProps, 'id'> & { id: string }) {
   const anchors = use(AnchorContext);
   const register = (node: ViewInstance | null) => {
     if (!anchors || !node) return undefined;
@@ -79,7 +79,7 @@ export function AnchorTarget({
       anchors.targets.delete(id);
     };
   };
-  return <View {...props} ref={register} id={id} role="region" />;
+  return <View {...props} ref={register} id={id} />;
 }
 
 interface TextLinkProps extends Omit<

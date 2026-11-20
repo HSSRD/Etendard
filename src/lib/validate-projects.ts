@@ -2,7 +2,10 @@
 // et dans Vitest : Zod n'est jamais envoyé au navigateur ni embarqué dans les apps.
 import { z } from 'zod';
 
-const text = z.string().trim().min(1);
+/** Texte non vide, sans espace au début ni à la fin : validé tel que l'app l'affiche. */
+const text = z
+  .string()
+  .regex(/^\S(?:[\s\S]*\S)?$/, 'texte vide ou entouré d’espaces');
 
 const projectSchema = z.strictObject({
   /** Identifiant unique, référencé par les `units` d'un autre projet. */
