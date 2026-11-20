@@ -10,6 +10,7 @@ import {
   type ComponentRef,
   type ReactNode,
 } from 'react';
+import { router } from 'expo-router';
 import {
   Linking,
   Platform,
@@ -79,7 +80,7 @@ interface TextLinkProps extends Omit<
   TextProps,
   'href' | 'hrefAttrs' | 'onPress' | 'role'
 > {
-  /** « #id » : une ancre de la page ; sinon une URL externe. */
+  /** « #id » : une ancre de la page ; « /x » : une page du site ; sinon une URL externe. */
   href: string;
   rel?: string;
 }
@@ -92,7 +93,8 @@ export function TextLink({ href, rel, ...props }: TextLinkProps) {
   }
   const onPress = () => {
     if (href.startsWith('#')) anchors?.scrollTo(href.slice(1));
-    else void Linking.openURL(href);
+    else if (href.startsWith('/')) router.push(href);
+    else Linking.openURL(href).catch(() => undefined);
   };
   return <Text {...props} role="link" onPress={onPress} />;
 }

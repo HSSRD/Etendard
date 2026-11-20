@@ -61,6 +61,29 @@ test('sur la one page, le footer suit <main> et « Retour en haut » remonte à 
   await expect(accueil).toBeInViewport();
 });
 
+test('l’année suivante, la page s’hydrate sans erreur et garde l’année du build', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.clock.setFixedTime(new Date(new Date().getFullYear() + 1, 5, 1));
+  await page.goto(url);
+  await expect
+    .poll(() =>
+      page
+        .getByRole('contentinfo')
+        .evaluate((footer) =>
+          Object.keys(footer).some((key) => key.startsWith('__reactFiber')),
+        ),
+    )
+    .toBe(true);
+  await expect(page.getByRole('contentinfo')).toContainText('© 2026 HSSRD');
+  expect(errors).toEqual([]);
+});
+
 for (const scheme of schemes) {
   test(`footer, thème ${scheme} : accessibilité et capture`, async ({
     page,

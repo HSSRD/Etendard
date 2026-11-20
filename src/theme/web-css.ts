@@ -2,7 +2,7 @@
 // Seulement ce que StyleSheet ne sait pas écrire : variables du thème, défilement vers les ancres,
 // focus visible, survol, lien d'évitement. Les composants s'y accrochent par des attributs data-*.
 import { cssVariable } from './theme';
-import { colorNames, focus, layout, palettes } from './tokens';
+import { colorNames, focus, layout, palettes, underlineOffset } from './tokens';
 
 /** `--color-x: light-dark(clair, sombre)` : le thème suit `color-scheme`. */
 const variables = colorNames
@@ -23,7 +23,7 @@ export const webCss = [
   // Toute cible d'ancre s'arrête sous le header collant.
   `[id]{scroll-margin-top:${layout.headerHeight}px}`,
   `:focus-visible{outline-color:var(${cssVariable('focus')});outline-offset:${focus.offset}px;outline-style:solid;outline-width:${focus.width}px}`,
-  `a[href]{text-decoration-thickness:from-font;text-underline-offset:0.15em}`,
+  `a[href]{text-decoration-thickness:from-font;text-underline-offset:${underlineOffset}}`,
   // Pointeur principal seulement : pas de soulignement resté collé après un tap.
   `@media (hover:hover){[data-hover="underline"]:hover{text-decoration-line:underline}}`,
   `[data-skip-link]:not(:focus){opacity:0;pointer-events:none}`,

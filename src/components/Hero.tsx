@@ -8,6 +8,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TextLink } from '@/lib/anchors';
 import { ThemeScope, themedStyles } from '@/theme/theme';
 import {
@@ -27,9 +28,10 @@ import HeroVideo from './HeroVideo';
 export default function Hero() {
   const styles = useStyles();
   const { height } = useWindowDimensions();
+  const { top } = useSafeAreaInsets();
   // iOS et Android : l'écran sous le header (sur le web, la hauteur vient du CSS, sans JavaScript).
   const fill = Platform.OS !== 'web' && {
-    minHeight: height - layout.headerHeight,
+    minHeight: height - top - layout.headerHeight,
   };
   return (
     <View testID="hero" style={[styles.hero, fill]}>
@@ -91,9 +93,9 @@ const useStyles = themedStyles((colors) => ({
     backgroundImage: [
       css(
         `linear-gradient(transparent calc(100% - ${space[9]}px), ${colors.background})`,
-        `linear-gradient(transparent 85%, ${colors.background})`,
+        `linear-gradient(transparent ${hero.fadeStop}, ${colors.background})`,
       ),
-      `radial-gradient(transparent 45%, ${hero.shade})`,
+      `radial-gradient(transparent ${hero.vignetteStop}, ${hero.shade})`,
     ].join(', '),
   },
   transparent: { backgroundColor: 'transparent' },

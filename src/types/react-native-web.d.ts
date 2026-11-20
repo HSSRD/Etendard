@@ -13,5 +13,7 @@ declare module 'react-native' {
     /** Lien : rendu en `<a href>` sur le web. */
     href?: string;
     hrefAttrs?: { rel?: string; target?: string; download?: boolean };
+    /** Transmis à l'élément DOM : texte du HTML pré-rendu gardé à l'hydratation. */
+    suppressHydrationWarning?: boolean;
   }
 }

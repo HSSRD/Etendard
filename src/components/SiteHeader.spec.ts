@@ -120,11 +120,18 @@ test('chaque lien du header a un focus visible au clavier', async ({
   await expect(header(page)).toHaveScreenshot('site-header-focus.png');
 });
 
-test('avec un texte agrandi à 200 %, le header ne déborde pas horizontalement', async ({
+// Zoom du navigateur à 200 % : la fenêtre fait deux fois moins de px CSS. Les tailles étant en px
+// (ADR 0015), la taille de police du navigateur, elle, ne change rien.
+test('zoomé à 200 %, le header passe à la ligne sans déborder', async ({
   page,
 }) => {
+  const viewport = page.viewportSize();
+  if (!viewport) throw new Error('fenêtre inconnue');
+  await page.setViewportSize({
+    width: Math.floor(viewport.width / 2),
+    height: Math.floor(viewport.height / 2),
+  });
   await page.goto('/styleguide/site-header');
-  await page.addStyleTag({ content: 'html { font-size: 200%; }' });
   await expectNoHorizontalScroll(page);
   // Chaque lien reste entier à l'écran, anneau de focus compris (décalage + épaisseur, en px).
   const brand = header(page).getByRole('link', { name: 'Étendard' });
@@ -155,7 +162,7 @@ test('avec un texte agrandi à 200 %, le header ne déborde pas horizontalement'
       width - ring,
     );
   }
-  await expect(header(page)).toHaveScreenshot('site-header-texte-agrandi.png');
+  await expect(header(page)).toHaveScreenshot('site-header-zoom-200.png');
 });
 
 test('les liens du header se soulignent au survol', async ({ page }) => {

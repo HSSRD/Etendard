@@ -46,5 +46,6 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     rowGap: space[5],
   },
-  unit: { flexBasis: unitBasis, flexGrow: 1, minWidth: 0 },
+  // flexShrink : en dessous de la base, la carte rétrécit au lieu de déborder (320 px).
+  unit: { flexBasis: unitBasis, flexGrow: 1, flexShrink: 1, minWidth: 0 },
 });

@@ -38,6 +38,10 @@ export const colorNames = Object.keys(palettes.light) as ColorName[];
 export const hero = {
   shade: '#000000',
   veil: '#000000a6',
+  /** Début du vignettage des bords. */
+  vignetteStop: '45%',
+  /** iOS et Android : début du fondu du bas (le web le pose sur le padding bas, en calc()). */
+  fadeStop: '85%',
 } as const;
 
 /** Espacements, en px. */
@@ -110,6 +114,9 @@ export const radius = { sm: 4, md: 8, lg: 16 } as const;
 export const borderWidth = 1;
 
 export const focus = { width: 3, offset: 2 } as const;
+
+/** Décalage du soulignement des liens (web). */
+export const underlineOffset = '0.15em';
 
 /** Ombres CSS, couleur de l'ombre du thème courant comprise. */
 export const shadow = (colors: Colors) => ({

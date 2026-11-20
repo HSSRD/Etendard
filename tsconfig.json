@@ -3,6 +3,8 @@
   "compilerOptions": {
     "strict": true,
     "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "noPropertyAccessFromIndexSignature": true,
     "noFallthroughCasesInSwitch": true,
     "noImplicitOverride": true,
     "noImplicitReturns": true,

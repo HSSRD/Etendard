@@ -22,16 +22,26 @@ const styleCalls = [
   "CallExpression[callee.object.name='StyleSheet'][callee.property.name='create']",
   "CallExpression[callee.name='themedStyles']",
 ];
-const hardCoded = styleCalls.flatMap((call) => [
-  {
-    selector: `${call} Property > Literal[value=/^(?:#|rgba?[(]|hsla?[(])/i]`,
-    message: 'Couleur en dur : utilise un token de src/theme/tokens.ts.',
-  },
-  {
-    selector: `${call} Property > Literal[raw=/^-?[0-9.]+$/][value!=0][value!=1]`,
-    message: 'Valeur en dur : utilise un token de src/theme/tokens.ts.',
-  },
-]);
+const hardCoded = styleCalls
+  .flatMap((call) => [
+    {
+      selector: `${call} Property > Literal[value=/^(?:#|rgba?[(]|hsla?[(])/i]`,
+      message: 'Couleur en dur : utilise un token de src/theme/tokens.ts.',
+    },
+    {
+      selector: `${call} Property > Literal[raw=/^[0-9.]+$/][value!=0][value!=1]`,
+      message: 'Valeur en dur : utilise un token de src/theme/tokens.ts.',
+    },
+    {
+      selector: `${call} Property > UnaryExpression[operator='-'] > Literal`,
+      message: 'Valeur en dur : utilise un token de src/theme/tokens.ts.',
+    },
+  ])
+  .concat({
+    // Sur le web, un objet de style en ligne devient un attribut style, refusé par la CSP.
+    selector: "JSXAttribute[name.name='style'] ObjectExpression",
+    message: 'Style en ligne : passe par StyleSheet.create ou themedStyles.',
+  });
 
 export default defineConfig(
   {

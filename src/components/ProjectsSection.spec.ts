@@ -1,5 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
-import { expectNoAxeViolations, schemes } from '../../tests/helpers';
+import {
+  expectNoAxeViolations,
+  expectNoHorizontalScroll,
+  schemes,
+} from '../../tests/helpers';
 
 /** Niveaux des titres (h1 → 1…) sous `selector`, dans l'ordre du document. */
 const headingLevels = (page: Page, selector: string) =>
@@ -70,6 +74,15 @@ test('les cartes sont côte à côte à partir de 768 px, empilées en dessous',
     expect(second.y).toBeGreaterThanOrEqual(first.y + first.height);
   }
 });
+
+// Écrans étroits : les cartes rétrécissent, la page ne défile pas en largeur.
+for (const width of [320, 360]) {
+  test(`à ${width} px, les cartes tiennent dans la page`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/styleguide/projects-section');
+    await expectNoHorizontalScroll(page);
+  });
+}
 
 // Seuil exact : à 767 px, la largeur utile ne tient plus deux cartes.
 test('à 767 px, les cartes sont encore empilées', async ({ page }) => {

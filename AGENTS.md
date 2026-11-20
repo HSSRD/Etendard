@@ -62,6 +62,7 @@ Les tests visent les rôles, les textes et les `testID` (rendus en `data-testid`
   `src/theme/tokens.ts` (ESLint le vérifie dans `StyleSheet.create` et `themedStyles`, seuls 0 et 1 sont admis).
 - Tout style passe par `StyleSheet.create`, ou `themedStyles` s'il dépend des couleurs du thème : jamais d'objet
   `style` en ligne. Sur le web, il deviendrait un attribut `style`, refusé par la CSP du Caddyfile (`tests/csp.spec.ts`).
+  Seule exception : une valeur calculée sur iOS et Android (taille de la fenêtre), jamais passée sur le web.
 - Chaque `Text` reçoit sa police (`useTypography`) : React Native n'en hérite pas d'un `View`.
 - Sémantique par `role` et `aria-*` (`role="heading"` + `aria-level`, `banner`, `main`, `contentinfo`, `region`,
   `article`, `list`, `listitem`, `paragraph` de `src/theme/typography.ts`) ; liens par `TextLink` (`src/lib/anchors.tsx`).

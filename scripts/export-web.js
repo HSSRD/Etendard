@@ -13,7 +13,6 @@ import {
   writeFileSync,
 } from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 
 /** Dossiers de /_expo/static/ des fichiers sortis des pages, par extension. */
 const folders = { css: '_expo/static/css', js: '_expo/static/js/web' };
@@ -66,6 +65,6 @@ const main = (/** @type {string | undefined} */ dir) => {
   }
 };
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+if (import.meta.main) {
   main(process.argv[2]);
 }
