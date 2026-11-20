@@ -241,7 +241,7 @@ describe('script lancé par le job message', () => {
         DEPLOY_RESULT: 'failure',
         RELEASE_RESULT: 'skipped',
         ROLLBACK_EFFECTUE: 'true',
-        SERVI: 'ssh: connect to host florasp',
+        SERVI: 'ssh: connect to host pi',
       }),
     );
     expect(subject).toBe(

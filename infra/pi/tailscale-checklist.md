@@ -26,7 +26,7 @@ Ce que change la nouvelle politique pour ce workflow : ses nœuds non étiqueté
 
 ## 3. Vérifier que Tailscale SSH n'intercepte pas le port 22 du Pi
 
-La CI doit arriver sur le `sshd` du Pi, qui applique la commande forcée de `deploy`. Si Tailscale SSH est actif sur `florasp`, il intercepte le port 22 du tailnet et ignore `authorized_keys`.
+La CI doit arriver sur le `sshd` du Pi, qui applique la commande forcée de `deploy`. Si Tailscale SSH est actif sur le Pi, il intercepte le port 22 du tailnet et ignore `authorized_keys`.
 
 - [ ] Sur le Pi : `tailscale debug prefs | grep RunSSH` affiche `"RunSSH": false`.
 - [ ] Sinon, désactive-le sur le Pi avec `sudo tailscale set --ssh=false`, et vérifie que tu peux encore te connecter en SSH classique.
@@ -34,15 +34,15 @@ La CI doit arriver sur le `sshd` du Pi, qui applique la commande forcée de `dep
 ## 4. Politique : `tag:ci` et ACL
 
 - [ ] Ouvre `infra/pi/tailscale-policy.hujson` et remplace :
-  - `À_REMPLACER_IP_TAILSCALE_DE_FLORASP` par la sortie de `tailscale ip -4` sur le Pi ;
+  - `À_REMPLACER_IP_TAILSCALE_DU_PI` par la sortie de `tailscale ip -4` sur le Pi ;
   - `À_REMPLACER_IDENTIFIANT_TAILSCALE_DE_FLO` par ton identifiant de connexion Tailscale (en haut à droite de la console, ex. `toi@github` ou ton e-mail).
 - [ ] **Access controls > Edit file** : colle la politique, puis **Save**. La console exécute le bloc `tests` :
-  - `tag:ci` joint `florasp:22` ;
-  - `tag:ci` est refusé sur `florasp:5000` et `florasp:8000` (Sentry), ainsi que sur 8080, 80 et 443 ;
-  - tes appareils joignent toujours `florasp:22`, `5000` et `8000`.
+  - `tag:ci` joint `pi:22` ;
+  - `tag:ci` est refusé sur `pi:5000` et `pi:8000` (Sentry), ainsi que sur 8080, 80 et 443 ;
+  - tes appareils joignent toujours `pi:22`, `5000` et `8000`.
 
   Si un test échoue, la console refuse d'enregistrer. **L'enregistrement réussi est la preuve du critère 7.** Fais une capture de la politique enregistrée.
-- [ ] Après l'enregistrement, vérifie depuis ton PC que tu joins encore le Pi : `ssh flo@florasp true`.
+- [ ] Après l'enregistrement, vérifie depuis ton PC que tu joins encore le Pi : `ssh <login>@<hote-du-pi> true`.
 
 ## 5. Accès de GitHub Actions avec des nœuds éphémères `tag:ci`
 
