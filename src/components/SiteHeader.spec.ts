@@ -81,6 +81,10 @@ test('le header colle en haut, au-dessus du contenu, à la hauteur du token, sur
   }));
   expect(layout.headerHeight).toBe(tokenHeight);
   expect(layout.links).toHaveLength(3);
+  // Chaque lien centré verticalement dans le header (bordure basse exclue).
+  for (const link of layout.links) {
+    expect((link.top + link.bottom) / 2).toBeCloseTo((tokenHeight - 1) / 2, 0);
+  }
   for (const link of layout.links) {
     expect(link.top).toBeGreaterThanOrEqual(0);
     // Cible de tap d'au moins 24 px de haut (WCAG 2.5.8), grâce à la marge verticale.

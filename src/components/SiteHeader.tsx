@@ -67,6 +67,8 @@ const useStyles = themedStyles((colors) => ({
     zIndex: zIndex.header,
   },
   inner: {
+    // alignContent : avec flexWrap, la ligne est centrée dans la hauteur du header (RN Web la colle en haut).
+    alignContent: 'center',
     alignItems: 'center',
     columnGap: space[4],
     flexDirection: 'row',
