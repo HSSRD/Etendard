@@ -31,8 +31,10 @@ test('la présentation (intro) n’a pas de cadre, les cartes en ont un', async 
   await page.goto('/styleguide/project-card');
   const articles = page.getByRole('article');
 
-  await expect(articles.first()).toHaveCSS('border-top-style', 'none');
+  await expect(articles.first()).toHaveCSS('border-top-width', '0px');
+  await expect(articles.first()).toHaveCSS('box-shadow', 'none');
   await expect(articles.nth(1)).toHaveCSS('border-top-style', 'solid');
+  await expect(articles.nth(1)).not.toHaveCSS('border-top-width', '0px');
 });
 
 for (const scheme of schemes) {

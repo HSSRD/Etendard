@@ -69,8 +69,12 @@ test('l’année suivante, la page s’hydrate sans erreur et garde l’année d
     if (message.type() === 'error') errors.push(message.text());
   });
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.clock.setFixedTime(new Date(new Date().getFullYear() + 1, 5, 1));
-  await page.goto(url);
+  // Année du build, lue dans le HTML pré-rendu avant toute hydratation.
+  const html = await (await page.request.get('/')).text();
+  const year = /© (?:<!-- -->)?(\d{4})/.exec(html)?.[1];
+  expect(year).toMatch(/^\d{4}$/);
+  await page.clock.setFixedTime(new Date(Number(year) + 1, 5, 1));
+  await page.goto('/');
   await expect
     .poll(() =>
       page
@@ -80,7 +84,7 @@ test('l’année suivante, la page s’hydrate sans erreur et garde l’année d
         ),
     )
     .toBe(true);
-  await expect(page.getByRole('contentinfo')).toContainText('© 2026 HSSRD');
+  await expect(page.getByRole('contentinfo')).toContainText(`© ${year} HSSRD`);
   expect(errors).toEqual([]);
 });
 

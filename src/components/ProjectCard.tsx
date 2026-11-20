@@ -16,7 +16,7 @@ export default function ProjectCard({ project, intro = false, style }: Props) {
   const styles = useStyles();
   const typography = useTypography();
   return (
-    <View role="article" style={[styles.card, intro && styles.intro, style]}>
+    <View role="article" style={[intro ? styles.intro : styles.card, style]}>
       <Text role="heading" aria-level={3} style={typography.h3}>
         {project.title}
       </Text>
@@ -49,13 +49,7 @@ const useStyles = themedStyles((colors) => ({
     padding: space[5],
     rowGap: space[3],
   },
-  intro: {
-    backgroundColor: 'transparent',
-    borderStyle: 'none' as 'solid',
-    borderWidth: 0,
-    boxShadow: 'none',
-    padding: 0,
-  },
+  intro: { rowGap: space[3] },
   summary: { fontSize: fontSize.lg },
   body: { rowGap: space[3] },
   muted: { color: colors.textMuted },

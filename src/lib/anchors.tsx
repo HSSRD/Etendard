@@ -32,11 +32,16 @@ interface Anchors {
 
 const AnchorContext = createContext<Anchors | null>(null);
 
-/** iOS et Android : ScrollView de la page, que les liens « #x » font défiler. */
+/**
+ * iOS et Android : ScrollView de la page, que les liens « #x » font défiler. `header` est rendu
+ * au-dessus, fixe, mais ses liens partagent le contexte des ancres.
+ */
 export function AnchorScrollView({
+  header,
   style,
   children,
 }: {
+  header?: ReactNode;
   style?: StyleProp<ViewStyle>;
   children: ReactNode;
 }) {
@@ -53,6 +58,7 @@ export function AnchorScrollView({
   };
   return (
     <AnchorContext value={{ targets, scrollTo }}>
+      {header}
       <ScrollView ref={scroll} style={style}>
         <View ref={content}>{children}</View>
       </ScrollView>

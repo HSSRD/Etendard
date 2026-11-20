@@ -24,8 +24,7 @@ export default function BaseLayout({
   const styles = useStyles();
   return (
     <SafeAreaView edges={['top']} style={styles.page}>
-      {header}
-      <AnchorScrollView style={styles.page}>
+      <AnchorScrollView header={header} style={styles.page}>
         {children}
         {footer}
       </AnchorScrollView>

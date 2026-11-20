@@ -53,7 +53,9 @@ Chaque composant est un trio colocalisé :
 - `src/components/X.spec.ts` : test Playwright de la page styleguide (DOM, axe, capture par état) ;
 - `src/app/styleguide/x.tsx` : chaque état du composant, lien ajouté dans `src/app/styleguide/index.tsx`.
 
-Les pages `/styleguide` ne sont publiées que si `STYLEGUIDE=1`. Un composant n'importe jamais une page.
+Une partie propre à un composant et à une plateforme (`HeroVideo.tsx` / `.web.tsx` pour `Hero`) n'a pas de trio :
+elle est testée par la spec de son composant. Les pages `/styleguide` ne sont publiées que si `STYLEGUIDE=1`.
+Un composant n'importe jamais une page.
 Les tests visent les rôles, les textes et les `testID` (rendus en `data-testid`), pas les classes générées.
 
 ## Styles

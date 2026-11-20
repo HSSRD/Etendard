@@ -1,5 +1,5 @@
 // Design tokens (ADR 0015) : seule source des valeurs visuelles du site et des apps.
-// Couleurs par thème : sur le web, les composants les lisent en variables CSS (web.ts), le thème
+// Couleurs par thème : sur le web, les composants les lisent en variables CSS (web-css.ts), le thème
 // suit donc `prefers-color-scheme` sans JavaScript ; sur iOS et Android, par useColorScheme (theme.tsx).
 // --color-background est repris par les <meta name="theme-color"> (+html.tsx),
 // accent et surface (thème clair) par public/favicon.svg.
