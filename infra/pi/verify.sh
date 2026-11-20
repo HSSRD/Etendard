@@ -2,7 +2,7 @@
 # Produit les preuves des critères 1 à 5 du ticket #4, à coller en commentaire, du critère 4 du ticket #25,
 # du critère 2 du ticket #36 et du critère 3 du ticket #52.
 #   sudo bash verify.sh pi      sur le Pi, après install.sh (critères 1, 2, 3 et verrou ; en-têtes, journal, cache)
-#   bash verify.sh ssh          sur le PC, avec la clé privée (critères 1, 4 et 5)
+#   HOST=… FLO=… bash verify.sh ssh   sur le PC, avec la clé privée (critères 1, 4 et 5)
 # Variables du mode ssh : KEY (clé privée, défaut ~/.ssh/github-deploy), HOST (nom du Pi dans le tailnet),
 # FLO (<login>@<ip-du-pi>), LAN_IP (défaut : l'adresse de FLO). HOST et FLO sont obligatoires :
 # le repo ne contient aucune valeur du réseau local (#31).
@@ -195,7 +195,7 @@ mode_ssh() {
 case "${1:-}" in
   pi) mode_pi ;;
   ssh) mode_ssh ;;
-  *) echo "usage : sudo bash verify.sh pi   |   bash verify.sh ssh" >&2; exit 2 ;;
+  *) echo "usage : sudo bash verify.sh pi   |   HOST=<hote-du-pi> FLO=<login>@<ip-du-pi> bash verify.sh ssh" >&2; exit 2 ;;
 esac
 
 echo "Bilan : $pass ✅, $fail ❌"

@@ -60,7 +60,7 @@ Deux options. Prends la **fédération d'identité** si ta console la propose : 
 
 Dans les deux cas, `tailscale/github-action` crée des nœuds **éphémères** : ils disparaissent du tailnet peu après la fin du job.
 
-## 6. Preuves à coller dans le ticket
+## 6. Preuves à coller dans le ticket (sans IP, nom du Pi ni identifiant : masque-les sur les captures, #31)
 
 - Sortie de `tailscale status | grep -c github-runnervm` (attendu : `0`).
 - Sortie de `tailscale debug prefs | grep RunSSH` (attendu : `false`).

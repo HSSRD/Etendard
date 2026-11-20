@@ -34,7 +34,10 @@ lire_valeurs() {
     [ -n "$ligne" ] || continue
     case "$ligne" in regex:* | glob:*) die "ligne $num non littérale (regex: ou glob:) : refusée" ;; esac
     v="${ligne%==>*}"
-    VALEURS+=("${v#literal:}")
+    v="${v#literal:}"
+    # filter-repo prendrait un commentaire pour une valeur, et une espace en bord ferait rater les autres occurrences.
+    case "$v" in '' | '#'* | [[:space:]]* | *[[:space:]]) die "ligne $num : valeur vide, commentaire ou espace en bord : refusée" ;; esac
+    VALEURS+=("$v")
   done < "$FICHIER"
   [ "${#VALEURS[@]}" -gt 0 ] || die "aucune valeur dans $FICHIER"
 }

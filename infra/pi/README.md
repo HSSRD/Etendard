@@ -36,7 +36,7 @@ Ce qui est en place et pourquoi : [FONCTIONNEMENT.md](FONCTIONNEMENT.md). Ce REA
    ```
    Puis à la main : `ssh -L 8080:127.0.0.1:8080 <login>@<ip-du-pi>` et http://localhost:8080 affiche « Page de test e7e7e7a ».
 6. **Tailscale, étapes 4 à 6** : politique `tag:ci` (critère 7 vérifié par le bloc `tests` à l'enregistrement), client OAuth ou fédération d'identité.
-7. Coller les sorties des étapes 4 à 6 dans le ticket.
+7. Coller les sorties des étapes 4 à 6 dans le ticket, après avoir remplacé le nom du Pi, ses adresses, ton login et ton identifiant Tailscale par `<hote-du-pi>`, `<ip-du-pi>`, `<login>`… : le repo est public (#31).
 
 ## Tester `etendard-receive` sans le Pi
 

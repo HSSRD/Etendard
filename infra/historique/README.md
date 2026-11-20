@@ -66,7 +66,7 @@ gh run list -R HSSRD/Etendard --workflow deploy.yml --limit 500 --json databaseI
 bash infra/historique/reseau-prive.sh reecrire "$V"
 ```
 
-Le script contrôle les préalables des étapes 1 à 3, réécrit un clone neuf dans `~/etendard-reecriture`, recompte les valeurs (il s'arrête s'il en reste une) et affiche le **premier commit modifié**, à garder pour l'étape 8. Il finit par la commande de push de l'étape 5, avec le SHA de l'ancien `main`.
+Le script vérifie qu'il ne reste ni PR ouverte, ni autre branche que `main`, ni tag, réécrit un clone neuf dans `~/etendard-reecriture`, recompte les valeurs (il s'arrête s'il en reste une) et affiche le **premier commit modifié**, à garder pour l'étape 8. Il finit par la commande de push de l'étape 5, avec le SHA de l'ancien `main`.
 
 Avant de pousser, regarde un fichier réécrit, par exemple `git -C ~/etendard-reecriture log -p -1 -- infra/pi/verify.sh`.
 
