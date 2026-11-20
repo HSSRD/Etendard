@@ -50,11 +50,11 @@ Ce qui est en place et pourquoi : [FONCTIONNEMENT.md](FONCTIONNEMENT.md). Ce REA
    - Apply HSTS policy to subdomains (includeSubDomains) : désactivé ;
    - Preload : désactivé ;
    - No-Sniff Header : désactivé (Caddy envoie déjà `X-Content-Type-Options`, #25).
-3. **Prouver**, dans le bash de Git, en remplaçant `<domaine>` par le domaine seul (sans `https://` ni `/`) :
+3. **Prouver**, dans le bash de Git, en remplaçant `<domaine>` par le nom qui sert le site, seul (sans `https://` ni `/`, et sous sa forme `xn--…` s'il a des accents) :
    ```bash
    bash infra/pi/verify.sh hsts <domaine>
    ```
-   Le bilan doit être `4 ✅, 0 ❌` : `/` répond 200, une page absente 404, et les deux portent l'en-tête. Si l'en-tête manque, attendre une minute (propagation chez Cloudflare) et relancer.
+   Le bilan doit être `4 ✅, 0 ❌` : `/` répond 200, une page absente 404, et les deux portent l'en-tête. Si l'en-tête manque, attendre une minute (propagation chez Cloudflare) et relancer. Sans `includeSubDomains`, HSTS vaut pour un seul nom : si un autre nom (`www` ou le domaine nu) redirige vers le site, vérifier aussi que sa redirection porte l'en-tête : `curl -sSI https://<autre nom>/`.
 4. Coller la sortie dans le ticket #41, puis le fermer.
 
 ## Tester `etendard-receive` sans le Pi

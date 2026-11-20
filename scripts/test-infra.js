@@ -23,6 +23,7 @@ if (tests.length === 0) {
 
 let failed = false;
 for (const test of tests) {
+  console.log(`\n# ${test}`);
   const { error, status } = spawnSync(bash, [`infra/pi/test/${test}`], {
     stdio: 'inherit',
   });

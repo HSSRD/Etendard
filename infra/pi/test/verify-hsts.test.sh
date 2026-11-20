@@ -7,14 +7,14 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
-# Faux curl : note les URL demandées et répond 200 sur /, 404 ailleurs ($STUB_STATUS force le statut),
+# Faux curl : note les URL demandées et répond 200 sur / ($STUB_STATUS force ce statut), 404 ailleurs,
 # avec l'en-tête de $STUB_HSTS (aucun s'il est vide) ; sur la 404, celui de $STUB_HSTS_404 s'il est défini.
 mkdir "$WORK/bin"
 cat > "$WORK/bin/curl" <<'SH'
 #!/bin/bash
 for a; do [[ "$a" == https://* ]] && url="$a" && echo "$a" >> "$STUB_LOG"; done
-if [[ "$url" == */ ]]; then status=200 hsts="$STUB_HSTS"; else status=404 hsts="${STUB_HSTS_404-$STUB_HSTS}"; fi
-printf 'HTTP/2 %s\r\n' "${STUB_STATUS:-$status}"
+if [[ "$url" == */ ]]; then status="${STUB_STATUS:-200}" hsts="$STUB_HSTS"; else status=404 hsts="${STUB_HSTS_404-$STUB_HSTS}"; fi
+printf 'HTTP/2 %s\r\n' "$status"
 [ -n "$hsts" ] && printf '%s\r\n' "$hsts"
 exit 0
 SH
@@ -41,10 +41,10 @@ ok_hsts='Strict-Transport-Security: max-age=31536000'
 expect 0 "valeur retenue, en-tête en minuscules (HTTP/2)" 'strict-transport-security: max-age=31536000' exemple.fr
 grep -qxF 'https://exemple.fr/' "$STUB_LOG" && grep -q '^https://exemple\.fr/absente-' "$STUB_LOG" \
   && ok "lit / et une 404 du domaine donné" || ko "URL demandées : $(cat "$STUB_LOG")"
-expect 0 "valeur retenue, en-tête en HTTP/1.1" "$ok_hsts" exemple.fr
+expect 0 "valeur retenue, nom d'en-tête en casse canonique" "$ok_hsts" exemple.fr
 expect 1 "en-tête absent" '' exemple.fr
 STUB_HSTS_404='' expect 1 "en-tête absent de la 404 seulement" "$ok_hsts" exemple.fr
-STUB_STATUS=530 expect 1 "page d'erreur de Cloudflare (Pi coupé), même avec l'en-tête" "$ok_hsts" exemple.fr
+STUB_STATUS=530 expect 1 "page d'erreur de Cloudflare sur / (Pi coupé), même avec l'en-tête" "$ok_hsts" exemple.fr
 expect 1 "includeSubDomains refusé" "$ok_hsts; includeSubDomains" exemple.fr
 expect 1 "preload refusé" "$ok_hsts; preload" exemple.fr
 expect 1 "autre durée refusée" 'Strict-Transport-Security: max-age=15552000' exemple.fr
