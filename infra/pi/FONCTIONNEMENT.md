@@ -37,7 +37,7 @@ Pour l'instant, personne d'autre que le Pi ne voit le site. Flo le consulte par 
 
 ### Caddy, le serveur web
 
-Caddy lit les fichiers de `/srv/etendard/current` et les renvoie au navigateur. Le site Astro est statique : ni Node ni base de données à faire tourner, juste des fichiers à servir.
+Caddy lit les fichiers de `/srv/etendard/current` et les renvoie au navigateur. Le site exporté par Expo est statique : ni Node ni base de données à faire tourner, juste des fichiers à servir.
 
 - **Il écoute sur `127.0.0.1:8080` uniquement.** Ni le réseau local ni le tailnet ne le joignent. Plus tard, Cloudflare Tunnel se branchera sur cette même adresse, sans ouvrir de port sur la box.
 - **`admin off` et `auto_https off`.** Par défaut, Caddy ouvre aussi une API d'administration (port 2019) et des écoutes sur les ports 80 et 443. Ces options les suppriment. En contrepartie, un changement de configuration s'applique par `systemctl restart caddy` : `reload` ne fonctionne plus.
@@ -56,8 +56,9 @@ Caddy les ajoute à chaque réponse, pages d'erreur comprises :
 
 La CSP, directive par directive :
 
-- `default-src 'none'` : tout est interdit par défaut, scripts compris. Le site n'envoie aucun JavaScript ;
-- `style-src 'self'` : seulement les feuilles de style du site. Astro les écrit dans des fichiers `/_astro/*.css` et non dans un `<style>` de la page (`astro.config.mjs`), ce qui évite `'unsafe-inline'` ;
+- `default-src 'none'` : tout est interdit par défaut ;
+- `script-src 'self'` : seulement les scripts du site, ceux d'Expo et de React Native Web (ADR 0015). Aucun script en ligne : `scripts/export-web.js` sort en fichiers ceux qu'Expo écrit dans la page ;
+- `style-src 'self'` : seulement les feuilles de style du site. `scripts/export-web.js` sort aussi en fichiers les `<style>` de la page, et les composants n'écrivent aucun attribut `style` (tout passe par `StyleSheet.create`, compilé en classes), ce qui évite `'unsafe-inline'`. React Native Web ajoute ses règles par le CSSOM, que la CSP ne bloque pas ;
 - `img-src 'self'` : seulement les images du site ;
 - `media-src 'self'` : seulement les vidéos, sons et sous-titres du site (aujourd'hui, la vidéo de bienvenue de la section d'accueil) ;
 - `base-uri 'none'` et `form-action 'none'` : pas de `<base>` qui détournerait les liens, ni de formulaire qui enverrait des données ;
@@ -65,25 +66,25 @@ La CSP, directive par directive :
 
 La CSP n'est écrite que dans le `Caddyfile`. `tests/csp.spec.ts` l'y lit, sert la one page avec, et échoue si le navigateur bloque une ressource au chargement ou si les styles ne s'appliquent pas. Une nouvelle ressource (police, image externe, Cloudflare Web Analytics) se déclare donc d'abord dans le `Caddyfile`, et `pnpm verify` le rappelle. Le test ne voit que la page servie par le Pi : ce que Cloudflare injecterait en route (analytics, détection de bots) sera à autoriser avec la mise en ligne.
 
-**Le `Caddyfile` ne part pas avec le site.** `deploy.yml` ne livre que les fichiers du site ; le `Caddyfile` s'applique en relançant `install.sh` sur le Pi (étape 3 du [README](README.md)). Une PR qui change la CSP pour une nouvelle ressource doit donc être appliquée sur le Pi au moment du merge, sinon le Pi bloque cette ressource. `verify.sh pi` compare le `Caddyfile` installé et les en-têtes servis à la copie du dossier copié sur le Pi : il ne voit l'écart avec le repo que si ce dossier a été recopié.
+**Le `Caddyfile` ne part pas avec le site.** Sans `script-src 'self'` (Caddyfile d'avant #76), le site Expo s'affiche quand même : son HTML est pré-rendu, ses styles sont en fichiers ; seul son JavaScript est bloqué. `deploy.yml` ne livre que les fichiers du site ; le `Caddyfile` s'applique en relançant `install.sh` sur le Pi (étape 3 du [README](README.md)). Une PR qui change la CSP pour une nouvelle ressource doit donc être appliquée sur le Pi au moment du merge, sinon le Pi bloque cette ressource. `verify.sh pi` compare le `Caddyfile` installé et les en-têtes servis à la copie du dossier copié sur le Pi : il ne voit l'écart avec le repo que si ce dossier a été recopié.
 
 **HSTS est posé par Cloudflare, pas par Caddy.** HSTS engage tout le domaine en HTTPS ; c'est Cloudflare qui détient ce domaine et son certificat, et le HTTPS des visiteurs s'y termine (ADR 0002). Cloudflare répond aussi seul, par exemple avec sa page d'erreur quand le Pi est éteint : un HSTS posé par Caddy y manquerait. Il s'active dans le tableau de bord Cloudflare (SSL/TLS > Edge Certificates > HSTS), avec la mise en ligne et le domaine.
 
-#### Le cache des fichiers `/_astro/` (#36)
+#### Le cache des fichiers `/_expo/static/` (#36, #76)
 
-Astro écrit les feuilles de style dans `/_astro/`, sous un nom qui contient une empreinte de leur contenu : `BaseLayout.CIdr1MYV.css`. Caddy les sert avec `Cache-Control: public, max-age=31536000, immutable`. Le navigateur et Cloudflare les gardent donc un an, sans jamais les redemander, et la feuille de style, qui bloque l'affichage, ne fait plus l'aller-retour Cloudflare, tunnel, Pi en Wi-Fi à chaque visite.
+Expo écrit les scripts et les feuilles de style dans `/_expo/static/`, sous un nom qui contient une empreinte de leur contenu : `entry-3e639b39dd27ef8428b3e8b1df27be02.js`, `inline-d4eb76fb9541e2f6.css` (`scripts/export-web.js`). Caddy les sert avec `Cache-Control: public, max-age=31536000, immutable`. Le navigateur et Cloudflare les gardent donc un an, sans jamais les redemander, et la feuille de style, qui bloque l'affichage, ne fait plus l'aller-retour Cloudflare, tunnel, Pi en Wi-Fi à chaque visite.
 
-**Ce cache est sans risque.** Un fichier de `/_astro/` ne change jamais de contenu : si le CSS change, l'empreinte change, donc le nom aussi. La nouvelle page HTML pointe vers ce nouveau nom, que personne n'a encore en cache. L'ancien fichier reste en cache, mais plus aucune page ne le demande. Les autres fichiers (`/`, la vidéo, `favicon.svg`, `version.txt`) gardent un nom fixe : ils n'ont pas cet en-tête, sinon une nouvelle version mettrait jusqu'à un an à arriver.
+**Ce cache est sans risque.** Un fichier de `/_expo/static/` ne change jamais de contenu : si le CSS change, l'empreinte change, donc le nom aussi. La nouvelle page HTML pointe vers ce nouveau nom, que personne n'a encore en cache. L'ancien fichier reste en cache, mais plus aucune page ne le demande. Les autres fichiers (`/`, la vidéo, `favicon.svg`, `version.txt`) gardent un nom fixe : ils n'ont pas cet en-tête, sinon une nouvelle version mettrait jusqu'à un an à arriver.
 
-**Seules les réponses 2xx et 304 le portent.** Une 404 sur `/_astro/` n'est pas gardée un an : sans cela, un fichier absent un instant, puis rendu par un rollback, resterait introuvable pour ce visiteur ou derrière Cloudflare.
+**Seules les réponses 2xx et 304 le portent.** Une 404 sur `/_expo/static/` n'est pas gardée un an : sans cela, un fichier absent un instant, puis rendu par un rollback, resterait introuvable pour ce visiteur ou derrière Cloudflare.
 
-`verify.sh pi` le contrôle sur un fichier réel de `/_astro/`.
+`verify.sh pi` le contrôle sur un fichier réel de `/_expo/static/`.
 
 #### Le cache des pages HTML et de `version.txt` (#52)
 
-**Les pages HTML portent `Cache-Control: no-cache`.** Le navigateur (et Cloudflare) peut garder la page, mais doit la revalider à chaque visite : il renvoie son `ETag`, et Caddy répond `304 Not Modified`, sans corps, tant que la page n'a pas changé. Sans cet en-tête, un navigateur réutiliserait la page sans la redemander pendant une durée qu'il calcule lui-même (souvent 10 % de l'âge de `Last-Modified`, RFC 9111) : jusqu'à quelques jours après un déploiement. Cette ancienne page demanderait d'anciens fichiers de `/_astro/`, que le Pi ne sert plus dès le déploiement suivant (il ne sert que `current`) : sans eux en cache, la page s'afficherait sans style.
+**Les pages HTML portent `Cache-Control: no-cache`.** Le navigateur (et Cloudflare) peut garder la page, mais doit la revalider à chaque visite : il renvoie son `ETag`, et Caddy répond `304 Not Modified`, sans corps, tant que la page n'a pas changé. Sans cet en-tête, un navigateur réutiliserait la page sans la redemander pendant une durée qu'il calcule lui-même (souvent 10 % de l'âge de `Last-Modified`, RFC 9111) : jusqu'à quelques jours après un déploiement. Cette ancienne page demanderait d'anciens fichiers de `/_expo/static/`, que le Pi ne sert plus dès le déploiement suivant (il ne sert que `current`) : sans eux en cache, la page s'afficherait sans style.
 
-Le matcher `@html` vise les chemins en `/` et en `.html`, c'est-à-dire les pages d'Astro, et non le type de la réponse : une `304` n'a pas de `Content-Type`, elle perdrait l'en-tête.
+Le matcher `@html` vise les chemins en `/` et en `.html`, c'est-à-dire les pages exportées par Expo, et non le type de la réponse : une `304` n'a pas de `Content-Type`, elle perdrait l'en-tête.
 
 **`version.txt` porte `Cache-Control: no-store`** : ni le navigateur ni Cloudflare ne le gardent, et le test de fumée lit toujours le SHA réellement servi (ADR 0006). Que Cloudflare le respecte reste à vérifier à la mise en ligne.
 

@@ -5,8 +5,7 @@ const ci = !['', '0', 'false'].includes(process.env['CI'] ?? '');
 
 /**
  * Port libre choisi une fois par lancement, puis hérité par les workers via l'environnement :
- * deux worktrees (ou un `astro dev`) ne partagent jamais le serveur de test. Si le port est
- * repris pendant le build, `astro preview` échoue (strictPort) au lieu de servir ailleurs.
+ * deux worktrees (ou un `expo start`) ne partagent jamais le serveur de test.
  */
 const freePort = () =>
   new Promise<number>((resolve, reject) => {
@@ -55,8 +54,13 @@ export default defineConfig({
     use: { ...devices['Desktop Chrome'], viewport: { width, height: 900 } },
   })),
   webServer: {
-    // Build dédié avec le styleguide, séparé de dist/ qui est publié.
-    command: `pnpm exec astro build --outDir dist-styleguide && pnpm exec astro preview --outDir dist-styleguide --port ${port}`,
+    // Export dédié avec le styleguide, séparé de dist/ qui est publié.
+    command: [
+      'node scripts/check-content.ts',
+      'pnpm exec expo export --platform web --output-dir dist-styleguide',
+      'node scripts/export-web.js dist-styleguide',
+      `pnpm exec expo serve dist-styleguide --port ${port}`,
+    ].join(' && '),
     env: { STYLEGUIDE: '1' },
     url: baseURL,
     timeout: 300_000,

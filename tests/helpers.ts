@@ -6,7 +6,7 @@ export const schemes = ['light', 'dark'] as const;
 
 /**
  * Fond attendu d'un thème, au format de getComputedStyle : la <meta name="theme-color">
- * de ce thème, qui doit reprendre --color-background de tokens.css.
+ * de ce thème, qui doit reprendre palettes.background de src/theme/tokens.ts.
  */
 export const themeBackground = async (
   page: Page,
@@ -37,21 +37,21 @@ export const expectNoAxeViolations = async (page: Page) => {
   expect(violations).toEqual([]);
 };
 
+/** Hauteur minimale du header (layout.headerHeight), en pixels, lue sur la page. */
+export const headerHeight = (page: Page) =>
+  page
+    .getByRole('banner')
+    .evaluate((header) =>
+      Number.parseFloat(getComputedStyle(header).minHeight),
+    );
+
 /**
- * Expression CSS de longueur (`var(--x)`, `calc(…)`) convertie en pixels par une sonde.
- * Échoue sur 0 px : c'est ce que donnent un token inconnu ou une expression invalide.
+ * HTML pré-rendu de `url` sans attribut style ni <style> ou <script> en ligne : la CSP du
+ * Caddyfile les refuse (ADR 0015). Seuls des styles de StyleSheet.create, compilés en classes, passent.
  */
-export const cssToPixels = async (page: Page, expression: string) => {
-  const pixels = await page.evaluate((value) => {
-    const probe = document.createElement('div');
-    probe.style.height = value;
-    document.body.append(probe);
-    const height = probe.getBoundingClientRect().height;
-    probe.remove();
-    return height;
-  }, expression);
-  expect(pixels, expression).toBeGreaterThan(0);
-  return pixels;
+export const expectNoInlineCode = async (page: Page, url: string) => {
+  const html = await (await page.request.get(url)).text();
+  expect(html).not.toMatch(/\sstyle=|<style|<script(?![^>]*\ssrc=)/);
 };
 
 /** Aucun défilement horizontal à la largeur courante de la fenêtre. */

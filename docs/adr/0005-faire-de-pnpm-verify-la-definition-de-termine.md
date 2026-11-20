@@ -1,6 +1,6 @@
 # 0005. Faire de `pnpm verify` la définition unique de « terminé »
 
-- Statut : Proposé
+- Statut : Proposé, adapté par [0015](0015-construire-le-site-et-les-apps-avec-expo.md) (`tsc` au lieu de `astro check`, plus de Stylelint ni de plugins Astro)
 - Date : 2026-11-07
 
 ## Contexte

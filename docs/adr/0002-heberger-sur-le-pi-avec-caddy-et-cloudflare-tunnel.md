@@ -1,6 +1,6 @@
 # 0002. Héberger sur le Raspberry Pi avec Caddy natif et Cloudflare Tunnel, sans Docker
 
-- Statut : Proposé
+- Statut : Proposé, adapté par [0015](0015-construire-le-site-et-les-apps-avec-expo.md) (cache sur `/_expo/static/*` et `script-src 'self'`)
 - Date : 2026-11-07
 
 ## Contexte

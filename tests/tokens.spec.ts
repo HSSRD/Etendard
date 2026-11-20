@@ -14,14 +14,14 @@ test('la page des tokens montre chaque thème, quelle que soit la préférence',
   for (const preference of schemes) {
     await page.emulateMedia({ colorScheme: preference });
     for (const scheme of schemes) {
-      const panel = page.locator(`section[data-theme="${scheme}"]`);
+      const panel = page.locator(`[data-theme="${scheme}"]`);
       await expect(panel).toHaveCSS(
         'background-color',
         await themeBackground(page, scheme),
       );
-      await expect(panel.locator('.tokens__swatch')).toHaveCount(7);
-      await expect(panel.locator('.tokens__font-size')).toHaveCount(6);
-      await expect(panel.locator('.tokens__bar')).toHaveCount(9);
+      await expect(panel.getByTestId('swatch')).toHaveCount(7);
+      await expect(panel.getByTestId('font-size')).toHaveCount(6);
+      await expect(panel.getByTestId('bar')).toHaveCount(9);
     }
   }
 });
