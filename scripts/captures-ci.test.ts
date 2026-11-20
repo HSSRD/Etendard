@@ -143,7 +143,7 @@ test('un chemin venu du rapport ne sort jamais des captures ni de test-results/'
   // « \ » : séparateur sous Windows.
   single(String.raw`${ci}/src\..\..\..\x.png`);
   expect(install).toThrow(/hors de/);
-  single(`${ci}/node_modules/.bin/astro`);
+  single(`${ci}/node_modules/.bin/expo`);
   expect(install).toThrow(/pas une capture de référence/);
   single(capturePath, '/home/runner/.ssh/x-actual.png');
   expect(install).toThrow(/hors de \/__w\/Etendard\/Etendard\/test-results\./);
