@@ -24,4 +24,4 @@ Avant toute modification structurelle, lire les ADR acceptés et ne jamais les c
 | 0012 | [Outiller les agents : AGENTS.md, MCP, hooks et skills ; Graphify repoussé](0012-outiller-les-agents.md) | Proposé |
 | 0013 | [Gérer les dépendances avec pnpm et Renovate, avec merge automatique des mineures](0013-gerer-les-dependances-avec-pnpm-et-renovate.md) | Proposé |
 | 0014 | [Modéliser le contenu en collections Astro validées par Zod](0014-modeliser-le-contenu-en-collections-astro.md) | Remplacé par 0015 |
-| 0015 | [Construire le site et les apps avec Expo et React Native](0015-construire-le-site-et-les-apps-avec-expo.md) | Proposé |
+| 0015 | [Construire le site et les apps avec Expo et React Native](0015-construire-le-site-et-les-apps-avec-expo.md) | Accepté |
