@@ -1,7 +1,8 @@
-// Lance les tests de infra/pi (etendard-receive, verify.sh hsts). Usage : pnpm test:infra
+// Lance les tests de infra/pi/test/ (*.test.sh). Usage : pnpm test:infra
 // Sous Windows, pnpm passe par cmd, où `bash` est absent ou désigne WSL : on prend le
 // bash de Git (bin/bash.exe met ses outils GNU en tête du PATH, avant tar.exe et find.exe).
 import { execFileSync, spawnSync } from 'node:child_process';
+import { readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const bash =
@@ -13,7 +14,9 @@ const bash =
     : 'bash';
 
 let failed = false;
-for (const test of ['etendard-receive.test.sh', 'verify-hsts.test.sh']) {
+for (const test of readdirSync('infra/pi/test').filter((f) =>
+  f.endsWith('.test.sh'),
+)) {
   const { error, status } = spawnSync(bash, [`infra/pi/test/${test}`], {
     stdio: 'inherit',
   });
