@@ -9,17 +9,24 @@ const declared: Record<string, string> = {
   ...devDependencies,
 };
 
-test('docs/dependances.md a une ligne par dépendance de package.json, et pas plus', () => {
-  const doc = read('docs/dependances.md');
-  const section = doc.slice(
-    doc.indexOf('\n## Dépendances\n'),
-    doc.indexOf('\n## Configuration'),
-  );
-  const documented = [...section.matchAll(/^\| `([^`]+)` +\|/gm)].map(
-    (match) => match[1],
-  );
+/** Noms de la première colonne des lignes du tableau qui suit le titre `### <field>`. */
+const documented = (doc: string, field: string) => {
+  const start = doc.indexOf(`\n### ${field}\n`);
+  const end = doc.indexOf('\n#', start + 1);
+  return [...doc.slice(start, end).matchAll(/^\| `([^`]+)` +\|/gm)]
+    .map((match) => match[1])
+    .toSorted();
+};
 
-  expect(documented.toSorted()).toEqual(Object.keys(declared).toSorted());
+test('docs/dependances.md a une ligne par dépendance, dans le tableau de son champ', () => {
+  const doc = read('docs/dependances.md');
+
+  expect(documented(doc, 'dependencies')).toEqual(
+    Object.keys(dependencies).toSorted(),
+  );
+  expect(documented(doc, 'devDependencies')).toEqual(
+    Object.keys(devDependencies).toSorted(),
+  );
 });
 
 test('une version est exacte, sauf la plage que pose `expo install` pour le SDK', () => {
@@ -27,12 +34,15 @@ test('une version est exacte, sauf la plage que pose `expo install` pour le SDK'
     read('node_modules/expo/bundledNativeModules.json'),
   );
   // Posés par `expo install` hors de bundledNativeModules.json : le SDK lui-même et l'outillage TypeScript.
-  const fromExpoInstall = ['expo', 'typescript', '@types/react'];
+  const fromExpoInstall = new Set(['expo', 'typescript', '@types/react']);
+  // Seule la forme est vérifiée : une mise à jour d'Expo peut relever sa plage sans changer package.json.
   const offRule = Object.entries(declared).filter(
     ([name, version]) =>
       !/^\d+\.\d+\.\d+$/.test(version) &&
-      sdk[name] !== version &&
-      !(fromExpoInstall.includes(name) && version.startsWith('~')),
+      !(
+        (name in sdk || fromExpoInstall.has(name)) &&
+        /^[~^]\d+\.\d+\.\d+$/.test(version)
+      ),
   );
 
   expect(offRule).toEqual([]);

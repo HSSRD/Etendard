@@ -10,10 +10,10 @@ Les agents travaillent seuls et doivent savoir sans ambiguïté quand leur trava
 ## Décision
 
 - `pnpm verify:fast` : `tsc` + ESLint + Prettier + Vitest. Lancée après chaque modification (hook Stop, 0012) et en pre-push (Lefthook).
-- `pnpm verify` : `verify:fast` + Knip + dependency-cruiser + build + `html-validate` + Playwright. **Une tâche n'est terminée que si `pnpm verify` passe.** C'est la commande exécutée par la CI (0010) et avant déploiement (0006).
+- `pnpm verify` : `verify:fast` + `test:infra` + Knip + dependency-cruiser + build + `html-validate` + Playwright. **Une tâche n'est terminée que si `pnpm verify` passe.** C'est la commande exécutée par la CI (0010) et avant déploiement (0006).
 - Lint : ESLint 10 (`typescript-eslint` strict, `react-hooks`, règles maison sur les styles : 0015), Prettier 3. Avec Astro, ESLint avait les plugins astro, vue et accessibilité, Prettier son plugin astro, et Stylelint vérifiait le CSS (0004).
 - **Knip** : code, exports et dépendances inutilisés (les agents laissent souvent l'ancien code).
-- **dependency-cruiser** : règles d'architecture exécutables (un composant n'importe jamais une page, `ui/` n'importe jamais de contenu, pas de cycle).
+- **dependency-cruiser** : règles d'architecture exécutables (un composant n'importe jamais une page, pas de cycle).
 - Git : Lefthook (pre-commit : format + lint des fichiers modifiés ; commit-msg : commitlint ; pre-push : `verify:fast`), Conventional Commits, merge en squash.
 
 ## Alternatives écartées

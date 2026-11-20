@@ -2,7 +2,7 @@
 
 - Statut : Proposé
 - Date : 2026-11-20
-- Remplace : 0001, 0004, 0014. Adapte : 0003.
+- Remplace : 0001, 0004, 0014. Adapte : 0002, 0003, 0005, 0012, 0013.
 
 ## Contexte
 
