@@ -4,13 +4,14 @@
   "private": true,
   "type": "module",
   "main": "expo-router/entry",
-  "packageManager": "pnpm@12.17.0",
+  "packageManager": "pnpm@12.21.0",
   "engines": {
     "node": ">=26 <27"
   },
   "scripts": {
     "dev": "expo start",
     "build": "node scripts/check-content.ts && expo export --platform web --output-dir dist && node scripts/export-web.js dist",
+    "build:natif": "expo export --platform ios --platform android --output-dir dist-natif",
     "check": "tsc --noEmit",
     "lint": "eslint . && prettier --check .",
     "test": "vitest run",
@@ -19,7 +20,7 @@
     "captures:maj": "node scripts/maj-captures.js",
     "captures:ci": "node scripts/captures-ci.js",
     "verify:fast": "pnpm check && pnpm lint && pnpm test",
-    "verify": "pnpm verify:fast && pnpm test:infra && knip && depcruise src && pnpm build && html-validate \"dist/**/*.html\" && pnpm test:e2e && html-validate \"dist-styleguide/styleguide/**/*.html\""
+    "verify": "pnpm verify:fast && pnpm test:infra && knip && depcruise src && pnpm build && html-validate \"dist/**/*.html\" && pnpm build:natif && pnpm test:e2e && html-validate \"dist-styleguide/styleguide/**/*.html\""
   },
   "dependencies": {
     "@expo/metro-runtime": "~58.0.17",
@@ -42,15 +43,15 @@
     "@playwright/test": "1.64.1",
     "@types/node": "26.6.6",
     "@types/react": "~19.3.0",
-    "dependency-cruiser": "18.7.2",
-    "eslint": "10.14.0",
+    "dependency-cruiser": "18.8.0",
+    "eslint": "10.15.0",
     "eslint-plugin-react-hooks": "7.1.1",
     "globals": "17.14.0",
-    "html-validate": "11.18.0",
-    "knip": "6.44.1",
-    "prettier": "3.9.10",
+    "html-validate": "11.21.1",
+    "knip": "6.45.1",
+    "prettier": "3.10.1",
     "typescript": "~6.0.3",
-    "typescript-eslint": "8.72.1",
+    "typescript-eslint": "8.73.0",
     "vitest": "5.1.0",
     "zod": "4.6.7"
   }
