@@ -197,11 +197,13 @@ mode_hsts() {
   echo "Domaine : $1 — $(date -Iseconds)"
 
   title "Ticket #41 — Strict-Transport-Security, posé par Cloudflare"
-  # Une page servie et une 404 : l'en-tête doit être sur chaque réponse HTTPS. Valeur exacte :
-  # ni includeSubDomains ni preload.
+  # Une page servie et une 404 : l'en-tête doit être sur chaque réponse HTTPS. Valeur exacte, ni
+  # includeSubDomains ni preload, et un seul en-tête (le navigateur n'applique que le premier) :
+  # sts joint les lignes servies par « | », un second en-tête fait donc échouer le motif.
+  sts() { served "$1" Strict-Transport-Security | paste -sd '|' -; }
   for url in "https://$1/" "https://$1/absente-verify-sh-$(date +%s)"; do
     check "Strict-Transport-Security sur $url : max-age=31536000" \
-      '^[Ss]trict-[Tt]ransport-[Ss]ecurity: max-age=31536000$' served "$url" Strict-Transport-Security
+      '^[Ss]trict-[Tt]ransport-[Ss]ecurity: max-age=31536000$' sts "$url"
   done
 }
 

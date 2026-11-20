@@ -13,10 +13,16 @@ const bash =
       )
     : 'bash';
 
-let failed = false;
-for (const test of readdirSync('infra/pi/test').filter((f) =>
+const tests = readdirSync('infra/pi/test').filter((f) =>
   f.endsWith('.test.sh'),
-)) {
+);
+if (tests.length === 0) {
+  console.error('test:infra : aucun fichier infra/pi/test/*.test.sh.');
+  process.exit(1);
+}
+
+let failed = false;
+for (const test of tests) {
   const { error, status } = spawnSync(bash, [`infra/pi/test/${test}`], {
     stdio: 'inherit',
   });
