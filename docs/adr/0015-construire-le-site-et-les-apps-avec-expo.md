@@ -30,7 +30,7 @@
 
 ## Conséquences
 
-- Le site envoie du JavaScript : environ 400 Ko compressés (gzip) sur la one page, dont 295 Ko pour le moteur commun (React, React Native Web, Expo Router), mesuré au 2026-11-20. Sans JavaScript, la page reste complète.
+- Le site envoie du JavaScript : environ 310 Ko compressés (gzip) sur la one page, dont 294 Ko pour le moteur commun (React, React Native Web, Expo Router), mesuré au 2026-11-20. Sans JavaScript, la page reste complète.
 - Les tailles sont en px : la taille de police choisie dans le navigateur n'agrandit plus le texte (le zoom, si).
 - Le thème sombre des apps et du web peut diverger : ils ne lisent pas la même source (`useColorScheme`, `prefers-color-scheme`).
 - Les captures de référence sont toutes à refaire. Un `<style>` ou un attribut `style` en ligne fait échouer `tests/csp.spec.ts`.
