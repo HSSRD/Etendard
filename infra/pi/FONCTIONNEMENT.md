@@ -72,7 +72,7 @@ La CSP n'est écrite que dans le `Caddyfile`. `tests/csp.spec.ts` l'y lit, sert 
 
 **Valeur retenue : `max-age=31536000`**, soit un an, **sans `includeSubDomains` ni `preload`**. Un an est la durée courante. `includeSubDomains` imposerait HTTPS à tous les sous-domaines, y compris ceux qui ne sont pas encore décidés. `preload` permet de demander l'inscription du domaine (sur hstspreload.org, qui exige aussi `includeSubDomains`) dans la liste intégrée aux navigateurs, dont on ne sort qu'en plusieurs mois. On pourra les ajouter plus tard ; les retirer serait lent.
 
-`bash verify.sh hsts <domaine>`, lancé depuis n'importe quel poste, lit l'en-tête sur `/` et sur une 404 du domaine public, et n'accepte que cette valeur exacte, dans un seul en-tête. `test/verify-hsts.test.sh` (dans `pnpm test:infra`) teste cette vérification avec un faux `curl`, sans le site en ligne. La procédure est dans le [README](README.md#à-la-mise-en-ligne--hsts-chez-cloudflare).
+`bash verify.sh hsts <domaine>`, lancé depuis n'importe quel poste, lit l'en-tête sur `/` (200) et sur une page absente (404) du domaine public, ce qui écarte une page d'erreur de Cloudflare, et n'accepte que cette valeur exacte, dans un seul en-tête. `test/verify-hsts.test.sh` (dans `pnpm test:infra`) teste cette vérification avec un faux `curl`, sans le site en ligne. La procédure est dans le [README](README.md#à-la-mise-en-ligne--hsts-chez-cloudflare).
 
 #### Le cache des fichiers `/_expo/static/` (#36, #76)
 

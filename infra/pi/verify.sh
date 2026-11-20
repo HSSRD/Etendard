@@ -193,15 +193,18 @@ mode_ssh() {
 
 # HSTS est posé par Cloudflare, pas par Caddy (FONCTIONNEMENT.md) : on le lit sur le domaine public.
 mode_hsts() {
-  local url
+  local url status
   echo "Domaine : $1 — $(date -Iseconds)"
 
   title "Ticket #41 — Strict-Transport-Security, posé par Cloudflare"
-  # Une page servie et une 404 : l'en-tête doit être sur chaque réponse HTTPS. Valeur exacte, ni
-  # includeSubDomains ni preload, et un seul en-tête (le navigateur n'applique que le premier) :
-  # sts joint les lignes servies par « | », un second en-tête fait donc échouer le motif.
+  # Une page servie (200) et une 404 du site : l'en-tête doit être sur chaque réponse HTTPS. Le statut
+  # écarte une page d'erreur de Cloudflare (Pi ou tunnel coupé), qui porterait aussi l'en-tête.
+  # Valeur exacte, ni includeSubDomains ni preload, et un seul en-tête (le navigateur n'applique que
+  # le premier) : sts joint les lignes servies par « | », un second en-tête fait donc échouer le motif.
   sts() { served "$1" Strict-Transport-Security | paste -sd '|' -; }
   for url in "https://$1/" "https://$1/absente-verify-sh-$(date +%s)"; do
+    [[ "$url" == */ ]] && status=200 || status=404
+    check "$url répond $status" "^HTTP/[0-9.]+ $status([[:space:]]|\$)" curl -sSI "$url"
     check "Strict-Transport-Security sur $url : max-age=31536000" \
       '^[Ss]trict-[Tt]ransport-[Ss]ecurity: max-age=31536000$' sts "$url"
   done
@@ -210,8 +213,8 @@ mode_hsts() {
 case "${1:-}" in
   pi) mode_pi ;;
   ssh) mode_ssh ;;
-  # Un nom de domaine seul : ni schéma, ni chemin, ni port.
-  hsts) [[ "${2:-}" =~ ^[A-Za-z0-9.-]+$ ]] || { echo "usage : bash verify.sh hsts <domaine>" >&2; exit 2; }
+  # Un seul nom de domaine : ni schéma, ni chemin, ni port.
+  hsts) [[ $# -eq 2 && "$2" =~ ^[A-Za-z0-9.-]+$ ]] || { echo "usage : bash verify.sh hsts <domaine>" >&2; exit 2; }
     mode_hsts "$2" ;;
   *) echo "usage : sudo bash verify.sh pi   |   bash verify.sh ssh   |   bash verify.sh hsts <domaine>" >&2; exit 2 ;;
 esac

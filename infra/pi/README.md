@@ -54,7 +54,7 @@ Ce qui est en place et pourquoi : [FONCTIONNEMENT.md](FONCTIONNEMENT.md). Ce REA
    ```bash
    bash infra/pi/verify.sh hsts <domaine>
    ```
-   Le bilan doit être `2 ✅, 0 ❌`. Si l'en-tête manque, attendre une minute (propagation chez Cloudflare) et relancer.
+   Le bilan doit être `4 ✅, 0 ❌` : `/` répond 200, une page absente 404, et les deux portent l'en-tête. Si l'en-tête manque, attendre une minute (propagation chez Cloudflare) et relancer.
 4. Coller la sortie dans le ticket #41, puis le fermer.
 
 ## Tester `etendard-receive` sans le Pi
