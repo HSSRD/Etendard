@@ -68,7 +68,11 @@ La CSP n'est écrite que dans le `Caddyfile`. `tests/csp.spec.ts` l'y lit, sert 
 
 **Le `Caddyfile` ne part pas avec le site.** Sans `script-src 'self'` (Caddyfile d'avant #76), le site Expo s'affiche quand même : son HTML est pré-rendu, ses styles sont en fichiers ; seul son JavaScript est bloqué. `deploy.yml` ne livre que les fichiers du site ; le `Caddyfile` s'applique en relançant `install.sh` sur le Pi (étape 3 du [README](README.md)). Une PR qui change la CSP pour une nouvelle ressource doit donc être appliquée sur le Pi au moment du merge, sinon le Pi bloque cette ressource. `verify.sh pi` compare le `Caddyfile` installé et les en-têtes servis à la copie du dossier copié sur le Pi : il ne voit l'écart avec le repo que si ce dossier a été recopié.
 
-**HSTS est posé par Cloudflare, pas par Caddy.** HSTS engage tout le domaine en HTTPS ; c'est Cloudflare qui détient ce domaine et son certificat, et le HTTPS des visiteurs s'y termine (ADR 0002). Cloudflare répond aussi seul, par exemple avec sa page d'erreur quand le Pi est éteint : un HSTS posé par Caddy y manquerait. Il s'active dans le tableau de bord Cloudflare (SSL/TLS > Edge Certificates > HSTS), avec la mise en ligne et le domaine.
+**HSTS est posé par Cloudflare, pas par Caddy.** HSTS engage tout le domaine en HTTPS ; c'est Cloudflare qui détient ce domaine et son certificat, et le HTTPS des visiteurs s'y termine (ADR 0002). Cloudflare répond aussi seul, par exemple avec sa page d'erreur quand le Pi est éteint : un HSTS posé par Caddy y manquerait. Il s'active dans le tableau de bord Cloudflare (SSL/TLS > Edge Certificates > HSTS), avec la mise en ligne et le domaine (#41).
+
+**Valeur retenue : `max-age=31536000`**, soit un an, **sans `includeSubDomains` ni `preload`**. Un an est la durée courante. `includeSubDomains` imposerait HTTPS à tous les sous-domaines, y compris ceux qui ne sont pas encore décidés. `preload` inscrirait le domaine dans la liste intégrée aux navigateurs, dont on ne sort qu'en plusieurs mois. On pourra les ajouter plus tard ; les retirer serait lent.
+
+`bash verify.sh hsts <domaine>`, lancé depuis n'importe quel poste, lit l'en-tête sur `/` et sur une 404 du domaine public, et n'accepte que cette valeur exacte. `test/verify-hsts.test.sh` (dans `pnpm test:infra`) teste cette vérification avec un faux `curl`, sans le site en ligne. La procédure est dans le [README](README.md#à-la-mise-en-ligne--hsts-chez-cloudflare).
 
 #### Le cache des fichiers `/_expo/static/` (#36, #76)
 

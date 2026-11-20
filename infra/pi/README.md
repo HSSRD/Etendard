@@ -9,9 +9,10 @@ Ce qui est en place et pourquoi : [FONCTIONNEMENT.md](FONCTIONNEMENT.md). Ce REA
 | `install.sh` | Installation root, idempotente : Caddy, utilisateur `deploy`, `/srv/etendard`, `etendard-receive`, clé à commande forcée |
 | `Caddyfile` | Caddy sur `127.0.0.1:8080` uniquement, racine `/srv/etendard/current`, en-têtes de sécurité, cache de `/_expo/static/`, des pages HTML et de `version.txt`, journal d'accès |
 | `etendard-receive` | Seule commande de la clé de déploiement : réception (stdin), `rollback`, `restore <sha>`, `status` |
-| `verify.sh` | Preuves des critères 1 à 5 du ticket #4, des en-têtes et du journal (#25), du cache de `/_expo/static/` (#36), des pages HTML et de `version.txt` (#52) |
+| `verify.sh` | Preuves des critères 1 à 5 du ticket #4, des en-têtes et du journal (#25), du cache de `/_expo/static/` (#36), des pages HTML et de `version.txt` (#52), de HSTS sur le domaine public (#41) |
 | `tailscale-policy.hujson`, `tailscale-checklist.md` | Critères 6 et 7 |
 | `test/etendard-receive.test.sh` | Tests locaux du script (archives saines et piégées) |
+| `test/verify-hsts.test.sh` | Tests locaux de `verify.sh hsts`, avec un faux `curl` |
 
 ## Ordre des étapes
 
@@ -37,6 +38,24 @@ Ce qui est en place et pourquoi : [FONCTIONNEMENT.md](FONCTIONNEMENT.md). Ce REA
    Puis à la main : `ssh -L 8080:127.0.0.1:8080 flo@192.168.1.41` et http://localhost:8080 affiche « Page de test e7e7e7a ».
 6. **Tailscale, étapes 4 à 6** : politique `tag:ci` (critère 7 vérifié par le bloc `tests` à l'enregistrement), client OAuth ou fédération d'identité.
 7. Coller les sorties des étapes 4 à 6 dans le ticket.
+
+## À la mise en ligne : HSTS chez Cloudflare
+
+À faire par Flo une fois le domaine choisi et le site servi par Cloudflare (ticket #41). La valeur et ses raisons sont dans [FONCTIONNEMENT.md](FONCTIONNEMENT.md#les-en-têtes-de-sécurité-25).
+
+1. **Vérifier d'abord** que le site répond en HTTPS sur le domaine, page et 404 comprises : HSTS interdit ensuite tout retour au HTTP pendant un an.
+2. **Dans le tableau de bord Cloudflare**, sur le domaine : SSL/TLS > Edge Certificates > HTTP Strict Transport Security (HSTS) > Enable HSTS, puis :
+   - Enable HSTS (Strict-Transport-Security) : activé ;
+   - Max Age Header (max-age) : 12 months ;
+   - Apply HSTS policy to subdomains (includeSubDomains) : désactivé ;
+   - Preload : désactivé ;
+   - No-Sniff Header : désactivé (Caddy envoie déjà `X-Content-Type-Options`, #25).
+3. **Prouver**, dans le bash de Git, en remplaçant `<domaine>` par le domaine seul (sans `https://` ni `/`) :
+   ```bash
+   bash infra/pi/verify.sh hsts <domaine>
+   ```
+   Le bilan doit être `2 ✅, 0 ❌`. Si l'en-tête manque, attendre une minute (propagation chez Cloudflare) et relancer.
+4. Coller la sortie dans le ticket #41, puis le fermer.
 
 ## Tester `etendard-receive` sans le Pi
 

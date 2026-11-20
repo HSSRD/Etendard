@@ -10,7 +10,7 @@ Lis `docs/adr/` avant toute modification structurelle. Ne contredis jamais un AD
 - `pnpm build` : valide le contenu (Zod), exporte le web dans `dist/`, sort les styles et scripts en ligne en fichiers.
 - `pnpm verify:fast` : `tsc`, ESLint, Prettier, Vitest. Lance-la après chaque modification.
 - `pnpm verify` : `verify:fast`, `pnpm test:infra`, Knip, dependency-cruiser, build, `html-validate`, Playwright.
-- `pnpm test:infra` : tests de `infra/pi/etendard-receive` (sous Windows, le script prend lui-même le bash de Git).
+- `pnpm test:infra` : tests de `infra/pi` (`etendard-receive`, `verify.sh hsts`) (sous Windows, le script prend lui-même le bash de Git).
 - `pnpm exec playwright test src/components/X.spec.ts` : boucle courte sur un composant.
 - `pnpm captures:maj [fichiers]` : régénère les captures de référence dans Docker.
 - `pnpm captures:ci <id du run>` : installe les captures produites par un run `ci.yml` en échec (sans Docker).

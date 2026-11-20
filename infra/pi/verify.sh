@@ -1,8 +1,9 @@
 #!/bin/bash
 # Produit les preuves des critères 1 à 5 du ticket #4, à coller en commentaire, du critère 4 du ticket #25,
-# du critère 2 du ticket #36 et du critère 3 du ticket #52.
+# du critère 2 du ticket #36, du critère 3 du ticket #52 et des critères 1 et 2 du ticket #41.
 #   sudo bash verify.sh pi      sur le Pi, après install.sh (critères 1, 2, 3 et verrou ; en-têtes, journal, cache)
 #   bash verify.sh ssh          sur le PC, avec la clé privée (critères 1, 4 et 5)
+#   bash verify.sh hsts <domaine>   depuis n'importe quel poste, une fois le site en ligne (HSTS de Cloudflare)
 # Variables du mode ssh : KEY (clé privée, défaut ~/.ssh/github-deploy),
 # HOST (défaut florasp), FLO (défaut flo@192.168.1.41), LAN_IP (défaut 192.168.1.41).
 # Lecture seule, sauf en mode ssh : publie deux versions de test puis revient à la première.
@@ -190,10 +191,27 @@ mode_ssh() {
   echo "Reste à faire à la main : ssh -L 8080:127.0.0.1:8080 $flo puis http://localhost:8080 → « Page de test $a »."
 }
 
+# HSTS est posé par Cloudflare, pas par Caddy (FONCTIONNEMENT.md) : on le lit sur le domaine public.
+mode_hsts() {
+  local url
+  echo "Domaine : $1 — $(date -Iseconds)"
+
+  title "Ticket #41 — Strict-Transport-Security, posé par Cloudflare"
+  # Une page servie et une 404 : l'en-tête doit être sur chaque réponse HTTPS. Valeur exacte :
+  # ni includeSubDomains ni preload.
+  for url in "https://$1/" "https://$1/absente-verify-sh-$(date +%s)"; do
+    check "Strict-Transport-Security sur $url : max-age=31536000" \
+      '^[Ss]trict-[Tt]ransport-[Ss]ecurity: max-age=31536000$' served "$url" Strict-Transport-Security
+  done
+}
+
 case "${1:-}" in
   pi) mode_pi ;;
   ssh) mode_ssh ;;
-  *) echo "usage : sudo bash verify.sh pi   |   bash verify.sh ssh" >&2; exit 2 ;;
+  # Un nom de domaine seul : ni schéma, ni chemin, ni port.
+  hsts) [[ "${2:-}" =~ ^[A-Za-z0-9.-]+$ ]] || { echo "usage : bash verify.sh hsts <domaine>" >&2; exit 2; }
+    mode_hsts "$2" ;;
+  *) echo "usage : sudo bash verify.sh pi   |   bash verify.sh ssh   |   bash verify.sh hsts <domaine>" >&2; exit 2 ;;
 esac
 
 echo "Bilan : $pass ✅, $fail ❌"
