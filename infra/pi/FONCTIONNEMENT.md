@@ -217,8 +217,8 @@ L'Environment n'accepte que la branche `main` : un workflow lancé depuis une au
 | `TS_OAUTH_CLIENT_ID` | identifiant du client OAuth Tailscale `GitHubAction` |
 | `TS_OAUTH_SECRET` | secret de ce client |
 | `DEPLOY_SSH_KEY` | clé privée `github-deploy`, sur le PC de Flo |
-| `DEPLOY_HOST` | nom du Pi dans le tailnet, hôte SSH du workflow (#31 : il n'apparaît pas dans le repo, public) |
-| `DEPLOY_KNOWN_HOSTS` | clé d'hôte du Pi, au nom de `DEPLOY_HOST` |
+| `DEPLOY_HOST` | nom court du Pi dans le tailnet (MagicDNS), hôte SSH du workflow (#31 : il n'apparaît pas dans le repo, public) |
+| `DEPLOY_KNOWN_HOSTS` | clé d'hôte du Pi, sous exactement le même nom que `DEPLOY_HOST` (sinon : « Host key verification failed ») |
 | `BREVO_API_KEY` | clé API Brevo, limitée si possible à l'envoi d'e-mails transactionnels |
 | `NOTIFY_EMAIL_FROM` | adresse d'expéditeur, validée dans Brevo |
 | `NOTIFY_EMAIL_TO` | adresse qui reçoit l'e-mail de résultat |
