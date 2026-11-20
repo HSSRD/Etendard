@@ -28,6 +28,7 @@ for (const test of tests) {
   });
   if (error) {
     console.error(`test:infra : ${bash} introuvable (${error.message}).`);
+    process.exit(1);
   }
   failed ||= status !== 0;
 }
