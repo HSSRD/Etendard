@@ -2,7 +2,7 @@
 
 - Statut : Accepté
 - Date : 2026-11-20
-- Remplace : 0001, 0004, 0014. Adapte : 0003.
+- Remplace : 0001, 0004, 0014. Adapte : 0002, 0003, 0005.
 
 ## Contexte
 
@@ -17,7 +17,7 @@
 - **Styles** (remplace 0004) : tokens TypeScript dans `src/theme/tokens.ts`, seule source des valeurs visuelles ; `StyleSheet` de React Native, aucune valeur en dur (règle ESLint sur `StyleSheet.create` et `themedStyles`). Thème clair et sombre : sur le web, chaque couleur est une variable CSS (`light-dark()`), le thème suit donc `prefers-color-scheme` dès le HTML ; sur iOS et Android, `useColorScheme`. Ce que `StyleSheet` ne sait pas écrire (focus visible, survol, défilement vers les ancres, lien d'évitement) est dans une feuille web générée depuis les tokens (`src/theme/web-css.ts`), accrochée par des attributs `data-*`. Plus de BEM ni de Stylelint.
 - **Sémantique** : `role` et `aria-*` de React Native, que React Native Web rend en balises HTML (`role="heading"` + `aria-level` → `<h1>`…, `banner` → `<header>`, `main`, `contentinfo` → `<footer>`, `region` → `<section>`, `article`, `list`/`listitem` → `<ul>`/`<li>`, `paragraph` → `<p>`, lien `href` → `<a>`).
 - **Contenu** (remplace 0014) : fiches typées dans `src/content/projects.ts`, validées par **Zod** au build (`scripts/check-content.ts`) et dans Vitest. Zod n'est jamais envoyé au navigateur ni embarqué dans les apps.
-- **Tests** (adapte 0003) : inchangés dans leur principe ; les pages `/styleguide` sont rendues par l'export web, servi par `expo serve` pour Playwright. `pnpm verify` (0005) garde le même périmètre, `astro check` devient `tsc`. Il exporte aussi les bundles iOS et Android (`pnpm build:natif`) : une erreur du bundle natif fait échouer la vérification. `expo-doctor` reste hors de `pnpm verify` : il interroge l'API d'Expo.
+- **Tests** (adapte 0003) : inchangés dans leur principe ; les pages `/styleguide` sont rendues par l'export web, servi par `expo serve` pour Playwright. `pnpm verify` (0005) garde son principe ; `astro check` devient `tsc`, et il exporte aussi les bundles iOS et Android (`pnpm build:natif`) : une erreur de construction du bundle natif fait échouer la vérification. `expo-doctor` reste hors de `pnpm verify` : il interroge l'API d'Expo.
 - **pnpm** avec le `node-linker` par défaut (isolé) : Expo SDK 58 le prend en charge, rien à configurer.
 
 ## Alternatives écartées
