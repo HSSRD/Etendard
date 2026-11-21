@@ -84,6 +84,8 @@ export const layout = {
   twoColumns: 768,
   /** Largeur minimale d'une colonne de tableau : en dessous, le tableau passe en liste (web-css.ts). */
   tableColumn: 160,
+  /** Écart entre les colonnes d'un tableau, compté dans la largeur de bascule en tableau. */
+  tableGap: space[4],
 } as const;
 
 /** Hauteur d'un écran sous le header (web) ; iOS et Android la calculent avec la fenêtre. */

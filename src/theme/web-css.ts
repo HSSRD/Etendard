@@ -3,14 +3,7 @@
 // focus visible, survol, lien d'évitement. Les composants s'y accrochent par des attributs data-*.
 import { cssVariable } from './theme';
 import { tableMaxColumns } from '@/lib/project-pages';
-import {
-  colorNames,
-  focus,
-  layout,
-  palettes,
-  space,
-  underlineOffset,
-} from './tokens';
+import { colorNames, focus, layout, palettes, underlineOffset } from './tokens';
 
 /** `--color-x: light-dark(clair, sombre)` : le thème suit `color-scheme`. */
 const variables = colorNames
@@ -43,7 +36,7 @@ export const webCss = [
     const n = index + 2;
     const table = `[data-columns="${n}"]`;
     return (
-      `@container (min-width:${n * layout.tableColumn + (n - 1) * space[4]}px){` +
+      `@container (min-width:${n * layout.tableColumn + (n - 1) * layout.tableGap}px){` +
       `${table} [data-table-head]{display:flex}` +
       `${table} [role="row"]{flex-direction:row}` +
       `${table} [data-cell]{flex:1 1 0}` +

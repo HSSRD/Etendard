@@ -7,7 +7,7 @@ import { Text, View } from 'react-native';
 import { formatPrice } from '@/lib/project-pages';
 import type { Cell, Table } from '@/lib/validate-project-pages';
 import { themedStyles } from '@/theme/theme';
-import { borderWidth, fontWeight, space } from '@/theme/tokens';
+import { borderWidth, fontWeight, layout, space } from '@/theme/tokens';
 import { useTypography } from '@/theme/typography';
 import StatusBadge from './StatusBadge';
 
@@ -89,7 +89,7 @@ const useStyles = themedStyles((colors) => ({
   row: {
     borderTopColor: colors.border,
     borderTopWidth: borderWidth,
-    columnGap: space[4],
+    columnGap: layout.tableGap,
     paddingVertical: space[2],
     rowGap: space[1],
   },

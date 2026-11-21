@@ -1,3 +1,4 @@
+import { pagePath } from '../src/lib/project-pages.ts';
 import fiches from '../src/content/projects.ts';
 import { existsSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -52,7 +53,7 @@ describe('projet de démonstration du styleguide', () => {
 
 describe('cartes de src/content/projects.ts', () => {
   it('chaque page déclarée par une carte est celle d’un projet', () => {
-    const dirs = contents.map(({ dir }) => `/projets/${dir}`);
+    const dirs = contents.map(({ dir }) => pagePath(dir, ''));
     for (const { id, page } of fiches as Project[]) {
       if (page) expect(dirs, `${id} : ${page}`).toContain(page);
     }
