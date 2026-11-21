@@ -20,7 +20,12 @@ const links = [
   { href: '#projets', label: 'Projets' },
 ];
 
-export default function SiteHeader() {
+interface Props {
+  /** Préfixe des liens : '/' hors de la one page, pour revenir à ses ancres. */
+  home?: '' | '/';
+}
+
+export default function SiteHeader({ home = '' }: Props) {
   const styles = useStyles();
   const typography = useTypography();
   const link = [typography.body, styles.link];
@@ -28,7 +33,7 @@ export default function SiteHeader() {
     <View role="banner" style={styles.header}>
       <View style={[pageStyles.column, styles.inner]}>
         <TextLink
-          href="#accueil"
+          href={`${home}#accueil`}
           dataSet={{ hover: 'underline' }}
           style={[link, styles.brand]}
         >
@@ -39,7 +44,7 @@ export default function SiteHeader() {
             {links.map(({ href, label }) => (
               <View role="listitem" key={href}>
                 <TextLink
-                  href={href}
+                  href={`${home}${href}`}
                   dataSet={{ hover: 'underline' }}
                   style={link}
                 >

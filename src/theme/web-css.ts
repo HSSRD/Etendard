@@ -2,6 +2,7 @@
 // Seulement ce que StyleSheet ne sait pas écrire : variables du thème, défilement vers les ancres,
 // focus visible, survol, lien d'évitement. Les composants s'y accrochent par des attributs data-*.
 import { cssVariable } from './theme';
+import { tableMaxColumns } from '@/lib/project-pages';
 import { colorNames, focus, layout, palettes, underlineOffset } from './tokens';
 
 /** `--color-x: light-dark(clair, sombre)` : le thème suit `color-scheme`. */
@@ -27,4 +28,18 @@ export const webCss = [
   // Pointeur principal seulement : pas de soulignement resté collé après un tap.
   `@media (hover:hover){[data-hover="underline"]:hover{text-decoration-line:underline}}`,
   `[data-skip-link]:not(:focus){opacity:0;pointer-events:none}`,
+  // Tableau (DataTable) : liste par défaut, comme sur iOS et Android ; en tableau quand son conteneur
+  // a la place de toutes ses colonnes. !important : l'emporte sur les classes de StyleSheet.
+  `[data-columns]{container-type:inline-size}`,
+  ...Array.from({ length: tableMaxColumns - 1 }, (_, index) => {
+    const n = index + 2;
+    const table = `[data-columns="${n}"]`;
+    return (
+      `@container (min-width:${n * layout.tableColumn}px){` +
+      `${table} [data-table-head]{display:flex!important}` +
+      `${table} [role="row"]{flex-direction:row!important}` +
+      `${table} [data-cell]{flex:1 1 0!important}` +
+      `${table} [data-cell-label]{display:none!important}}`
+    );
+  }),
 ].join('\n');

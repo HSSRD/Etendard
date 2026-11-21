@@ -3,7 +3,7 @@
 import { z } from 'zod';
 
 /** Texte non vide, sans espace au début ni à la fin : validé tel que l'app l'affiche. */
-const text = z
+export const text = z
   .string()
   .regex(/^\S(?:[\s\S]*\S)?$/, 'texte vide ou entouré d’espaces');
 
@@ -18,6 +18,11 @@ const projectSchema = z.strictObject({
   units: z.array(z.string()).optional(),
   /** Paragraphes de la fiche, sans titre : la carte porte le titre. */
   body: z.array(text).min(1),
+  /** Page du projet (ADR 0016) : la carte porte alors un lien vers elle. */
+  page: z
+    .string()
+    .regex(/^\/projets\/[a-z0-9-]+$/, 'page de projet : /projets/<id>')
+    .optional(),
 });
 
 export type Project = z.infer<typeof projectSchema>;

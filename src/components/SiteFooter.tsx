@@ -9,9 +9,14 @@ import { paragraph, useTypography } from '@/theme/typography';
 interface Props {
   /** Année du copyright ; par défaut celle du build. Figée sur le styleguide pour les captures. */
   year?: number;
+  /** Ancre du haut de la page, cible de « Retour en haut ». */
+  top?: string;
 }
 
-export default function SiteFooter({ year = new Date().getFullYear() }: Props) {
+export default function SiteFooter({
+  year = new Date().getFullYear(),
+  top = '#accueil',
+}: Props) {
   const styles = useStyles();
   const typography = useTypography();
   const text = [typography.body, styles.text];
@@ -35,7 +40,7 @@ export default function SiteFooter({ year = new Date().getFullYear() }: Props) {
           </TextLink>
         </Text>
         <Text role={paragraph} style={text}>
-          <TextLink href="#accueil" style={typography.link}>
+          <TextLink href={top} style={typography.link}>
             Retour en haut
           </TextLink>
         </Text>

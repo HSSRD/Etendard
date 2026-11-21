@@ -82,6 +82,8 @@ export const layout = {
   headerHeight: 64,
   /** Largeur à partir de laquelle les cartes de projets passent sur deux colonnes. */
   twoColumns: 768,
+  /** Largeur minimale d'une colonne de tableau : en dessous, le tableau passe en liste (web-css.ts). */
+  tableColumn: 160,
 } as const;
 
 /** Hauteur d'un écran sous le header (web) ; iOS et Android la calculent avec la fenêtre. */
