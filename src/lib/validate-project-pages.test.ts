@@ -195,6 +195,70 @@ describe('validateProjectContent', () => {
       'page-0.ts (section « essai », sections.0.blocks.0.items.0.href) : URL https',
     ],
     [
+      'un lien mal encodé, sans masquer le fichier',
+      withBlock({
+        type: 'links',
+        items: [
+          {
+            label: 'X',
+            href: `https://github.com/HSSRD/Essai/blob/main/100%`,
+          },
+        ],
+      }),
+      'page-0.ts (section « essai », sections.0.blocks.0.items.0.href) : lien GitHub',
+    ],
+    [
+      'un lien www.github.com non épinglé',
+      withBlock({
+        type: 'links',
+        items: [
+          {
+            label: 'X',
+            href: 'https://www.github.com/HSSRD/Essai/blob/main/a.md',
+          },
+        ],
+      }),
+      'épinglé à un SHA complet',
+    ],
+    [
+      'un lien vers un fichier exclu, barre finale comprise',
+      withBlock({
+        type: 'links',
+        items: [
+          {
+            label: 'X',
+            href: `https://github.com/HSSRD/Essai/blob/${sha}/docs/bom.md/`,
+          },
+        ],
+      }),
+      'données jamais publiées',
+    ],
+    [
+      'une source au chemin Windows',
+      content([
+        page({
+          sections: [
+            section({
+              source: {
+                path: String.raw`docs\bom.md`,
+                sha,
+                date: '2026-11-21',
+              },
+            }),
+          ],
+        }),
+      ]),
+      'sans #, ?, % ni',
+    ],
+    [
+      'un repo suivi d’une ancre',
+      content(
+        [page()],
+        meta({ repo: 'https://github.com/HSSRD/Essai#readme' }),
+      ),
+      'repo : https://github.com/<org>/<repo>',
+    ],
+    [
       'une source dont le chemin porte une ancre',
       content([
         page({
@@ -205,7 +269,7 @@ describe('validateProjectContent', () => {
           ],
         }),
       ]),
-      'sans # ni ?',
+      'sans #, ?, % ni',
     ],
     [
       'une source avec un champ en trop, sans la dire absente',

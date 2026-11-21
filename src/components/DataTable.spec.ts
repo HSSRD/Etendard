@@ -27,8 +27,8 @@ test('le tableau passe en liste quand ses colonnes n’ont pas la place', async 
   await expectNoHorizontalScroll(page);
 
   const phases = page.getByRole('table', { name: 'Phases du projet' });
-  const head = phases.locator('[data-table-head]');
-  const label = phases.locator('[data-cell-label]').first();
+  const head = phases.getByTestId('table-head');
+  const label = phases.getByTestId('cell-label').first();
   const cells = phases.getByRole('row').nth(1).getByRole('cell');
   const [first, second] = await Promise.all([
     cells.nth(0).boundingBox(),

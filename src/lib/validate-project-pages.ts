@@ -59,8 +59,8 @@ const source = z.strictObject(
       (path) =>
         !path.startsWith('/') &&
         !path.split('/').includes('..') &&
-        !/[#?]/.test(path),
-      'chemin relatif à la racine du repo, sans # ni ?',
+        !/[#?%\\]/.test(path),
+      'chemin relatif à la racine du repo, sans #, ?, % ni \\',
     ),
     /** Commit lu, en entier. */
     sha: z
@@ -76,6 +76,15 @@ const source = z.strictObject(
 const githubFile =
   /^\/[^/]+\/[^/]+\/(?:blob|tree|raw|blame|commits|edit)\/([^/]+)\/(.+)$/;
 
+/** Chemin d'URL décodé ; tel quel si son encodage est invalide (« 100% »). */
+const decoded = (path: string) => {
+  try {
+    return decodeURIComponent(path);
+  } catch {
+    return path;
+  }
+};
+
 /** Lien externe : jamais vers un fichier exclu (quel que soit l'hôte), épinglé à un SHA sur GitHub. */
 const href = z
   .url({ protocol: /^https$/, error: 'URL https' })
@@ -83,14 +92,15 @@ const href = z
     // Zod passe ici même quand z.url a échoué : une URL invalide est déjà signalée.
     if (!URL.canParse(value)) return;
     const url = new URL(value);
-    const path = decodeURIComponent(url.pathname);
+    const path = decoded(url.pathname);
     if (!isLinkable(path)) {
       context.addIssue({
         code: 'custom',
         message: 'lien vers un fichier aux données jamais publiées',
       });
     }
-    const file = url.hostname === 'github.com' && githubFile.exec(path);
+    const host = url.hostname.replace(/^www\./, '');
+    const file = host === 'github.com' && githubFile.exec(path);
     if (file && !fullSha.test(file[1] ?? '')) {
       context.addIssue({
         code: 'custom',
@@ -160,7 +170,7 @@ const projectMetaSchema = z.strictObject({
   repo: z
     .string()
     .regex(
-      /^https:\/\/github\.com\/[^/]+\/[^/.]+$/,
+      /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+$/,
       'repo : https://github.com/<org>/<repo>, sans / final',
     ),
   /** Pages du projet, dans l'ordre de la navigation : l'accueil (slug vide) d'abord. */

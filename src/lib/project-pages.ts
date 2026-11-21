@@ -21,12 +21,12 @@ const euros = (amount: number) => String(amount).replace('.', ',');
 
 /** « 5 à 10 €, relevé le 2026-11-20 » : un prix n'est jamais affiché sans sa date. */
 export const formatPrice = ({ min, max, date }: Price) =>
-  `${euros(min)} à ${euros(max)} €, relevé le ${date}`;
+  `${euros(min)} à ${euros(max)}\u00a0€, relevé le ${date}`;
 
-/** Fichiers du repo source qui contiennent des données jamais publiées : jamais liés. */
+/** Fichiers du repo source qui contiennent des données jamais publiées : jamais liés (barre finale comprise). */
 const unlinkable = [
-  /(^|\/)bom\.md$/,
-  /(^|\/)ordre-achat\.md$/,
+  /(^|\/)bom\.md\/?$/,
+  /(^|\/)ordre-achat\.md\/?$/,
   /(^|\/)commandes(\/|$)/,
 ];
 

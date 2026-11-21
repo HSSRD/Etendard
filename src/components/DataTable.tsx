@@ -37,6 +37,7 @@ export default function DataTable({ table }: { table: Table }) {
       <View role="table" aria-labelledby={caption}>
         <View
           role="row"
+          testID="table-head"
           dataSet={{ tableHead: '' }}
           style={[styles.row, styles.head]}
         >
@@ -60,7 +61,11 @@ export default function DataTable({ table }: { table: Table }) {
                 dataSet={{ cell: '' }}
                 style={styles.cell}
               >
-                <Text dataSet={{ cellLabel: '' }} style={label}>
+                <Text
+                  testID="cell-label"
+                  dataSet={{ cellLabel: '' }}
+                  style={label}
+                >
                   {table.columns[index]}
                   {'\u00a0:'}
                 </Text>
