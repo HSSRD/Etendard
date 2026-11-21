@@ -73,11 +73,11 @@ règles explicites « Utilisateurs » ou « Tout le monde : Contrôle total », 
 (`C:\01-Steam`, `D:\02-Jeux\01-Steam`, `GameCenter` de Wargaming) : un exécutable remplacé là tournerait sous Flo.
 
 Le dépôt principal et `C:\ProgramData\floxf` sont réservés à Flo, lecture comprise. Pour les autres dossiers de
-`C:\`, `D:\` et `E:\` (cachés compris, comme `C:\OneDriveTemp`), `dossiers-ouverts.ps1` retire l'écriture de tous
+tous les disques locaux (cachés compris, comme `C:\OneDriveTemp`), `dossiers-ouverts.ps1` retire l'écriture de tous
 les groupes dont le compte agent est membre (Utilisateurs, Utilisateurs authentifiés, Tout le monde, Interactif,
 Batch), au premier niveau comme dans les sous-dossiers à règle explicite ; Flo garde l'écriture, les autres droits
 ne changent pas. Les dossiers système de `C:\` (`Windows`, `Program Files`, `WindowsApps`…) ne sont pas touchés.
-Le parcours prend une dizaine de minutes. Relance-le après avoir créé un dossier à la racine d'un disque ou
+Le parcours prend quelques minutes. Relance-le après avoir créé un dossier à la racine d'un disque ou
 installé un logiciel hors de `Program Files`.
 
 ```powershell
@@ -90,12 +90,11 @@ foreach ($d in 'C:\04-Projets','C:\ProgramData\floxf') {
 cd C:\04-Projets\HSSRD\Etendard
 powershell -NoProfile -ExecutionPolicy Bypass -File infra\agents\dossiers-ouverts.ps1             # relis la liste avant de corriger
 powershell -NoProfile -ExecutionPolicy Bypass -File infra\agents\dossiers-ouverts.ps1 -Corriger   # affiche les dossiers corrigés
-powershell -NoProfile -ExecutionPolicy Bypass -File infra\agents\dossiers-ouverts.ps1             # attendu : aucune ligne
 icacls C:\04-Projets   # attendu : floxf, SYSTEM, Administrateurs, rien d'autre
 ```
 
 Si un logiciel ne se met plus à jour, c'est qu'il passait par ces droits : relance sa mise à jour en administrateur.
-Le script de l'étape 10 refait l'audit depuis le compte agent et signale les dossiers qui restent ouverts.
+Le script de l'étape 10 refait l'audit depuis le compte agent : il ne doit plus lister aucun dossier.
 
 ## 5. Préparer le dossier du jeton **(admin)**
 
@@ -237,7 +236,7 @@ orca worktree create --environment etendard-agent --repo path:C:/Users/etendard-
   --prompt "Lance git fetch origin && git reset --hard origin/main, puis bash infra/agents/verifier-isolation.sh, et poste sa sortie complète en commentaire du ticket #70."
 ```
 
-Le script prend une dizaine de minutes (audit des dossiers de l'étape 4) et doit finir par « Isolation vérifiée. ».
+Le script prend quelques minutes (audit des dossiers de l'étape 4) et doit finir par « Isolation vérifiée. ».
 Le commentaire posté par `hssrd-bot` prouve à lui seul que les PR et commentaires des agents sont au nom du bot.
 
 ## Révoquer
