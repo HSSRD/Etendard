@@ -7,13 +7,14 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
-# Faux curl : note les URL demandées et répond 200 sur / ($STUB_STATUS force ce statut), 404 ailleurs,
-# avec l'en-tête de $STUB_HSTS (aucun s'il est vide) ; sur la 404, celui de $STUB_HSTS_404 s'il est défini.
+# Faux curl : note les URL demandées et répond 200 sur / ($STUB_STATUS force ce statut), 404 ailleurs
+# ($STUB_STATUS_404 le force), avec l'en-tête de $STUB_HSTS (aucun s'il est vide) ; sur la page absente,
+# celui de $STUB_HSTS_404 s'il est défini.
 mkdir "$WORK/bin"
 cat > "$WORK/bin/curl" <<'SH'
 #!/bin/bash
 for a; do [[ "$a" == https://* ]] && url="$a" && echo "$a" >> "$STUB_LOG"; done
-if [[ "$url" == */ ]]; then status="${STUB_STATUS:-200}" hsts="$STUB_HSTS"; else status=404 hsts="${STUB_HSTS_404-$STUB_HSTS}"; fi
+if [[ "$url" == */ ]]; then status="${STUB_STATUS:-200}" hsts="$STUB_HSTS"; else status="${STUB_STATUS_404:-404}" hsts="${STUB_HSTS_404-$STUB_HSTS}"; fi
 printf 'HTTP/2 %s\r\n' "$status"
 [ -n "$hsts" ] && printf '%s\r\n' "$hsts"
 exit 0
@@ -45,6 +46,7 @@ expect 0 "valeur retenue, nom d'en-tête en casse canonique" "$ok_hsts" exemple.
 expect 1 "en-tête absent" '' exemple.fr
 STUB_HSTS_404='' expect 1 "en-tête absent de la 404 seulement" "$ok_hsts" exemple.fr
 STUB_STATUS=530 expect 1 "page d'erreur de Cloudflare sur / (Pi coupé), même avec l'en-tête" "$ok_hsts" exemple.fr
+STUB_STATUS_404=200 expect 1 "page absente servie en 200 (page de repli), même avec l'en-tête" "$ok_hsts" exemple.fr
 expect 1 "includeSubDomains refusé" "$ok_hsts; includeSubDomains" exemple.fr
 expect 1 "preload refusé" "$ok_hsts; preload" exemple.fr
 expect 1 "autre durée refusée" 'Strict-Transport-Security: max-age=15552000' exemple.fr
