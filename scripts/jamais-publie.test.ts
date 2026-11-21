@@ -23,16 +23,16 @@ const files = readdirSync(root, { recursive: true, encoding: 'utf8' })
 
 describe('Jamais publié', () => {
   it.each([
-    ['FRA0000xxxx0000', '« numéro d’exploitant'],
+    ['FRA0000xxxx0000', 'numéro d’exploitant (FRA…)'],
     ['Commande n° 0000', '« commande n° »'],
     ['le n° de commande', '« n° de commande »'],
     ['voir la facture', '« facture »'],
     ['un Code promo', '« code promo »'],
-    ['https://exemple.test/x?tag=essai-21', 'affiliation'],
-    ['https://exemple.test/x?affid=1', 'affiliation'],
-    ['https://exemple.test/x?a=1&ref=essai', 'affiliation'],
+    ['https://exemple.test/x?tag=essai-21', 'paramètre d’affiliation d’URL'],
+    ['https://exemple.test/x?affid=1', 'paramètre d’affiliation d’URL'],
+    ['https://exemple.test/x?a=1&ref=essai', 'paramètre d’affiliation d’URL'],
   ])('reconnaît « %s »', (text, name) => {
-    expect(found(text).join()).toContain(name.replace(/^« /, ''));
+    expect(found(text)).toEqual([name]);
   });
 
   it.each([

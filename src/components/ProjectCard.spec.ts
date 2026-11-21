@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { expectNoAxeViolations, schemes } from '../../tests/helpers';
+import { testAppearances } from '../../tests/helpers';
 
 test('chaque carte montre le titre, le résumé et le corps de sa fiche', async ({
   page,
@@ -52,16 +52,4 @@ test('la présentation (intro) n’a pas de cadre, les cartes en ont un', async 
   await expect(articles.nth(1)).not.toHaveCSS('border-top-width', '0px');
 });
 
-for (const scheme of schemes) {
-  test(`ProjectCard, thème ${scheme} : accessibilité et capture`, async ({
-    page,
-  }) => {
-    await page.emulateMedia({ colorScheme: scheme });
-    await page.goto('/styleguide/project-card');
-
-    await expectNoAxeViolations(page);
-    await expect(page).toHaveScreenshot(`project-card-${scheme}.png`, {
-      fullPage: true,
-    });
-  });
-}
+testAppearances('/styleguide/project-card', 'project-card');

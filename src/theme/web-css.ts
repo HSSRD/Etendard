@@ -29,17 +29,17 @@ export const webCss = [
   `@media (hover:hover){[data-hover="underline"]:hover{text-decoration-line:underline}}`,
   `[data-skip-link]:not(:focus){opacity:0;pointer-events:none}`,
   // Tableau (DataTable) : liste par défaut, comme sur iOS et Android ; en tableau quand son conteneur
-  // a la place de toutes ses colonnes. !important : l'emporte sur les classes de StyleSheet.
+  // a la place de toutes ses colonnes. Deux sélecteurs d'attribut : l'emportent sur les classes de StyleSheet.
   `[data-columns]{container-type:inline-size}`,
   ...Array.from({ length: tableMaxColumns - 1 }, (_, index) => {
     const n = index + 2;
     const table = `[data-columns="${n}"]`;
     return (
       `@container (min-width:${n * layout.tableColumn}px){` +
-      `${table} [data-table-head]{display:flex!important}` +
-      `${table} [role="row"]{flex-direction:row!important}` +
-      `${table} [data-cell]{flex:1 1 0!important}` +
-      `${table} [data-cell-label]{display:none!important}}`
+      `${table} [data-table-head]{display:flex}` +
+      `${table} [role="row"]{flex-direction:row}` +
+      `${table} [data-cell]{flex:1 1 0}` +
+      `${table} [data-cell-label]{display:none}}`
     );
   }),
 ].join('\n');

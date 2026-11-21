@@ -1,12 +1,9 @@
 // ProjectCard dans chacun de ses états (ticket #14) : présentation (intro), carte de sous-unité,
 // puis carte d'une fiche qui a sa page (lien vers elle).
-import { Text, View } from 'react-native';
 import ProjectCard from '@/components/ProjectCard';
 import demo from '@/content/demo-projet';
-import BaseLayout from '@/layouts/BaseLayout';
-import { pageStyles } from '@/layouts/page-styles';
+import StyleguideStates from '@/layouts/StyleguideStates';
 import { projectGroups } from '@/lib/projects';
-import { useTypography } from '@/theme/typography';
 
 const states = projectGroups
   .flatMap(({ root, units }) => [
@@ -24,35 +21,14 @@ const states = projectGroups
   });
 
 export default function ProjectCardPage() {
-  const typography = useTypography();
   return (
-    <BaseLayout
-      title="ProjectCard — Styleguide — Étendard"
+    <StyleguideStates
+      name="ProjectCard"
       description="Composant ProjectCard d’Étendard : la carte d’un projet."
-    >
-      <View style={[pageStyles.column, pageStyles.page]}>
-        <Text role="heading" aria-level={1} style={typography.h1}>
-          ProjectCard
-        </Text>
-        {states.map((state, index) => (
-          <View
-            key={state.label}
-            role="region"
-            aria-labelledby={`etat-${index}`}
-            style={pageStyles.state}
-          >
-            <Text
-              role="heading"
-              aria-level={2}
-              id={`etat-${index}`}
-              style={typography.h2}
-            >
-              {state.label}
-            </Text>
-            <ProjectCard project={state.project} intro={state.intro} />
-          </View>
-        ))}
-      </View>
-    </BaseLayout>
+      states={states.map(({ label, project, intro }) => ({
+        label,
+        node: <ProjectCard project={project} intro={intro} />,
+      }))}
+    />
   );
 }

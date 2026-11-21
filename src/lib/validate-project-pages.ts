@@ -182,6 +182,10 @@ const issues = (file: string, input: unknown, error: z.ZodError) =>
     return `${file}${where ? ` (${where})` : ''} : ${issue.message}`;
   });
 
+/** Valeurs présentes plus d'une fois dans `list`. */
+const duplicates = (list: string[]) =>
+  new Set(list.filter((entry, index) => list.indexOf(entry) !== index));
+
 export interface ProjectContent {
   /** Dossier du projet dans src/content/projets/. */
   dir: string;
@@ -219,10 +223,8 @@ export const validateProjectContent = ({
       );
     }
     const slugs = nav.map((entry) => entry.slug);
-    for (const [index, entry] of slugs.entries()) {
-      if (slugs.indexOf(entry) !== index) {
-        errors.push(`${meta.file} : page « ${entry} » en double.`);
-      }
+    for (const entry of duplicates(slugs)) {
+      errors.push(`${meta.file} : page « ${entry} » en double.`);
     }
     for (const { file, page } of parsedPages) {
       if (page.project !== id) {
@@ -234,10 +236,8 @@ export const validateProjectContent = ({
         );
       }
       const ids = page.sections.map((entry) => entry.id);
-      for (const [index, entry] of ids.entries()) {
-        if (ids.indexOf(entry) !== index) {
-          errors.push(`${file} : section « ${entry} » en double.`);
-        }
+      for (const entry of duplicates(ids)) {
+        errors.push(`${file} : section « ${entry} » en double.`);
       }
     }
     // Une page invalide est déjà signalée : sans elle, ce décompte serait faux.

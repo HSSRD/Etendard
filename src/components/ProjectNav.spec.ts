@@ -6,12 +6,10 @@ test('la navigation liste les pages du projet et marque la page courante', async
 }) => {
   await page.goto('/styleguide/project-nav');
 
-  const navs = page.getByRole('navigation', {
-    name: 'Pages du projet Démonstration',
-  });
-  await expect(navs).toHaveCount(2);
-  for (const [index, current] of ['Présentation', 'Matériel'].entries()) {
-    const nav = navs.nth(index);
+  for (const current of ['Présentation', 'Matériel']) {
+    const nav = page.getByRole('navigation', {
+      name: `Pages du projet Démonstration (${current})`,
+    });
     const links = nav.getByRole('link');
     await expect(links).toHaveText(['Présentation', 'Matériel']);
     await expect(links.nth(0)).toHaveAttribute('href', '/projets/demo');
