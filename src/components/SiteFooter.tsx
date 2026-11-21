@@ -21,7 +21,7 @@ export default function SiteFooter({ year = new Date().getFullYear() }: Props) {
         <Text role={paragraph} style={[text, styles.tagline]}>
           Étendard, la vitrine des projets HSSRD
         </Text>
-        {/* Année du build, figée dans le HTML pré-rendu : l'hydratation la garde (comme Astro). */}
+        {/* Année du build, figée dans le HTML pré-rendu : l'hydratation la garde. */}
         <Text role={paragraph} style={text} suppressHydrationWarning>
           © {year} HSSRD
         </Text>
