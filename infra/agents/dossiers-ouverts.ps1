@@ -3,7 +3,7 @@
 # Sans option : n'écrit rien, affiche un dossier par ligne (rien si tout est fermé). -Corriger (admin) : retire ces
 # groupes de chaque dossier listé et y donne l'écriture à Flo ; au premier niveau, les Utilisateurs gardent la lecture,
 # plus bas seulement celle héritée du parent (aucune dans un dossier réservé à Flo).
-# Sont signalés : un dossier du premier niveau d'un disque local (hors dossiers système de C:\) dont une règle, héritée ou
+# Sont signalés : un dossier du premier niveau d'un disque local (hors dossiers système et Store, sur tout disque) dont une règle, héritée ou
 # non, donne l'écriture à ces groupes ; plus bas, un dossier dont une règle explicite la donne (C:\01-Steam,
 # lanceurs de jeux…) : corriger le parent ne la retire pas, et le compte agent y accède par son chemin.
 param([switch]$Corriger)
@@ -29,8 +29,7 @@ function Test-Ouvert([IO.DirectoryInfo]$dossier, [bool]$herites) {
 $disques = [IO.DriveInfo]::GetDrives() | Where-Object { $_.DriveType -eq 'Fixed' } | ForEach-Object { $_.Name }
 $racines = foreach ($disque in $disques) {
   Get-ChildItem -LiteralPath $disque -Directory -Force -ErrorAction SilentlyContinue | Where-Object {
-    $_.Name -notlike '$*' -and $_.Name -ne 'System Volume Information' -and
-    -not ($disque -eq 'C:\' -and $systeme -contains $_.Name)
+    $_.Name -notlike '$*' -and $_.Name -ne 'System Volume Information' -and $systeme -notcontains $_.Name
   }
 }
 
@@ -52,13 +51,19 @@ foreach ($racine in $racines) {
 }
 
 # Les dossiers du premier niveau passent avant leurs sous-dossiers : ces derniers héritent du parent déjà corrigé.
+$echecs = 0
 foreach ($d in $ouverts) {
   if ($Corriger) {
     # Au premier niveau, les droits hérités du disque deviennent explicites pour qu'on puisse retirer ceux des groupes.
-    if ($d.Racine) { icacls $d.Chemin /inheritance:d /Q | Out-Null }
-    icacls $d.Chemin /grant 'floxf:(OI)(CI)F' /Q | Out-Null
-    icacls $d.Chemin /remove:g ($groupes | ForEach-Object { "*$_" }) /Q | Out-Null
-    if ($d.Racine) { icacls $d.Chemin /grant '*S-1-5-32-545:(OI)(CI)RX' /Q | Out-Null }
+    $etapes = @(@('/grant', 'floxf:(OI)(CI)F'), @(@('/remove:g') + ($groupes | ForEach-Object { "*$_" })))
+    if ($d.Racine) { $etapes = @(, @('/inheritance:d')) + $etapes + @(, @('/grant', '*S-1-5-32-545:(OI)(CI)RX')) }
+    $ok = $true
+    foreach ($etape in $etapes) {
+      icacls $d.Chemin @etape /Q | Out-Null
+      if ($LASTEXITCODE -ne 0) { $ok = $false; break }
+    }
+    if (-not $ok) { Write-Error "non corrigé (icacls en échec, PowerShell administrateur ?) : $($d.Chemin)" -ErrorAction Continue; $echecs++; continue }
   }
   $d.Chemin
 }
+if ($echecs) { exit 1 }

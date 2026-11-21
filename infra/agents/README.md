@@ -76,7 +76,7 @@ Le dépôt principal et `C:\ProgramData\floxf` sont réservés à Flo, lecture c
 tous les disques locaux (cachés compris, comme `C:\OneDriveTemp`), `dossiers-ouverts.ps1` retire l'écriture de tous
 les groupes dont le compte agent est membre (Utilisateurs, Utilisateurs authentifiés, Tout le monde, Interactif,
 Batch), au premier niveau comme dans les sous-dossiers à règle explicite ; Flo garde l'écriture, les autres droits
-ne changent pas. Les dossiers système de `C:\` (`Windows`, `Program Files`, `WindowsApps`…) ne sont pas touchés.
+ne changent pas. Les dossiers système et Store (`Windows`, `Program Files`, `WindowsApps`, `XboxGames`…) ne sont touchés sur aucun disque.
 Le parcours prend quelques minutes. Relance-le après avoir créé un dossier à la racine d'un disque ou
 installé un logiciel hors de `Program Files`.
 
@@ -233,7 +233,7 @@ Merge ensuite la PR du ticket #70 : `.github/CODEOWNERS` doit être sur `main` p
 ```powershell
 orca worktree create --environment etendard-agent --repo path:C:/Users/etendard-agent/Etendard `
   --name verif-isolation --no-parent --agent claude `
-  --prompt "Lance git fetch origin && git reset --hard origin/main, puis bash infra/agents/verifier-isolation.sh, et poste sa sortie complète en commentaire du ticket #70."
+  --prompt "Lance git fetch origin && git reset --hard origin/main, puis bash infra/agents/verifier-isolation.sh en arrière-plan (il dure plus que le délai par défaut d'une commande) en attendant sa fin, et poste sa sortie complète en commentaire du ticket #70."
 ```
 
 Le script prend quelques minutes (audit des dossiers de l'étape 4) et doit finir par « Isolation vérifiée. ».

@@ -71,7 +71,7 @@ fi
 # Les sections 3 et 4 créent des commits de test : jamais sur une branche de travail.
 git diff --quiet HEAD || { echo "Arbre de travail modifié : lance le script sur un worktree propre."; exit 1; }
 git fetch -q origin main
-retour=$(git rev-parse --abbrev-ref HEAD)
+retour=$(git symbolic-ref -q --short HEAD || git rev-parse HEAD) # branche, ou commit si HEAD est détachée
 
 echo "== 3. Push d'une modification de .github/workflows/"
 branche_wf="test-isolation-workflows-$ID"
@@ -85,7 +85,7 @@ else
   ko "le push de $branche_wf n'a pas été refusé pour la permission workflows"
   git push -q origin --delete "$branche_wf" 2>/dev/null
 fi
-git switch -q "$retour" && git branch -q -D "$branche_wf"
+git checkout -q "$retour" && git branch -q -D "$branche_wf"
 
 echo "== 4. Merge d'une PR qui touche infra/pi/"
 branche_pi="test-isolation-infra-pi-$ID"
@@ -96,6 +96,11 @@ if git push -q origin "$branche_pi" 2>/dev/null; then
   url=$(gh pr create -R "$REPO" --head "$branche_pi" \
     --title "test: merge refusé d'une PR infra/pi (#70)" \
     --body "PR de test de l'isolation des agents (#70), fermée par le script.")
+fi
+if [ -z "${url:-}" ]; then
+  ko "push de $branche_pi ou création de sa PR de test impossible"
+  git push -q origin --delete "$branche_pi" 2>/dev/null
+else
   echo "PR de test : $url"
   sortie=$(gh pr merge "$url" --squash 2>&1)
   refus=$?
@@ -108,13 +113,12 @@ if git push -q origin "$branche_pi" 2>/dev/null; then
   else
     ko "la PR $url a été mergée sans relecture de Flo : à annuler (revert) d'urgence"
   fi
-  [ -n "$url" ] && gh pr close "$url" >/dev/null
+  gh pr close "$url" >/dev/null
   git push -q origin --delete "$branche_pi"
-else
-  ko "push de $branche_pi impossible"
 fi
-git switch -q "$retour" && git branch -q -D "$branche_pi"
+git checkout -q "$retour" && git branch -q -D "$branche_pi"
 
 echo
 if [ "$echecs" -eq 0 ]; then echo "Isolation vérifiée."; else echo "$echecs vérification(s) en échec."; fi
-exit "$echecs"
+# Code de sortie 0 ou 1 : un nombre d'échecs multiple de 256 sortirait en 0.
+[ "$echecs" -eq 0 ]

@@ -154,7 +154,7 @@ Tu agis sur GitHub en tant que `hssrd-bot`, sans permission `workflows` (ADR 000
 
 - ne cherche aucun contournement (autre jeton, autre remote, API) ;
 - regroupe la modification des workflows dans un dernier commit, garde-le en correctif (`git format-patch -1 --stdout > ../workflow-N.patch`), retire-le (`git reset --hard HEAD~1`), puis pousse la branche (`git push -u origin issue-N-<slug>`) et ouvre la PR ;
-- joins le correctif à la PR en commentaire (bloc `diff`), avec la commande pour Flo : `gh pr checkout <numéro PR>`, `git am` sur le correctif, relecture, puis `git push` (le push lance déjà le workflow modifié sur la PR, avant toute revue) ; récupère ensuite son commit par `git pull` ;
+- joins le correctif à la PR en commentaire (bloc `diff`), avec la commande pour Flo, qui l'applique dans un worktree jetable où il ne lance aucun outil (Claude Code, VS Code, `pnpm` exécuteraient les fichiers modifiés par l'agent, `.claude/` compris) : `git fetch origin issue-N-<slug>`, `git worktree add ../workflow-N FETCH_HEAD`, `git -C ../workflow-N am` sur le correctif, relecture, puis `git -C ../workflow-N push origin HEAD:issue-N-<slug>` (le push lance déjà le workflow modifié sur la PR, avant toute revue) et `git worktree remove ../workflow-N` ; récupère ensuite son commit par `git pull` ;
 - la PR ne peut être mergée qu'après ce push de Flo : passe en B7 avec « Ticket #N : PR prête, Flo doit pousser la modification de workflow » ;
 - une fois ce commit de Flo sur la branche, ne la rebase plus (ton push serait refusé) : si elle prend du retard sur `main`, demande à Flo de la mettre à jour.
 
@@ -195,6 +195,7 @@ Puis reprends les conditions depuis le début avec le nouveau `headRefOid`.
 
 - Conflit de rebase : résous-le en gardant l'intention des deux côtés, sans refaire les tours de B4, et note la résolution dans la PR. S'il demande une décision humaine ou un changement au-delà du conflit, passe en B7.
 - `verify:fast` ou la CI échoue après le rebase (deux PR incompatibles, le cas visé par #48) : corrige comme en B4 (correctif local, commit `fix: …`, noté dans la PR), puis reprends le bloc.
+- Push refusé après le rebase (« refusing to allow a GitHub App to create or update workflow ») : `main` a modifié un workflow depuis ton dernier push, et sans permission `workflows` tu ne peux plus mettre la branche à jour. N'applique pas la procédure de B6 (le workflow n'est pas le tien) : passe en B7 (« merge manuel requis — `main` a modifié un workflow, Flo doit mettre la branche à jour »).
 - Si `main` avance encore pendant la CI, recommence : trois rebases au plus, puis B7 (« merge manuel requis — `main` bouge trop vite »).
 
 Si une condition manque, **ne merge pas** : le merge reste humain. Passe en B7 en indiquant dans la notification la condition qui bloque (« Ticket #N : PR prête, merge manuel requis — <raison> »).
