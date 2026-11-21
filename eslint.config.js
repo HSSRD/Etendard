@@ -1,39 +1,66 @@
 // @ts-check
 import js from '@eslint/js';
-import astro from 'eslint-plugin-astro';
 import { defineConfig } from 'eslint/config';
+import reactHooks from 'eslint-plugin-react-hooks';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
-// Un composant ou un layout n'importe jamais une page (ADR 0005). dependency-cruiser ne lit pas
-// les .astro : la règle est imposée ici, pour import, import() et import.meta.glob.
+// Un composant ou un layout n'importe jamais une page (ADR 0005) ; les pages sont dans src/app/.
+// dependency-cruiser l'impose aussi ; la règle reste ici pour import() dynamique.
 // « / » s'écrit \x2F : les sélecteurs ESLint (esquery) ne l'acceptent pas tel quel.
-// Couvre `../pages`, `../../src/pages`, `@/pages` et la forme Vite `/src/pages`.
-const pagePattern = String.raw`^((\.\.\x2F)+(src\x2F)?|@\x2F|\x2Fsrc\x2F)pages(\x2F|$)`;
+const pagePattern = String.raw`^((\.\.\x2F)+(src\x2F)?|@\x2F|\x2Fsrc\x2F)app(\x2F|$)`;
 const pageMessage = 'Un composant ou un layout n’importe jamais une page.';
 
-// Pas d'accès à l'environnement Node dans src/ : utilise import.meta.env.
+// Pas d'accès à l'environnement Node dans src/.
 const nodeImports = ['process', 'node:process', 'buffer', 'node:buffer'].map(
-  (name) => ({ name, message: 'Utilise import.meta.env.' }),
+  (name) => ({ name, message: 'Pas de module Node dans l’app.' }),
 );
+
+// Aucune valeur en dur dans les styles (ADR 0015) : dans StyleSheet.create et themedStyles,
+// un nombre autre que 0 ou 1, ou une couleur littérale, passe par un token (src/theme/tokens.ts).
+const styleCalls = [
+  "CallExpression[callee.object.name='StyleSheet'][callee.property.name='create']",
+  "CallExpression[callee.name='themedStyles']",
+];
+const hardCoded = styleCalls
+  .flatMap((call) => [
+    {
+      selector: `${call} Property > Literal[value=/^(?:#|rgba?[(]|hsla?[(])/i]`,
+      message: 'Couleur en dur : utilise un token de src/theme/tokens.ts.',
+    },
+    {
+      selector: `${call} Property > Literal[raw=/^[0-9.]+$/][value!=0][value!=1]`,
+      message: 'Valeur en dur : utilise un token de src/theme/tokens.ts.',
+    },
+    {
+      selector: `${call} Property > UnaryExpression[operator='-'] > Literal`,
+      message: 'Valeur en dur : utilise un token de src/theme/tokens.ts.',
+    },
+  ])
+  .concat({
+    // Sur le web, un objet de style en ligne devient un attribut style, refusé par la CSP.
+    selector: "JSXAttribute[name.name='style'] ObjectExpression",
+    message: 'Style en ligne : passe par StyleSheet.create ou themedStyles.',
+  });
 
 export default defineConfig(
   {
     ignores: [
       'dist/',
       'dist-styleguide/',
-      '.astro/',
+      'dist-natif/',
+      '.expo/',
       'test-results/',
       'playwright-report/',
     ],
   },
   js.configs.recommended,
   tseslint.configs.strict,
-  astro.configs.recommended,
-  astro.configs['jsx-a11y-strict'],
-  // Le site tourne dans le navigateur ; seuls l'outillage et les tests tournent sous Node.
-  // `no-undef` est coupé sur le TypeScript et @types/node est chargé pour l'outillage :
-  // les globales Node sont donc interdites explicitement (utilise import.meta.env).
+  {
+    files: ['src/**/*.tsx'],
+    extends: [reactHooks.configs.flat.recommended],
+  },
+  // Le site tourne dans le navigateur et les apps ; seuls l'outillage et les tests tournent sous Node.
   {
     files: ['src/**'],
     ignores: ['**/*.spec.ts', '**/*.test.ts'],
@@ -49,6 +76,7 @@ export default defineConfig(
         '__filename',
       ],
       'no-restricted-imports': ['error', { paths: nodeImports }],
+      'no-restricted-syntax': ['error', ...hardCoded],
     },
   },
   {
@@ -76,10 +104,10 @@ export default defineConfig(
       ],
       'no-restricted-syntax': [
         'error',
+        ...hardCoded,
         ...[
           `ImportExpression > Literal[value=/${pagePattern}/]`,
           `ImportExpression > TemplateLiteral > TemplateElement[value.raw=/${pagePattern}/]`,
-          `CallExpression[callee.property.name='glob'] Literal[value=/${pagePattern}/]`,
         ].map((selector) => ({ selector, message: pageMessage })),
       ],
     },

@@ -1,6 +1,8 @@
 node_modules/
 dist/
-.astro/
 dist-styleguide/
+dist-natif/
+.expo/
+expo-env.d.ts
 test-results/
 playwright-report/

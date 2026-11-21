@@ -14,21 +14,21 @@ http://:8080 {
 	# En-têtes de sécurité, expliqués dans FONCTIONNEMENT.md. HSTS est posé par Cloudflare.
 	# tests/csp.spec.ts (la CSP) et verify.sh (tous) les lisent ici : un par ligne, valeur entre guillemets.
 	header {
-		Content-Security-Policy "default-src 'none'; style-src 'self'; img-src 'self'; media-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+		Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; media-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "strict-origin-when-cross-origin"
 		Permissions-Policy "camera=(), geolocation=(), microphone=(), payment=(), usb=()"
 	}
 
-	# Cache d'un an des fichiers d'Astro, dont le nom porte l'empreinte du contenu (#36, FONCTIONNEMENT.md).
+	# Cache d'un an des fichiers d'Expo, dont le nom porte l'empreinte du contenu (#36, #76, FONCTIONNEMENT.md).
 	# Sur les réponses 2xx et 304 seulement : une 404 ne doit pas rester en cache un an.
-	header /_astro/* {
+	header /_expo/static/* {
 		Cache-Control "public, max-age=31536000, immutable"
 		match status 2xx 304
 	}
 
 	# Pages HTML revalidées à chaque visite (ETag, réponse 304 légère) : après un déploiement,
-	# un navigateur ne réutilise pas une ancienne page qui demanderait d'anciens /_astro/ (#52).
+	# un navigateur ne réutilise pas une ancienne page qui demanderait d'anciens /_expo/static/ (#52).
 	@html path */ *.html
 	header @html {
 		Cache-Control "no-cache"

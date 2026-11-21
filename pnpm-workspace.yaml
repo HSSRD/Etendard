@@ -1,2 +1,5 @@
 # Délai minimal de 3 jours avant d'installer une nouvelle version (ADR 0013).
 minimumReleaseAge: 4320
+
+# Version exacte par défaut pour pnpm add (ADR 0013).
+saveExact: true

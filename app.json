@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "Étendard",
+    "slug": "etendard",
+    "scheme": "etendard",
+    "version": "0.0.0",
+    "userInterfaceStyle": "automatic",
+    "web": {
+      "output": "static"
+    },
+    "plugins": [
+      [
+        "expo-router",
+        {
+          "sitemap": false
+        }
+      ],
+      "expo-video"
+    ],
+    "updates": {
+      "enabled": false
+    }
+  }
+}

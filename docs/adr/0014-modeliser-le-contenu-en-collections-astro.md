@@ -1,6 +1,6 @@
 # 0014. Modéliser le contenu en collections Astro validées par Zod
 
-- Statut : Proposé
+- Statut : Remplacé par [0015](0015-construire-le-site-et-les-apps-avec-expo.md)
 - Date : 2026-11-07
 
 ## Contexte

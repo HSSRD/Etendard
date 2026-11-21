@@ -1,6 +1,6 @@
 # 0004. Écrire le CSS en natif avec des design tokens, BEM et un Stylelint strict
 
-- Statut : Proposé
+- Statut : Remplacé par [0015](0015-construire-le-site-et-les-apps-avec-expo.md)
 - Date : 2026-11-07
 
 ## Contexte

@@ -13,7 +13,6 @@ test('le footer affiche l’éditeur, l’année et ses liens, sans débordement
   await page.goto(url);
   const footer = page.getByRole('contentinfo');
 
-  await expect(footer).toContainClass('site-footer');
   await expect(footer).toContainText('Étendard, la vitrine des projets HSSRD');
   await expect(footer).toContainText('© 2026 HSSRD');
 
@@ -36,7 +35,7 @@ test('sur la one page, le footer suit <main> et « Retour en haut » remonte à 
   // Défilement instantané : le défilement doux est déjà testé par accueil.spec.ts.
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
-  const footer = page.locator('main#contenu + footer.site-footer');
+  const footer = page.locator('main#contenu + footer');
   // Année du build ; la précédente n'est admise que le 1er janvier (build lancé la veille).
   const now = new Date();
   const years = [now.getFullYear()];
@@ -60,6 +59,33 @@ test('sur la one page, le footer suit <main> et « Retour en haut » remonte à 
   await footer.getByRole('link', { name: 'Retour en haut' }).click();
   await expect(page).toHaveURL(/#accueil$/);
   await expect(accueil).toBeInViewport();
+});
+
+test('l’année suivante, la page s’hydrate sans erreur et garde l’année du build', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+  page.on('pageerror', (error) => errors.push(error.message));
+  // Année du build, lue dans le HTML pré-rendu avant toute hydratation.
+  const html = await (await page.request.get('/')).text();
+  const year = /© (?:<!-- -->)?(\d{4})/.exec(html)?.[1];
+  expect(year).toMatch(/^\d{4}$/);
+  await page.clock.setFixedTime(new Date(Number(year) + 1, 5, 1));
+  await page.goto('/');
+  await expect
+    .poll(() =>
+      page
+        .getByRole('contentinfo')
+        .evaluate((footer) =>
+          Object.keys(footer).some((key) => key.startsWith('__reactFiber')),
+        ),
+    )
+    .toBe(true);
+  await expect(page.getByRole('contentinfo')).toContainText(`© ${year} HSSRD`);
+  expect(errors).toEqual([]);
 });
 
 for (const scheme of schemes) {
