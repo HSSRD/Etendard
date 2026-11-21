@@ -1,19 +1,22 @@
 # 0013. Gérer les dépendances avec pnpm et Renovate, avec merge automatique des mineures
 
-- Statut : Proposé
+- Statut : Proposé, adapté par [0015](0015-construire-le-site-et-les-apps-avec-expo.md) (pile Expo en merge humain, plus de Stylelint ; règle des versions et des pairs ajoutée par #83)
 - Date : 2026-11-07
 
 ## Contexte
 
-Les agents ajoutent facilement des dépendances et importent des paquets non déclarés. L'écosystème bouge vite (Astro, Vitest, Playwright, ESLint) et la mise à jour manuelle est une action humaine à éviter. Le merge humain est le contrôle avant la production (0010) ; Flo accepte une exception encadrée pour les mises à jour de dépendances.
+Les agents ajoutent facilement des dépendances et importent des paquets non déclarés. L’écosystème bouge vite (Expo, Vitest, Playwright, ESLint) et la mise à jour manuelle est une action humaine à éviter. Le merge humain est le contrôle avant la production (0010) ; Flo accepte une exception encadrée pour les mises à jour de dépendances.
 
 ## Décision
 
 - **pnpm**, version figée par `packageManager` ; `engines` et `.nvmrc` pour Node (0001). Avec pnpm, un paquet non déclaré n'est pas importable.
+- **Versions** dans `package.json` : exactes (`saveExact: true` dans `pnpm-workspace.yaml`, que `pnpm add` applique seul), sauf pour les paquets que gère `expo install` (SDK, modules Expo, React, React Native, TypeScript, `@types/react`), qui gardent la plage qu'il écrit (`~`, `^` ou exacte) : `expo install --check` et `expo-doctor` restent verts, et la montée de SDK se fait par `expo install --fix` (0015). Le lockfile fige de toute façon chaque version installée.
+- **Classement** : `dependencies` pour ce qui part dans le site ou les apps, ou que leur build natif exige ; `devDependencies` pour l'outillage, les tests et la validation au build. Un pair obligatoire (`peerDependencies` non optionnelle) d'une dépendance directe est déclaré lui aussi quand le SDK le versionne (`bundledNativeModules.json` d'`expo`) : sinon pnpm l'installe seul, hors de `expo install` et de Renovate, et `expo-doctor` signale ceux des modules natifs. Les autres pairs sont listés avec leur raison dans `docs/dependances.md`.
+- **Justification** : chaque dépendance directe a sa ligne dans `docs/dependances.md` (rôle, usage vérifié, alternative écartée). `scripts/dependances.test.ts` vérifie la liste et la règle des versions.
 - **Renovate**, mises à jour regroupées :
   - **merge automatique des mineures et correctifs si `pnpm verify` passe**. C'est la seule exception au merge humain de 0010, acceptée par Flo ;
   - **délai minimal de 3 jours** après la publication d'une version avant de la proposer (`minimumReleaseAge` dans Renovate, et le même réglage dans pnpm pour les ajouts manuels) : un paquet compromis est en général retiré dans ce délai ;
-  - **jamais de merge automatique** pour les majeures, ni pour Playwright (une montée de version invalide les captures de référence, 0003), TypeScript (0001) et Stylelint (0004), dont les `peerDependencies` sont serrées.
+  - **jamais de merge automatique** pour les majeures, ni pour Playwright (une montée de version invalide les captures de référence, 0003), TypeScript et la pile Expo (React, React Native, modules Expo), dont les versions sont fixées par le SDK (0015). Avec Astro, Stylelint (0004) en faisait partie.
 - Actions GitHub figées par SHA, mises à jour par Renovate selon les mêmes règles.
 - Cache pnpm et Playwright en CI.
 

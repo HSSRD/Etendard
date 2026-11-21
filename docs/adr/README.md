@@ -21,7 +21,7 @@ Avant toute modification structurelle, lire les ADR acceptés et ne jamais les c
 | 0009 | [Suivre les tâches dans GitHub Issues avec des formulaires et des étiquettes](0009-suivre-les-taches-dans-github-issues.md) | Proposé |
 | 0010 | [Enchaîner les agents dans GitHub Actions, du ticket au merge humain](0010-enchainer-les-agents-dans-github-actions.md) | Proposé |
 | 0011 | [Sécuriser les agents : déclenchement par Flo seul, contenu non fiable, aucun secret de production](0011-securiser-les-agents.md) | Proposé |
-| 0012 | [Outiller les agents : AGENTS.md, MCP, hooks et skills ; Graphify repoussé](0012-outiller-les-agents.md) | Proposé |
-| 0013 | [Gérer les dépendances avec pnpm et Renovate, avec merge automatique des mineures](0013-gerer-les-dependances-avec-pnpm-et-renovate.md) | Proposé |
+| 0012 | [Outiller les agents : AGENTS.md, MCP, hooks et skills ; Graphify repoussé](0012-outiller-les-agents.md) | Proposé, adapté par 0015 |
+| 0013 | [Gérer les dépendances avec pnpm et Renovate, avec merge automatique des mineures](0013-gerer-les-dependances-avec-pnpm-et-renovate.md) | Proposé, adapté par 0015 |
 | 0014 | [Modéliser le contenu en collections Astro validées par Zod](0014-modeliser-le-contenu-en-collections-astro.md) | Remplacé par 0015 |
 | 0015 | [Construire le site et les apps avec Expo et React Native](0015-construire-le-site-et-les-apps-avec-expo.md) | Accepté |

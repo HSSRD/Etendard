@@ -20,7 +20,7 @@ permissions: {}
 jobs:
   build:
     if: ${{ !inputs.rollback }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
     permissions:
       contents: read
@@ -61,7 +61,7 @@ jobs:
 
   deploy:
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
     environment: production
     permissions: {}
@@ -151,7 +151,7 @@ jobs:
 
   release:
     needs: deploy
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     permissions:
       contents: write
@@ -173,7 +173,7 @@ jobs:
 
   rollback:
     if: ${{ inputs.rollback }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     environment: production
     permissions: {}
@@ -195,7 +195,7 @@ jobs:
   message:
     needs: [deploy, release, rollback]
     if: ${{ always() }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     continue-on-error: true
     permissions:
@@ -228,7 +228,7 @@ jobs:
   notify:
     needs: message
     if: ${{ always() }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     environment: production
     continue-on-error: true

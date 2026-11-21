@@ -1,6 +1,6 @@
 # 0012. Outiller les agents : AGENTS.md, MCP, hooks et skills ; Graphify repoussé
 
-- Statut : Proposé
+- Statut : Proposé, adapté par [0015](0015-construire-le-site-et-les-apps-avec-expo.md) (plus de MCP de la doc Astro)
 - Date : 2026-11-07
 
 ## Contexte
@@ -10,7 +10,7 @@ L'architecture doit permettre à un agent de travailler, se vérifier et livrer 
 ## Décision
 
 - **`AGENTS.md`** racine, source unique (< 150 lignes, à l'impératif : stack, commandes, interdits, définition de terminé). **`CLAUDE.md`** ne contient que `@AGENTS.md`. `AGENTS.md` locaux dans `src/components/` et `src/content/`. Règle incluse : « Lis `docs/adr/` avant toute modification structurelle. Ne contredis jamais un ADR accepté : propose un nouvel ADR. »
-- **`.mcp.json`** committé : doc Astro (MCP officiel), Playwright MCP, Context7. GitHub via `gh`.
+- **`.mcp.json`** committé : Playwright MCP, Context7 (doc des bibliothèques). GitHub via `gh`. Le MCP officiel de la doc Astro prévu au départ n’a plus d’objet depuis 0015.
 - **Hooks Claude Code** (`.claude/settings.json`), actifs en local et dans Actions :
   - PostToolUse : Prettier + lint du fichier modifié ;
   - Stop : `pnpm verify:fast`, l'agent ne peut pas finir si c'est rouge ;
@@ -21,7 +21,7 @@ L'architecture doit permettre à un agent de travailler, se vérifier et livrer 
 ## Alternatives écartées
 
 - **Instructions dupliquées par outil** (`CLAUDE.md` complet, `.cursorrules`…) : divergent avec le temps.
-- **Graphify dès le départ** : vérifié dans son code source (`graphifyy` 0.9.103), il lit les `.vue` mais ne récupère des `.astro` que les imports, pas l'usage des composants dans les templates. Sur un petit repo surtout fait de `.astro`, il apporte peu, ajoute Python (`uv`) aux outils et un `GRAPH_REPORT.md` qui se périme s'il n'est pas régénéré.
+- **Graphify dès le départ** (avec Astro) : vérifié dans son code source (`graphifyy` 0.9.103), il lit les `.vue` mais ne récupère des `.astro` que les imports, pas l'usage des composants dans les templates. Sur un petit repo surtout fait de `.astro`, il apporte peu, ajoute Python (`uv`) aux outils et un `GRAPH_REPORT.md` qui se périme s'il n'est pas régénéré.
 - **Base vectorielle / RAG sur le code** : infrastructure à maintenir pour un petit repo.
 
 ## Conséquences
