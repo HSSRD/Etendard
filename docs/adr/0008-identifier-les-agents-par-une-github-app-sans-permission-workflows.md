@@ -29,13 +29,13 @@ Les agents du skill `ticket` tournent aussi en local, dans Orca. Lancés sous le
 ## Conséquences
 
 - La clé privée de l'App est un secret des workflows d'agents et du seul profil Windows de Flo ; elle ne donne jamais accès à l'Environment `production` (0011).
-- Toute modification de workflow passe par Flo : l'agent prépare la PR sans le fichier de workflow et joint le correctif, que Flo pousse.
+- Toute modification de workflow passe par Flo : l'agent prépare la PR sans le fichier de workflow et joint le correctif, que Flo pousse. Les mises à jour d'actions de Renovate ont leur propre PR, mergée par Flo (`renovate.json`), pour ne pas bloquer le merge automatique des autres mineures.
 - L'App n'a aucune exception dans la protection de `main`.
 - Le skill `ticket` est suivi dans le repo, pour que le clone des agents l'ait.
 
 ## Risques résiduels
 
 - **Code du repo exécuté par Flo** : une PR d'agent hors CODEOWNERS (config, scripts, tests), ou un commit du bot sur une branche que Flo récupère, s'exécute sous le compte de Flo dès qu'il lance `pnpm`, avec accès à son `gh` et à la clé de l'App (point de vigilance de 0011). Le compte dédié ne couvre pas ce cas.
-- **Écriture hors de ces dossiers** : le compte agent peut encore créer des dossiers à la racine de `C:\` et dans `C:\ProgramData`, et ajouter des fichiers dans chaque sous-dossier de `C:\ProgramData` (droits Windows par défaut : `Utilisateurs:(CI)(WD,AD)`), par exemple une DLL à côté d'un logiciel qui s'y exécute sous Flo ; `C:\ProgramData\Git` est fermé d'avance, `C:\ProgramData\ssh` l'est par Windows. `dossiers-ouverts.ps1` ne parcourt pas les dossiers système.
+- **Écriture hors de ces dossiers** : le compte agent peut encore créer des dossiers à la racine de `C:\` et dans `C:\ProgramData`, et ajouter des fichiers dans chaque sous-dossier de `C:\ProgramData` (droits Windows par défaut : `Utilisateurs:(CI)(WD,AD)`), par exemple une DLL à côté d'un logiciel qui s'y exécute sous Flo ; `C:\ProgramData\Git` est fermé d'avance, `C:\ProgramData\ssh` l'est par Windows. À la racine d'un disque autre que `C:\` (`D:\`, `E:\`), il crée et modifie des fichiers (« Utilisateurs authentifiés : Modification » par défaut). Dans `Program Files` et `ProgramData`, `dossiers-ouverts.ps1` signale les règles explicites ouvertes aux Utilisateurs (`C:\Program Files\GOG Galaxy\Games`) sans les retirer : un logiciel peut en dépendre, Flo les ferme à la main.
 - **Lecture et réseau** : `etendard-agent` lit encore les dossiers de Flo hors profil (sauf `C:\04-Projets` et `C:\ProgramData\floxf`) et garde l'accès réseau du PC (tailnet, LAN, Pi, services de Flo sur 127.0.0.1).
 - **Phase A du skill** : elle lit tickets, commentaires et l'état Orca des agents (contenus non fiables, 0011) dans la session de Flo, avec son `gh`.

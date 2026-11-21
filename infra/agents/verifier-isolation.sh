@@ -45,7 +45,7 @@ else
   if [ -z "$ouverts" ]; then
     ok "aucun dossier des disques locaux n'est modifiable par un groupe du compte agent"
   else
-    while IFS= read -r dossier; do ko "$dossier est modifiable (relance l'étape 4)"; done <<<"$ouverts"
+    while IFS= read -r dossier; do ko "$dossier est modifiable (étape 4)"; done <<<"$ouverts"
   fi
 fi
 # Dossiers que l'audit ne parcourt pas : celui de Flo dans ProgramData et le jeton (lecture seule pour l'agent).

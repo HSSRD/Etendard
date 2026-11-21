@@ -55,9 +55,14 @@ orca worktree create --environment etendard-agent \
   --name issue-N-<slug> --branch issue-N-<slug> \
   --no-parent --issue N \
   --agent claude \
-  --prompt "<prompt ci-dessous>" \
+  --prompt "$(cat <<'PROMPT'
+<prompt ci-dessous>
+PROMPT
+)" \
   --json
 ```
+
+- Le prompt passe par ce heredoc entre apostrophes : entre guillemets doubles, bash exécuterait ses passages entre accents graves dans ta propre session.
 
 - Ne passe pas `--base-branch` : le worktree part de la branche par défaut (`main`).
 - Prompt de l'agent : « Tu es l'agent du ticket #N du repo HSSRD/Etendard. Commence par `git fetch origin && git rebase origin/main` : le clone des agents peut être en retard, et les consignes à lire sont celles de `main`. Exécute ensuite la **phase B** du skill `ticket` (`.claude/skills/ticket/SKILL.md`) pour le ticket N, en mode goal, sans t'arrêter avant la fin. Décisions prises avec Flo lors du challenge : <réponses de A2, ou « aucune remarque »>. »

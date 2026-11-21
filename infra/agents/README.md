@@ -75,10 +75,14 @@ règles explicites « Utilisateurs » ou « Tout le monde : Contrôle total », 
 `C:\04-Projets` (dépôt principal compris) et `C:\ProgramData\floxf` sont réservés à Flo, lecture comprise. Pour les
 autres dossiers de tous les disques locaux (cachés compris, comme `C:\OneDriveTemp`), `dossiers-ouverts.ps1` retire
 les droits de tous les groupes dont le compte agent est membre (Utilisateurs, Utilisateurs authentifiés, Tout le monde,
-Interactif, Batch), au premier niveau comme dans les sous-dossiers à règle explicite. Flo garde l'écriture ; les
-Utilisateurs gardent la lecture au premier niveau, et plus bas celle héritée du parent. Les dossiers système et Store (`Windows`, `Program Files`, `WindowsApps`, `XboxGames`…) ne sont touchés sur aucun disque.
-Le parcours prend quelques minutes. Relance-le après avoir créé un dossier à la racine d'un disque ou
-installé un logiciel hors de `Program Files`.
+Interactif, Batch…), au premier niveau comme dans les sous-dossiers à règle explicite. Flo garde l'écriture ; les
+Utilisateurs gardent la lecture au premier niveau, et plus bas celle héritée du parent. Les dossiers système et Store
+(`Windows`, `WindowsApps`, `XboxGames`…) ne sont parcourus sur aucun disque. Dans `Program Files` et `ProgramData`,
+le script signale les sous-dossiers à règle explicite sans les corriger (« à fermer à la main ») : un logiciel peut
+en dépendre, comme `C:\Program Files\GOG Galaxy\Games` pour installer des jeux sans administrateur. Ferme ceux dont
+tu n'as pas besoin (`icacls <dossier> /remove:g *S-1-5-32-545 *S-1-5-11 *S-1-1-0`) ; un dossier laissé ouvert reste
+un risque, noté dans ADR 0008. Le parcours prend quelques minutes. Relance-le après avoir créé un dossier à la racine
+d'un disque ou installé un logiciel.
 
 ```powershell
 # C:\ProgramData\Git\config serait lue comme configuration système par le git de Flo : le dossier est créé fermé.
@@ -174,9 +178,11 @@ les push par le jeton de `hssrd-bot`.
 Appairage, une seule fois, dans la fenêtre `etendard-agent` de l'étape 7 :
 
 ```powershell
-& "$env:LOCALAPPDATA\Programs\orca\resources\bin\orca.cmd" serve --bind 127.0.0.1
+& "$env:LOCALAPPDATA\Programs\orca\resources\bin\orca.cmd" serve --bind 127.0.0.1 --port 6769
 ```
 
+Port fixe, le même dans la tâche planifiée ci-dessous : l'Orca de Flo occupe déjà 6768, le port par défaut, et sans
+`--port` le runtime en prendrait un autre à chaque démarrage, ce qui casserait l'appairage.
 `orca serve` affiche un code `orca://pair?...`. Dans un PowerShell de Flo :
 
 ```powershell
@@ -189,7 +195,7 @@ en tâche planifiée, dans une session sans bureau : un agent n'atteint ni le pr
 
 ```powershell
 $agent = Get-Credential etendard-agent
-$action = New-ScheduledTaskAction -Execute 'C:\Users\etendard-agent\AppData\Local\Programs\orca\resources\bin\orca.cmd' -Argument 'serve --bind 127.0.0.1'
+$action = New-ScheduledTaskAction -Execute 'C:\Users\etendard-agent\AppData\Local\Programs\orca\resources\bin\orca.cmd' -Argument 'serve --bind 127.0.0.1 --port 6769'
 # Sans limite de durée, priorité normale (7 par défaut ralentirait pnpm et Playwright) ; s'il s'arrête : Start-ScheduledTask.
 $reglages = New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -Priority 5
 Register-ScheduledTask -TaskName "Etendard - Orca des agents" -Action $action -Trigger (New-ScheduledTaskTrigger -AtStartup) `
