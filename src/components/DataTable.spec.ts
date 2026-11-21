@@ -34,7 +34,7 @@ test('le tableau passe en liste quand ses colonnes n’ont pas la place', async 
     cells.nth(0).boundingBox(),
     cells.nth(1).boundingBox(),
   ]);
-  // 4 colonnes de 160 px : en liste à 375 px de fenêtre, en tableau à partir de 768 px.
+  // 4 colonnes de 160 px et leurs écarts : en liste à 375 px de fenêtre, en tableau à partir de 768 px.
   if (testInfo.project.name === 'chromium-375') {
     await expect(head).toBeHidden();
     await expect(label).toHaveText('Phase :');

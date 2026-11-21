@@ -4,10 +4,12 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const motifs: [string, RegExp][] = [
-  ['numéro d’exploitant (FRA…)', /\bFRA[A-Za-z0-9]{6,}/],
-  ['« commande n° »', /commande\s+n°/i],
-  ['« n° de commande »', /n°\s*de\s+commande/i],
-  ['« facture »', /\bfactur(?:e|es|é|ation)\b/i],
+  // Au moins un chiffre : « FRAMEWORK » n'est pas un numéro.
+  ['numéro d’exploitant (FRA…)', /\bFRA(?=[A-Za-z0-9]*\d)[A-Za-z0-9]{6,}/],
+  ['« commande n° »', /commande\s+(?:n[°º]|no\.?\s*\d|numéro)/i],
+  ['« n° de commande »', /(?:n[°º]|numéro)\s*de\s+commande/i],
+  // Drapeau u : sans lui, \b ne voit pas « é » comme une lettre (« facturé »).
+  ['« facture »', /(?<![\p{L}\d])factur(?:e|es|ée?s?|ation)(?![\p{L}\d])/iu],
   ['« code promo »', /\bcodes?\s+promo/i],
   ['paramètre d’affiliation d’URL', /[?&](?:tag|ref|aff\w*)=/i],
 ];
@@ -27,6 +29,9 @@ describe('Jamais publié', () => {
     ['Commande n° 0000', '« commande n° »'],
     ['le n° de commande', '« n° de commande »'],
     ['voir la facture', '« facture »'],
+    ['le prix facturé.', '« facture »'],
+    ['Commande nº 0000', '« commande n° »'],
+    ['le numéro de commande', '« n° de commande »'],
     ['un Code promo', '« code promo »'],
     ['https://exemple.test/x?tag=essai-21', 'paramètre d’affiliation d’URL'],
     ['https://exemple.test/x?affid=1', 'paramètre d’affiliation d’URL'],
@@ -38,6 +43,7 @@ describe('Jamais publié', () => {
   it.each([
     'France',
     'FRAME',
+    'FRAMEWORK',
     'une commande passée',
     'référence du moteur',
     'https://exemple.test/?page=2',

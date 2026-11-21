@@ -176,6 +176,53 @@ describe('validateProjectContent', () => {
       }),
       'données jamais publiées',
     ],
+    ...[
+      `https://github.com/HSSRD/Essai/blob/${sha}/docs/bom.md#L12`,
+      `https://github.com/HSSRD/Essai/blob/${sha}/docs/bom.md?plain=1`,
+      `https://github.com/HSSRD/Essai/raw/${sha}/docs/ordre-achat.md`,
+      `https://raw.githubusercontent.com/HSSRD/Essai/${sha}/docs/bom.md`,
+      `https://github.com/HSSRD/Essai/tree/${sha}/docs/commandes`,
+    ].map((href) => [
+      `un lien détourné vers un fichier exclu (${href})`,
+      withBlock({ type: 'links', items: [{ label: 'X', href }] }),
+      'données jamais publiées',
+    ]),
+    [
+      'une source dont le chemin porte une ancre',
+      content([
+        page({
+          sections: [
+            section({
+              source: { path: 'docs/bom.md#L1', sha, date: '2026-11-21' },
+            }),
+          ],
+        }),
+      ]),
+      'sans # ni ?',
+    ],
+    [
+      'une source avec un champ en trop, sans la dire absente',
+      content([
+        page({
+          sections: [
+            section({
+              source: { path: 'README.md', sha, date: '2026-11-21', note: 'x' },
+            }),
+          ],
+        }),
+      ]),
+      'note',
+    ],
+    [
+      'un repo qui n’est pas la racine d’un repo GitHub',
+      content([page()], meta({ repo: 'https://github.com/HSSRD/Essai/' })),
+      'repo : https://github.com/<org>/<repo>',
+    ],
+    [
+      'une cellule sans statut ni prix',
+      withBlock(table([['Carbone', { status: undefined }]])),
+      'cellule : un statut ou un prix',
+    ],
     [
       'un lien vers un fichier non épinglé',
       withBlock({

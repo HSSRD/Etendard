@@ -40,10 +40,10 @@ export default function DataTable({ table }: { table: Table }) {
           dataSet={{ tableHead: '' }}
           style={[styles.row, styles.head]}
         >
-          {table.columns.map((column) => (
+          {table.columns.map((column, index) => (
             <View
               role="columnheader"
-              key={column}
+              key={index}
               dataSet={{ cell: '' }}
               style={styles.cell}
             >

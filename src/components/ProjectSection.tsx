@@ -23,8 +23,8 @@ function SectionBlock({ block }: { block: Block }) {
     case 'list':
       return (
         <View role="list" style={styles.list}>
-          {block.items.map((item) => (
-            <View role="listitem" key={item} style={styles.item}>
+          {block.items.map((item, index) => (
+            <View role="listitem" key={index} style={styles.item}>
               <Text aria-hidden style={typography.body}>
                 •
               </Text>
@@ -38,8 +38,8 @@ function SectionBlock({ block }: { block: Block }) {
     case 'links':
       return (
         <View role="list" style={styles.list}>
-          {block.items.map(({ label, href }) => (
-            <View role="listitem" key={href}>
+          {block.items.map(({ label, href }, index) => (
+            <View role="listitem" key={index}>
               <Text style={typography.body}>
                 <TextLink href={href} rel="noopener" style={typography.link}>
                   {label}

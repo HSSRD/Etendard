@@ -19,6 +19,10 @@ const slug = z
   .string()
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'identifiant en kebab-case');
 
+/** Message propre à une valeur absente ; sinon, le message de Zod. */
+const whenMissing = (message: string) => (issue: { input?: unknown }) =>
+  issue.input === undefined ? message : undefined;
+
 const date = (what: string) =>
   z.iso.date({
     error: (issue) =>
@@ -28,7 +32,10 @@ const date = (what: string) =>
   });
 
 const status = z.enum(Object.keys(statusLabels) as [Status, ...Status[]], {
-  error: `statut inconnu (${Object.keys(statusLabels).join(', ')})`,
+  error: (issue) =>
+    issue.code === 'invalid_value'
+      ? `statut inconnu (${Object.keys(statusLabels).join(', ')})`
+      : undefined,
 });
 
 const price = z
@@ -43,33 +50,46 @@ const source = z.strictObject(
   {
     /** Chemin du fichier dans le repo du projet. */
     path: text.refine(
-      (path) => !path.startsWith('/') && !path.split('/').includes('..'),
-      'chemin relatif à la racine du repo',
+      (path) =>
+        !path.startsWith('/') &&
+        !path.split('/').includes('..') &&
+        !/[#?]/.test(path),
+      'chemin relatif à la racine du repo, sans # ni ?',
     ),
     /** Commit lu, en entier. */
     sha: z
-      .string({ error: 'source sans SHA' })
+      .string({ error: whenMissing('source sans SHA') })
       .regex(/^[0-9a-f]{40}$/, 'SHA complet de 40 caractères hexadécimaux'),
     /** Date du relevé. */
     date: date('source'),
   },
-  { error: 'section sans source' },
+  { error: whenMissing('section sans source') },
 );
 
-/** Lien d'un fichier GitHub : épinglé à un SHA complet, jamais vers un fichier exclu. */
+/** Fichier d'un repo sur github.com : `/<org>/<repo>/<vue>/<ref>/<chemin>`. */
 const githubFile =
-  /^https:\/\/github\.com\/[^/]+\/[^/]+\/(?:blob|tree)\/([^/]+)\/(.+)$/;
+  /^\/[^/]+\/[^/]+\/(?:blob|tree|raw|blame|commits|edit)\/([^/]+)\/(.+)$/;
 
+/** Lien externe : jamais vers un fichier exclu (quel que soit l'hôte), épinglé à un SHA sur GitHub. */
 const href = z
   .url({ protocol: /^https$/, error: 'URL https' })
-  .refine((url) => {
-    const file = githubFile.exec(url);
-    return !file || /^[0-9a-f]{40}$/.test(file[1] ?? '');
-  }, 'lien GitHub vers un fichier : épinglé à un SHA complet')
-  .refine((url) => {
-    const file = githubFile.exec(url);
-    return !file || isLinkable(file[2] ?? '');
-  }, 'lien vers un fichier aux données jamais publiées');
+  .superRefine((value, context) => {
+    const url = new URL(value);
+    const path = decodeURIComponent(url.pathname);
+    if (!isLinkable(path)) {
+      context.addIssue({
+        code: 'custom',
+        message: 'lien vers un fichier aux données jamais publiées',
+      });
+    }
+    const file = url.hostname === 'github.com' && githubFile.exec(path);
+    if (file && !/^[0-9a-f]{40}$/.test(file[1] ?? '')) {
+      context.addIssue({
+        code: 'custom',
+        message: 'lien GitHub vers un fichier : épinglé à un SHA complet',
+      });
+    }
+  });
 
 /** Cellule : un texte, ou un objet qui porte un statut ou un prix. */
 const cell = z.union([
@@ -77,7 +97,7 @@ const cell = z.union([
   z
     .strictObject({ status: status.optional(), price: price.optional() })
     .refine(
-      (value) => Object.keys(value).length === 1,
+      ({ status, price }) => (status === undefined) !== (price === undefined),
       'cellule : un statut ou un prix',
     ),
 ]);
@@ -130,7 +150,12 @@ const projectMetaSchema = z.strictObject({
   summary: prose,
   status,
   /** Racine du repo source. */
-  repo: z.url({ protocol: /^https$/, hostname: /^github\.com$/ }),
+  repo: z
+    .string()
+    .regex(
+      /^https:\/\/github\.com\/[^/]+\/[^/.]+$/,
+      'repo : https://github.com/<org>/<repo>, sans / final',
+    ),
   /** Pages du projet, dans l'ordre de la navigation : l'accueil (slug vide) d'abord. */
   pages: z
     .array(

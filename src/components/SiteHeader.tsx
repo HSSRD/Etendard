@@ -21,7 +21,7 @@ const links = [
 ];
 
 interface Props {
-  /** Préfixe des liens : '/' hors de la one page, pour revenir à ses ancres. */
+  /** Préfixe des liens : '/' hors de la one page, pour y revenir (web : à l'ancre ; iOS et Android : en haut). */
   home?: '' | '/';
 }
 

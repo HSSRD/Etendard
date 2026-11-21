@@ -1,7 +1,11 @@
+import fiches from '../src/content/projects.ts';
 import { existsSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { validateProjectContent } from '../src/lib/validate-project-pages.ts';
-import { validateProjects } from '../src/lib/validate-projects.ts';
+import {
+  validateProjects,
+  type Project,
+} from '../src/lib/validate-projects.ts';
 import { loadProjectContents } from './project-content.ts';
 
 const contents = await loadProjectContents();
@@ -43,5 +47,14 @@ describe('projet de démonstration du styleguide', () => {
     // La carte est une sous-unité : sa racine (factice) la référence.
     const racine = { ...demo.carte, id: 'racine', units: ['demo'] };
     expect(() => validateProjects([racine, demo.carte])).not.toThrow();
+  });
+});
+
+describe('cartes de src/content/projects.ts', () => {
+  it('chaque page déclarée par une carte est celle d’un projet', () => {
+    const dirs = contents.map(({ dir }) => `/projets/${dir}`);
+    for (const { id, page } of fiches as Project[]) {
+      if (page) expect(dirs, `${id} : ${page}`).toContain(page);
+    }
   });
 });
