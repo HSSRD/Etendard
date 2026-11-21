@@ -1,4 +1,4 @@
-# Pi `florasp` : ce qui est en place et pourquoi
+# Pi : ce qui est en place et pourquoi
 
 Ce document explique la préparation du Pi faite au ticket #4 (PR #7). Pour l'installer ou la refaire, suis le [README](README.md). Les décisions de fond sont dans les ADR [0002](../../docs/adr/0002-heberger-sur-le-pi-avec-caddy-et-cloudflare-tunnel.md) (hébergement) et [0006](../../docs/adr/0006-deployer-via-tailscale-et-ssh-a-commande-forcee.md) (déploiement).
 
@@ -13,7 +13,7 @@ Ce document explique la préparation du Pi faite au ticket #4 (PR #7). Pour l'in
 
 ```
 GitHub Actions (nœud éphémère tag:ci)
-   │  Tailscale : tag:ci ne joint que florasp, port 22
+   │  Tailscale : tag:ci ne joint que le Pi, port 22
    ▼
 sshd du Pi ── clé github-deploy ──▶ commande forcée : /usr/local/bin/etendard-receive
                                        │  contrôle l'archive, l'extrait dans releases/<sha>/
@@ -22,13 +22,13 @@ sshd du Pi ── clé github-deploy ──▶ commande forcée : /usr/local/bin
                          /srv/etendard/current ──▶ Caddy (127.0.0.1:8080)
 ```
 
-Pour l'instant, personne d'autre que le Pi ne voit le site. Flo le consulte par un tunnel SSH : `ssh -L 8080:127.0.0.1:8080 flo@192.168.1.41`, puis http://localhost:8080. La publication sur Internet viendra avec Cloudflare Tunnel, dans un autre ticket.
+Pour l'instant, personne d'autre que le Pi ne voit le site. Flo le consulte par un tunnel SSH : `ssh -L 8080:127.0.0.1:8080 <login>@<ip-du-pi>`, puis http://localhost:8080. La publication sur Internet viendra avec Cloudflare Tunnel, dans un autre ticket.
 
 ## Quatre protections, chacune utile si une autre lâche
 
 | Protection | Ce qu'elle empêche | Où |
 |---|---|---|
-| **Tailscale** : `tag:ci` ne joint que `florasp:22` | une machine de CI qui atteindrait Sentry, tes autres appareils ou un autre port | `tailscale-policy.hujson` |
+| **Tailscale** : `tag:ci` ne joint que le port 22 du Pi | une machine de CI qui atteindrait Sentry, tes autres appareils ou un autre port | `tailscale-policy.hujson` |
 | **Clé à commande forcée** : `command="…etendard-receive",restrict` | un terminal, une autre commande, sftp, un tunnel | `~deploy/.ssh/authorized_keys` |
 | **Utilisateur `deploy`** : sans mot de passe, sans sudo, sans groupe | toute action hors de `/srv/etendard` | `install.sh` |
 | **`etendard-receive`** : contrôle de l'archive avant extraction | qu'une archive piégée écrive hors de son dossier ou fasse servir un fichier du système | `etendard-receive` |
@@ -122,7 +122,7 @@ Le script n'accepte que quatre demandes. Tout le reste est refusé.
 
 | Demande | Effet |
 |---|---|
-| aucune, archive sur l'entrée standard : `ssh deploy@florasp < site.tar.gz` | publie une nouvelle version |
+| aucune, archive sur l'entrée standard : `ssh deploy@<hote-du-pi> < site.tar.gz` | publie une nouvelle version |
 | `rollback` | revient à la version publiée juste avant celle servie (rollback manuel) |
 | `restore <sha>` | attend la fin d'un déploiement en cours, puis sert la version `<sha>` (rollback automatique, #54) |
 | `status` | affiche le SHA servi |
@@ -163,10 +163,10 @@ L'ordre des versions repose sur leur date de publication, c'est-à-dire la date 
 - **Tailscale SSH coupé sur le Pi** (`RunSSH: false`). Sinon, il répondrait lui-même sur le port 22 du tailnet, sans lire `authorized_keys` : la commande forcée serait contournée.
 - **Politique** :
   - tes appareils gardent l'accès complet, comme avant ;
-  - `tag:ci` ne joint que `florasp`, et seulement en `tcp:22`.
+  - `tag:ci` ne joint que le Pi, et seulement en `tcp:22`.
 - **Tests dans la politique.** La console refuse d'enregistrer si l'un d'eux échoue :
   - `tag:ci` est refusé sur 5000, 8000, 8080, 80 et 443 ;
-  - `Florianrcht@github` garde 22, 5000 et 8000.
+  - ton identifiant Tailscale garde 22, 5000 et 8000.
 - **Client OAuth `GitHubAction`**, avec une seule portée, `auth_keys`, et le tag `tag:ci`. Même s'il fuit, il ne peut créer que des machines `tag:ci`, donc limitées au port 22 du Pi. `tailscale/github-action` crée avec lui des nœuds éphémères, retirés du tailnet après chaque job.
 
 Le dépôt contient une version générique de la politique, avec des valeurs `À_REMPLACER`. La version complétée (IP du Pi, identifiant de Flo) n'existe que dans la console.
@@ -186,7 +186,7 @@ Le dépôt contient une version générique de la politique, avec des valeurs `�
 
 La Release est publiée par un job séparé, après le déploiement : le job `build` exécute les scripts du repo et ne reçoit donc qu'un jeton en lecture.
 
-**Rollback automatique (#54).** Si une étape échoue après la lecture de `status`, ou si le job est annulé (à la main ou par son délai), le job lance `ssh florasp restore <version lue avant l'envoi>`, en un seul appel. Le Pi attend la fin d'un envoi encore en cours, puis sert cette version si elle ne l'est plus : le site revient exactement à la version d'avant l'envoi, et rien ne bouge si l'envoi n'a rien changé. Si `status` échoue avant l'envoi, le job s'arrête sans rien envoyer : il ne saurait pas où revenir. Seule exception, aucune version encore servie (premier déploiement) : l'envoi a lieu, mais aucun rollback n'est possible. Le job finit en échec (ou annulé) dans tous les cas. L'étape « Vérifier la version servie » a son propre délai, plus court que celui du job : si `ssh florasp status` y reste bloqué, elle échoue, et le rollback tourne sans attendre le délai du job.
+**Rollback automatique (#54).** Si une étape échoue après la lecture de `status`, ou si le job est annulé (à la main ou par son délai), le job lance `ssh pi restore <version lue avant l'envoi>`, en un seul appel. Le Pi attend la fin d'un envoi encore en cours, puis sert cette version si elle ne l'est plus : le site revient exactement à la version d'avant l'envoi, et rien ne bouge si l'envoi n'a rien changé. Si `status` échoue avant l'envoi, le job s'arrête sans rien envoyer : il ne saurait pas où revenir. Seule exception, aucune version encore servie (premier déploiement) : l'envoi a lieu, mais aucun rollback n'est possible. Le job finit en échec (ou annulé) dans tous les cas. L'étape « Vérifier la version servie » a son propre délai, plus court que celui du job : si `ssh pi status` y reste bloqué, elle échoue, et le rollback tourne sans attendre le délai du job.
 
 **Rollback manuel.** Actions > deploy > Run workflow, sur `main`, case `rollback` cochée. Ou :
 
@@ -217,7 +217,8 @@ L'Environment n'accepte que la branche `main` : un workflow lancé depuis une au
 | `TS_OAUTH_CLIENT_ID` | identifiant du client OAuth Tailscale `GitHubAction` |
 | `TS_OAUTH_SECRET` | secret de ce client |
 | `DEPLOY_SSH_KEY` | clé privée `github-deploy`, sur le PC de Flo |
-| `DEPLOY_KNOWN_HOSTS` | clé d'hôte du Pi, au nom `florasp` utilisé par le workflow |
+| `DEPLOY_HOST` | nom court du Pi dans le tailnet (MagicDNS), hôte SSH du workflow (#31 : il n'apparaît pas dans le repo, public) |
+| `DEPLOY_KNOWN_HOSTS` | clé d'hôte du Pi, sous exactement le même nom que `DEPLOY_HOST` (sinon : « Host key verification failed ») |
 | `BREVO_API_KEY` | clé API Brevo, limitée si possible à l'envoi d'e-mails transactionnels |
 | `NOTIFY_EMAIL_FROM` | adresse d'expéditeur, validée dans Brevo |
 | `NOTIFY_EMAIL_TO` | adresse qui reçoit l'e-mail de résultat |
@@ -228,8 +229,9 @@ Pour les saisir ou les faire tourner, dans le bash de Git :
 gh secret set TS_OAUTH_CLIENT_ID --env production -R HSSRD/Etendard   # colle la valeur
 gh secret set TS_OAUTH_SECRET    --env production -R HSSRD/Etendard   # colle la valeur
 gh secret set DEPLOY_SSH_KEY     --env production -R HSSRD/Etendard < ~/.ssh/github-deploy
-ssh flo@192.168.1.41 cat /etc/ssh/ssh_host_ed25519_key.pub \
-  | awk '{print "florasp", $1, $2}' \
+gh secret set DEPLOY_HOST        --env production -R HSSRD/Etendard   # colle le nom du Pi dans le tailnet
+ssh <login>@<ip-du-pi> cat /etc/ssh/ssh_host_ed25519_key.pub \
+  | awk -v hote='<hote-du-pi>' '{print hote, $1, $2}' \
   | gh secret set DEPLOY_KNOWN_HOSTS --env production -R HSSRD/Etendard
 ```
 
