@@ -10,8 +10,8 @@
 	},
 
 	"hosts": {
-		// Adresse Tailscale du Pi : « tailscale ip -4 » sur florasp.
-		"florasp": "À_REMPLACER_IP_TAILSCALE_DE_FLORASP",
+		// Adresse Tailscale du Pi (« tailscale ip -4 » sur le Pi), sous l'alias « pi ».
+		"pi": "À_REMPLACER_IP_TAILSCALE_DU_PI",
 	},
 
 	"grants": [
@@ -19,7 +19,7 @@
 		{"src": ["autogroup:member"], "dst": ["*"], "ip": ["*"]},
 
 		// CI : uniquement le SSH du Pi, pour la clé à commande forcée de deploy.
-		{"src": ["tag:ci"], "dst": ["florasp"], "ip": ["tcp:22"]},
+		{"src": ["tag:ci"], "dst": ["pi"], "ip": ["tcp:22"]},
 	],
 
 	// Tailscale SSH : bloc par défaut, conservé. Il ne concerne pas tag:ci, qui utilise le sshd du Pi.
@@ -36,13 +36,13 @@
 	"tests": [
 		{
 			"src":    "tag:ci",
-			"accept": ["florasp:22"],
-			"deny":   ["florasp:5000", "florasp:8000", "florasp:8080", "florasp:80", "florasp:443"],
+			"accept": ["pi:22"],
+			"deny":   ["pi:5000", "pi:8000", "pi:8080", "pi:80", "pi:443"],
 		},
 		{
 			// Les appareils de Flo gardent leur accès au Pi (SSH et Sentry).
 			"src":    "À_REMPLACER_IDENTIFIANT_TAILSCALE_DE_FLO",
-			"accept": ["florasp:22", "florasp:5000", "florasp:8000"],
+			"accept": ["pi:22", "pi:5000", "pi:8000"],
 		},
 	],
 }

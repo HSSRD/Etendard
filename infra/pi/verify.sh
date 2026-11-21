@@ -2,10 +2,11 @@
 # Produit les preuves des critères 1 à 5 du ticket #4, à coller en commentaire, du critère 4 du ticket #25,
 # du critère 2 du ticket #36, du critère 3 du ticket #52 et des critères 1 et 2 du ticket #41.
 #   sudo bash verify.sh pi      sur le Pi, après install.sh (critères 1, 2, 3 et verrou ; en-têtes, journal, cache)
-#   bash verify.sh ssh          sur le PC, avec la clé privée (critères 1, 4 et 5)
+#   HOST=… FLO=… bash verify.sh ssh   sur le PC, avec la clé privée (critères 1, 4 et 5)
 #   bash verify.sh hsts <domaine>   depuis n'importe quel poste, une fois le site en ligne (HSTS de Cloudflare)
-# Variables du mode ssh : KEY (clé privée, défaut ~/.ssh/github-deploy),
-# HOST (défaut florasp), FLO (défaut flo@192.168.1.41), LAN_IP (défaut 192.168.1.41).
+# Variables du mode ssh : KEY (clé privée, défaut ~/.ssh/github-deploy), HOST (nom du Pi dans le tailnet),
+# FLO (<login>@<ip-du-pi>), LAN_IP (défaut : l'adresse de FLO). HOST et FLO sont obligatoires :
+# le repo ne contient aucune valeur du réseau local (#31).
 # Lecture seule, sauf en mode ssh : publie deux versions de test puis revient à la première.
 set -uo pipefail
 
@@ -137,8 +138,9 @@ mode_pi() {
 }
 
 mode_ssh() {
-  local key="${KEY:-$HOME/.ssh/github-deploy}" host="${HOST:-florasp}"
-  local flo="${FLO:-flo@192.168.1.41}" lan="${LAN_IP:-192.168.1.41}"
+  local key="${KEY:-$HOME/.ssh/github-deploy}" host="${HOST:-}" flo="${FLO:-}"
+  [ -n "$host" ] && [ -n "$flo" ] || { echo "variables HOST et FLO requises : HOST=<hote-du-pi> FLO=<login>@<ip-du-pi> bash verify.sh ssh" >&2; exit 2; }
+  local lan="${LAN_IP:-${flo#*@}}"
   [ -f "$key" ] || { echo "clé privée introuvable : $key (variable KEY)" >&2; exit 1; }
   local ssh=(ssh -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10)
   d="$(mktemp -d)"; trap 'rm -rf "$d"' EXIT
@@ -216,7 +218,7 @@ case "${1:-}" in
   # Un seul nom de domaine : ni schéma, ni chemin, ni port.
   hsts) [[ $# -eq 2 && "$2" =~ ^[A-Za-z0-9.-]+$ ]] || { echo "usage : bash verify.sh hsts <domaine>" >&2; exit 2; }
     mode_hsts "$2" ;;
-  *) echo "usage : sudo bash verify.sh pi   |   bash verify.sh ssh   |   bash verify.sh hsts <domaine>" >&2; exit 2 ;;
+  *) echo "usage : sudo bash verify.sh pi   |   HOST=<hote-du-pi> FLO=<login>@<ip-du-pi> bash verify.sh ssh   |   bash verify.sh hsts <domaine>" >&2; exit 2 ;;
 esac
 
 echo "Bilan : $pass ✅, $fail ❌"

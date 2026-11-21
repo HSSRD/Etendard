@@ -1,4 +1,4 @@
-# Pi `florasp` : recevoir et servir Étendard
+# Pi : recevoir et servir Étendard
 
 Prépare le Pi au déploiement décrit dans les ADR 0002 et 0006 (ticket #4). Le workflow `deploy.yml` (#5) y dépose le site à chaque merge ; ses secrets se saisissent comme indiqué dans [FONCTIONNEMENT.md](FONCTIONNEMENT.md#les-secrets-de-lenvironment-production). Ces fichiers seront repris dans `HSSRD/infra` (Ansible).
 
@@ -23,21 +23,21 @@ Ce qui est en place et pourquoi : [FONCTIONNEMENT.md](FONCTIONNEMENT.md). Ce REA
    ```
 3. **Copier ce dossier et la clé publique sur le Pi**, puis installer (à refaire après chaque modification de ce dossier, `Caddyfile` compris, car `deploy.yml` ne livre que le site) :
    ```bash
-   tar -czf - -C infra/pi . | ssh flo@192.168.1.41 "mkdir -p etendard-pi && tar -xzf - -C etendard-pi"
-   scp ~/.ssh/github-deploy.pub flo@192.168.1.41:etendard-pi/
-   ssh -t flo@192.168.1.41 'cd ~/etendard-pi && sudo bash install.sh github-deploy.pub'
+   tar -czf - -C infra/pi . | ssh <login>@<ip-du-pi> "mkdir -p etendard-pi && tar -xzf - -C etendard-pi"
+   scp ~/.ssh/github-deploy.pub <login>@<ip-du-pi>:etendard-pi/
+   ssh -t <login>@<ip-du-pi> 'cd ~/etendard-pi && sudo bash install.sh github-deploy.pub'
    ```
 4. **Preuves côté Pi** (critères 1 à 3, verrou, en-têtes, journal et cache, Sentry intact) :
    ```bash
-   ssh -t flo@192.168.1.41 'cd ~/etendard-pi && sudo bash verify.sh pi'
+   ssh -t <login>@<ip-du-pi> 'cd ~/etendard-pi && sudo bash verify.sh pi'
    ```
 5. **Preuves côté PC** (critères 1, 4 et 5), dans le bash de Git :
    ```bash
-   bash infra/pi/verify.sh ssh
+   HOST=<hote-du-pi> FLO=<login>@<ip-du-pi> bash infra/pi/verify.sh ssh
    ```
-   Puis à la main : `ssh -L 8080:127.0.0.1:8080 flo@192.168.1.41` et http://localhost:8080 affiche « Page de test e7e7e7a ».
+   Puis à la main : `ssh -L 8080:127.0.0.1:8080 <login>@<ip-du-pi>` et http://localhost:8080 affiche « Page de test e7e7e7a ».
 6. **Tailscale, étapes 4 à 6** : politique `tag:ci` (critère 7 vérifié par le bloc `tests` à l'enregistrement), client OAuth ou fédération d'identité.
-7. Coller les sorties des étapes 4 à 6 dans le ticket.
+7. Coller les sorties des étapes 4 à 6 dans le ticket, après avoir remplacé le nom du Pi, ses adresses, ton login et ton identifiant Tailscale par `<hote-du-pi>`, `<ip-du-pi>`, `<login>`… : le repo est public (#31).
 
 ## À la mise en ligne : HSTS chez Cloudflare
 
