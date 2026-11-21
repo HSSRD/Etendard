@@ -19,10 +19,10 @@ V=~/etendard-valeurs-31.txt
 winget install --id Python.Python.3.13 -e
 # Puis, dans un nouveau terminal :
 py -3 -m pip install --user git-filter-repo
-py -3 -m git_filter_repo --version
+py -3 -m pip show git-filter-repo   # ligne Version : 2.47 ou plus
 ```
 
-La dernière commande affiche un numéro de version. Le script appelle `git filter-repo` s'il est dans le `PATH`, sinon `py -3 -m git_filter_repo`. Il faut la version 2.47 ou plus (`--sensitive-data-removal`) : sous Linux aussi, préfère `pip install --user git-filter-repo` au paquet Debian, plus ancien.
+La ligne `Version` doit valoir 2.47 ou plus (`--sensitive-data-removal`) ; le script le vérifie aussi. Le script appelle `git filter-repo` s'il est dans le `PATH`, sinon `py -3 -m git_filter_repo`. Sous Linux aussi, préfère `pip install --user git-filter-repo` au paquet Debian, plus ancien.
 
 ## 1. Relire les valeurs et geler le repo
 
@@ -112,7 +112,7 @@ Relance `verifier` jusqu'à `Bilan : 0 occurrence(s) hors refs/pull/*`.
 
 GitHub garde les anciens commits dans les références `refs/pull/*` des PR et dans ses vues en cache : seul son support peut les purger. Formulaire : https://support.github.com/contact, catégorie « Remove sensitive data ». Message, **sans aucune valeur** :
 
-> Repository: HSSRD/Etendard (public, no forks). We removed sensitive data from the history with `git filter-repo --sensitive-data-removal` and force-pushed `main`. All other branches, and the tags and releases of the old history, were deleted. Please purge the cached views and the `refs/pull/*` references of all pull requests, which still point to the old commits, and run a garbage collection. First changed commit(s): `<sortie de l'étape 4>`. Git LFS is not used.
+> Repository: HSSRD/Etendard (public, no forks: checked by the script). We removed sensitive data from the history with `git filter-repo --sensitive-data-removal` and force-pushed `main`. All other branches, and the tags and releases of the old history, were deleted. Please purge the cached views and the `refs/pull/*` references of all pull requests, which still point to the old commits, and run a garbage collection. First changed commit(s): `<sortie de l'étape 4>`. Git LFS is not used.
 
 Note le numéro de la demande en commentaire du ticket #31. Une fois la purge faite, `verifier` doit afficher 0 aussi pour `refs/pull/*`.
 

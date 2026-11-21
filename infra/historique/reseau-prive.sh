@@ -26,7 +26,7 @@ lire_valeurs() {
   FICHIER="$dir/$(basename "$1")"
   # git filter-repo garderait le BOM dans la première valeur, qui ne serait jamais remplacée.
   [ "$(head -c 3 "$FICHIER")" != $'\xef\xbb\xbf' ] || die "fichier des valeurs en UTF-8 avec BOM : enregistre-le sans BOM"
-  VALEURS=()
+  VALEURS=() NUMS=()
   local ligne num=0 v
   while IFS= read -r ligne || [ -n "$ligne" ]; do
     num=$((num + 1))
@@ -38,6 +38,7 @@ lire_valeurs() {
     # filter-repo prendrait un commentaire pour une valeur, et une espace en bord ferait rater les autres occurrences.
     case "$v" in '' | '#'* | [[:space:]]* | *[[:space:]]) die "ligne $num : valeur vide, commentaire ou espace en bord : refusée" ;; esac
     VALEURS+=("$v")
+    NUMS+=("$num")
   done < "$FICHIER"
   [ "${#VALEURS[@]}" -gt 0 ] || die "aucune valeur dans $FICHIER"
 }
@@ -49,7 +50,7 @@ compter() {
   echo "$1"
   for i in "${!VALEURS[@]}"; do
     n="$(grep -c -i -F -- "${VALEURS[$i]}" "$2" || true)"
-    echo "  valeur $((i + 1)) : $n"
+    echo "  valeur ${NUMS[$i]} : $n"
     RESTE=$((RESTE + n))
   done
 }
@@ -85,6 +86,9 @@ mode_reecrire() {
   liste="$(git ls-remote --tags "$URL")"
   n="$(grep -c . <<< "$liste" || true)"
   [ "$n" = 0 ] || die "$n tag(s) sur GitHub : supprime les Releases et les tags d'abord (étape 3)"
+  # Un fork garderait les anciens commits : la demande au support (étape 8) suppose qu'il n'y en a pas.
+  n="$(gh api "repos/$REPO" -q .forks_count)"
+  [ "$n" = 0 ] || die "$n fork(s) du repo : leurs anciens commits restent publics, à signaler au support avant tout"
 
   git clone "$URL" "$dossier"
   cd "$dossier"
@@ -117,6 +121,7 @@ mode_verifier() {
   compter "Historique d'un clone neuf, git log --all -p (critère 3)" "$d/historique"
   echo "Branches distantes autres que main (critère 4) : $(git -C "$d/clone" branch -r | grep -cv -e '/main$' -e '/HEAD ' || true)"
   echo "Tags (critère 4) : $(git -C "$d/clone" tag | grep -c . || true)"
+  echo "Forks (critère 6, attendu : 0) : $(gh api "repos/$REPO" -q .forks_count)"
 
   # Textes par l'API REST : une ligne « T <url> <titre et corps en JSON> » et une ligne « I <node_id> » chacun.
   # Puis leurs historiques de modification par GraphQL, 50 identifiants par requête (coût réduit).
@@ -146,13 +151,14 @@ mode_verifier() {
   done
   compter "Textes GitHub, historiques de modification compris (critère 5)" "$textes"
   for i in "${!VALEURS[@]}"; do
-    grep -i -F -- "${VALEURS[$i]}" "$textes" | cut -d' ' -f1 | sort -u | sed "s/^/  valeur $((i + 1)) dans /" || true
+    grep -i -F -- "${VALEURS[$i]}" "$textes" | cut -d' ' -f1 | sort -u | sed "s/^/  valeur ${NUMS[$i]} dans /" || true
   done
 
   # Hors bilan : ces références ne disparaissent qu'à la demande du support GitHub (critère 6).
   git -C "$d/clone" fetch -q origin '+refs/pull/*:refs/pull/*'
   local bilan=$RESTE
-  git -C "$d/clone" log --all -p > "$d/pull"
+  # Seulement ce que les refs/pull/* sont seules à garder (le reste est déjà compté plus haut).
+  git -C "$d/clone" log -p --glob='refs/pull/*/*' --not --remotes --tags > "$d/pull"
   compter "refs/pull/* gardées par GitHub (critère 6, purge par le support)" "$d/pull"
 
   echo "Bilan : $bilan occurrence(s) hors refs/pull/*"
