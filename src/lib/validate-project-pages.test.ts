@@ -208,6 +208,29 @@ describe('validateProjectContent', () => {
       'page-0.ts (section « essai », sections.0.blocks.0.items.0.href) : lien GitHub',
     ],
     [
+      'un fichier brut non épinglé',
+      withBlock({
+        type: 'links',
+        items: [
+          {
+            label: 'X',
+            href: 'https://raw.githubusercontent.com/HSSRD/Essai/main/README.md',
+          },
+        ],
+      }),
+      'épinglé à un SHA complet',
+    ],
+    [
+      'une section à l’id de la mise en page',
+      content([page({ sections: [section({ id: 'haut' })] })]),
+      'id réservé',
+    ],
+    [
+      'une section dont l’id finit par -titre',
+      content([page({ sections: [section({ id: 'essai-titre' })] })]),
+      'id réservé',
+    ],
+    [
       'un lien www.github.com non épinglé',
       withBlock({
         type: 'links',

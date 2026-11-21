@@ -85,6 +85,9 @@ const decoded = (path: string) => {
   }
 };
 
+/** Fichier brut : `/<org>/<repo>/<ref>/<chemin>`. */
+const rawFile = /^\/[^/]+\/[^/]+\/([^/]+)\/(.+)$/;
+
 /** Lien externe : jamais vers un fichier exclu (quel que soit l'hôte), épinglé à un SHA sur GitHub. */
 const href = z
   .url({ protocol: /^https$/, error: 'URL https' })
@@ -100,7 +103,10 @@ const href = z
       });
     }
     const host = url.hostname.replace(/^www\./, '');
-    const file = host === 'github.com' && githubFile.exec(path);
+    const file =
+      host === 'github.com'
+        ? githubFile.exec(path)
+        : host === 'raw.githubusercontent.com' && rawFile.exec(path);
     if (file && !fullSha.test(file[1] ?? '')) {
       context.addIssue({
         code: 'custom',
@@ -142,9 +148,15 @@ const block = z.discriminatedUnion('type', [
   }),
 ]);
 
+/** Ids posés par la mise en page (ProjectLayout, BaseLayout) : jamais ceux d'une section. */
+const layoutIds = new Set(['haut', 'contenu']);
+
 const section = z.strictObject({
-  /** Ancre de la section dans la page. */
-  id: slug,
+  /** Ancre de la section dans la page ; son titre prend l'id `<id>-titre`. */
+  id: slug.refine(
+    (id) => !layoutIds.has(id) && !id.endsWith('-titre'),
+    'id réservé (haut, contenu) ou finissant par -titre',
+  ),
   title: prose,
   status: status.optional(),
   source,

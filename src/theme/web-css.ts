@@ -38,7 +38,7 @@ export const webCss = [
     return (
       `@container (min-width:${n * layout.tableColumn + (n - 1) * layout.tableGap}px){` +
       `${table} [data-table-head]{display:flex}` +
-      `${table} [role="row"]{flex-direction:row}` +
+      `${table} [data-row]{flex-direction:row}` +
       `${table} [data-cell]{flex:1 1 0}` +
       `${table} [data-cell-label]{display:none}}`
     );

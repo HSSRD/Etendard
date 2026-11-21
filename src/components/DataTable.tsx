@@ -38,7 +38,7 @@ export default function DataTable({ table }: { table: Table }) {
         <View
           role="row"
           testID="table-head"
-          dataSet={{ tableHead: '' }}
+          dataSet={{ row: '', tableHead: '' }}
           style={[styles.row, styles.head]}
         >
           {table.columns.map((column, index) => (
@@ -53,7 +53,12 @@ export default function DataTable({ table }: { table: Table }) {
           ))}
         </View>
         {table.rows.map((row, rowIndex) => (
-          <View role="row" key={rowIndex} style={styles.row}>
+          <View
+            role="row"
+            key={rowIndex}
+            dataSet={{ row: '' }}
+            style={styles.row}
+          >
             {row.map((cell, index) => (
               <View
                 role="cell"

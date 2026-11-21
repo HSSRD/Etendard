@@ -31,4 +31,5 @@ Le projet Dragon (https://github.com/HSSRD/Dragon, public) a sa place sur le sit
 - **Bundle natif** : composants en React Native seul, aucune dépendance ajoutée ; `pnpm build:natif` construit les nouvelles routes.
 - **Rendu** : pas de Markdown, donc pas de lien ni de mise en forme dans un paragraphe ; les liens sont des blocs.
 - Le contenu se met à jour à la main ; un écart entre le site et le repo source n'apparaît qu'au contrôle planifié (lot 6) ou à la date affichée.
+- Le Caddy du Pi doit servir une page sans extension (`/projets/dragon/materiel` → `materiel.html`) : `try_files`, ticket #106, avant la première sous-page.
 - Chaque lot ajoute sa route, son fichier de contenu, une ligne dans `projet.ts` et une dans l'index du styleguide s'il crée un composant.

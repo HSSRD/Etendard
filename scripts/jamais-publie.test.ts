@@ -6,14 +6,14 @@ import { describe, expect, it } from 'vitest';
 const motifs: [string, RegExp][] = [
   // Au moins un chiffre : « FRAMEWORK » n'est pas un numéro.
   ['numéro d’exploitant (FRA…)', /\bFRA(?=[A-Za-z0-9]*\d)[A-Za-z0-9]{6,}/],
-  ['« commande n° »', /commande\s*(?:n[°º]|no\.?\s*\d|numéro|#\s*\d)/i],
-  ['« n° de commande »', /(?:n[°º]|numéro)\s*(?:de\s+)?commande/i],
+  ['« commande n° »', /commande\s*(?:n[°º]|no\.?\s*\d|num[ée]ro|#\s*\d)/i],
+  ['« n° de commande »', /(?:n[°º]|\bno\.?|num[ée]ro)\s*(?:de\s+)?commande/i],
   // Drapeau u : sans lui, \b ne voit pas « é » comme une lettre (« facturé »).
   [
     '« facture »',
     /(?<![\p{L}\d])factur(?:e|es|ée?s?|ation|er|ez)(?![\p{L}\d])/iu,
   ],
-  ['« code promo »', /\bcodes?\s+promo/i],
+  ['« code promo »', /\bcodes?[\s-]+promo/i],
   ['paramètre d’affiliation d’URL', /[?&](?:tag|ref|aff\w*)=/i],
 ];
 
@@ -38,6 +38,10 @@ describe('Jamais publié', () => {
     ['voir n° commande 0000', '« n° de commande »'],
     ['la commande #0000', '« commande n° »'],
     ['à facturer', '« facture »'],
+    ['le numero de commande', '« n° de commande »'],
+    ['No de commande', '« n° de commande »'],
+    ['commande numero 0000', '« commande n° »'],
+    ['le code-promo ESSAI', '« code promo »'],
     ['un Code promo', '« code promo »'],
     ['https://exemple.test/x?tag=essai-21', 'paramètre d’affiliation d’URL'],
     ['https://exemple.test/x?affid=1', 'paramètre d’affiliation d’URL'],
@@ -51,6 +55,7 @@ describe('Jamais publié', () => {
     'FRAME',
     'FRAMEWORK',
     'une commande passée',
+    'un piano de commande',
     'référence du moteur',
     'https://exemple.test/?page=2',
   ])('laisse passer « %s »', (text) => {
