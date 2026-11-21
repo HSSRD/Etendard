@@ -20,11 +20,12 @@ Les commandes PowerShell marquées **(admin)** se lancent dans un PowerShell « 
 
 Le skill `ticket` est désormais suivi dans le repo (`.claude/skills/ticket/SKILL.md`), pour que le clone des agents l'ait.
 La copie non suivie du dépôt principal empêcherait `git switch` ou `git pull` de l'apporter : retire-la d'abord.
+La branche est déjà ouverte dans le worktree Orca du ticket : le dépôt principal en prend la tête, détachée.
 
 ```powershell
 cd C:\04-Projets\HSSRD\Etendard
 Remove-Item .claude\skills\ticket\SKILL.md
-git fetch origin; git switch issue-70-identite-agents   # branche relue de la PR, utilisée aux étapes 6 et 9
+git fetch origin; git switch --detach origin/issue-70-identite-agents   # tête relue de la PR, utilisée aux étapes 4, 6 et 9
 ```
 
 ## 1. Créer la GitHub App `hssrd-bot`
@@ -67,12 +68,17 @@ Le profil `C:\Users\floxf` est déjà privé. Mais les dossiers créés à la ra
 « Utilisateurs authentifiés : Modification » : `etendard-agent` pourrait écrire dans le dépôt principal
 (`C:\04-Projets\HSSRD\Etendard\.git\hooks`, exécutés ensuite par le git de Flo) ou dans `C:\03-VSCode`.
 De même, `C:\ProgramData\floxf\GitHubDesktop\bin`, dans le PATH de Flo, est ouvert en écriture aux Utilisateurs :
-un `fnm.cmd` déposé là s'exécuterait sous Flo à l'ouverture de son terminal.
+un `fnm.cmd` déposé là s'exécuterait sous Flo à l'ouverture de son terminal. Des installeurs ajoutent aussi des
+règles explicites « Utilisateurs » ou « Tout le monde : Contrôle total », jusque dans des sous-dossiers
+(`C:\01-Steam`, `D:\02-Jeux\01-Steam`, `GameCenter` de Wargaming) : un exécutable remplacé là tournerait sous Flo.
 
 Le dépôt principal et `C:\ProgramData\floxf` sont réservés à Flo, lecture comprise. Pour les autres dossiers de
-`C:\`, `D:\` et `E:\` (cachés compris, comme `C:\OneDriveTemp`), la boucle retire seulement l'écriture héritée
-des « Utilisateurs authentifiés », sans toucher aux autres droits : les dossiers Windows et Store
-(`WindowsApps`, `WpSystem`…) gardent les leurs. Relance-la après avoir créé un dossier à la racine d'un disque.
+`C:\`, `D:\` et `E:\` (cachés compris, comme `C:\OneDriveTemp`), `dossiers-ouverts.ps1` retire l'écriture de tous
+les groupes dont le compte agent est membre (Utilisateurs, Utilisateurs authentifiés, Tout le monde, Interactif,
+Batch), au premier niveau comme dans les sous-dossiers à règle explicite ; Flo garde l'écriture, les autres droits
+ne changent pas. Les dossiers système de `C:\` (`Windows`, `Program Files`, `WindowsApps`…) ne sont pas touchés.
+Le parcours prend une dizaine de minutes. Relance-le après avoir créé un dossier à la racine d'un disque ou
+installé un logiciel hors de `Program Files`.
 
 ```powershell
 # C:\ProgramData\Git\config serait lue comme configuration système par le git de Flo : le dossier est créé fermé.
@@ -81,23 +87,15 @@ icacls C:\ProgramData\Git /inheritance:r /grant:r "*S-1-5-18:(OI)(CI)F" "*S-1-5-
 foreach ($d in 'C:\04-Projets','C:\ProgramData\floxf') {
   icacls $d /inheritance:r /grant:r "floxf:(OI)(CI)F" "*S-1-5-18:(OI)(CI)F" "*S-1-5-32-544:(OI)(CI)F" /Q
 }
-# Dossiers système exclus sur C: seulement ; sur D: et E:, seuls la corbeille et System Volume Information le sont.
-# Même liste dans le `case` de verifier-isolation.sh (étape 10) : modifie les deux ensemble.
-$systeme = 'Windows','Users','ProgramData','Program Files','Program Files (x86)','WindowsApps','WpSystem','XboxGames','Recovery','Documents and Settings','EtendardAgent'
-# Seuls les dossiers qui accordent encore un droit aux Utilisateurs authentifiés : une relance ne reparcourt pas les autres.
-$authentifies = { (Get-Acl -LiteralPath $_.FullName).GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier]) | Where-Object { $_.IdentityReference.Value -eq 'S-1-5-11' } }
-$dossiers = Get-ChildItem C:\,D:\,E:\ -Directory -Force | Where-Object {
-  $_.Name -notlike '$*' -and $_.Name -ne 'System Volume Information' -and
-  -not ($_.Parent.Name -eq 'C:\' -and $_.Name -in $systeme) -and (& $authentifies)
-}
-foreach ($d in $dossiers) {
-  icacls $d.FullName /inheritance:d /grant "floxf:(OI)(CI)F" /Q   # droits hérités rendus explicites, Flo garde l'écriture…
-  icacls $d.FullName /remove:g "*S-1-5-11" /Q                     # …et les Utilisateurs authentifiés la perdent
-}
+cd C:\04-Projets\HSSRD\Etendard
+powershell -NoProfile -ExecutionPolicy Bypass -File infra\agents\dossiers-ouverts.ps1             # relis la liste avant de corriger
+powershell -NoProfile -ExecutionPolicy Bypass -File infra\agents\dossiers-ouverts.ps1 -Corriger   # affiche les dossiers corrigés
+powershell -NoProfile -ExecutionPolicy Bypass -File infra\agents\dossiers-ouverts.ps1             # attendu : aucune ligne
 icacls C:\04-Projets   # attendu : floxf, SYSTEM, Administrateurs, rien d'autre
 ```
 
-Le script de l'étape 10 essaie d'écrire dans chacun de ces dossiers depuis le compte agent et signale ceux qui restent ouverts.
+Si un logiciel ne se met plus à jour, c'est qu'il passait par ces droits : relance sa mise à jour en administrateur.
+Le script de l'étape 10 refait l'audit depuis le compte agent et signale les dossiers qui restent ouverts.
 
 ## 5. Préparer le dossier du jeton **(admin)**
 
@@ -110,7 +108,7 @@ icacls C:\EtendardAgent /inheritance:r /grant:r "floxf:(OI)(CI)F" "*S-1-5-18:(OI
 
 ## 6. Émettre le jeton toutes les 10 minutes **(admin)**
 
-Depuis le dépôt principal, sur la branche relue de la PR (étape 0, ou `main` après merge), copie le script dans le
+Depuis le dépôt principal, sur la tête relue de la PR (étape 0, ou `main` après merge), copie le script dans le
 profil de Flo : la tâche n'exécute jamais une version du repo qu'un agent aurait pu modifier.
 Recopie-le seulement après avoir relu ses changements (`scripts/jeton-bot.js` est sous CODEOWNERS).
 
@@ -212,17 +210,21 @@ ils s'affichent dans l'Orca de Flo comme ceux de la machine.
 
 ## 9. Imposer la relecture de Flo sur les chemins de `.github/CODEOWNERS`
 
-Depuis le dépôt principal, sur la branche de la PR :
+Depuis le dépôt principal, sur la tête relue de la PR (étape 0) :
 
 ```powershell
 gh api -X POST repos/HSSRD/Etendard/rulesets --input infra/agents/ruleset-relecture-flo.json
 ```
 
 Ce ruleset exige l'approbation d'un code owner (`.github/CODEOWNERS`) pour toute PR qui touche ces chemins.
-Le rôle Admin (Flo) peut le contourner pour ses propres PR, case à cocher au merge ; `hssrd-bot` n'a aucune exception.
-Le bot peut pousser sur toute branche, y compris celle d'une PR de Flo : avant de cocher le contournement,
-vérifie que la tête de la PR est ton propre commit, depuis ta copie locale de la branche
-(`gh pr view <numéro> --json headRefOid -q .headRefOid` doit valoir `git rev-parse HEAD`) ; l'auteur d'un commit, lui, se falsifie.
+Le rôle Admin (Flo) peut le contourner pour ses propres PR ; `hssrd-bot` n'a aucune exception.
+Le bot peut pousser sur toute branche, y compris celle d'une PR de Flo, et l'auteur d'un commit se falsifie.
+Contourne donc depuis ta copie locale de la branche, plutôt que par la case de l'interface : le merge échoue si la tête
+de la PR n'est plus ton commit, même poussé entre ta vérification et le merge.
+
+```powershell
+gh pr merge <numéro> --squash --admin --match-head-commit "$(git rev-parse HEAD)"
+```
 Le ruleset « Bloque push main » reste inchangé (CI verte, branche à jour, squash) et s'applique à tous.
 
 Merge ensuite la PR du ticket #70 : `.github/CODEOWNERS` doit être sur `main` pour que le ruleset ait des chemins à protéger.
@@ -235,7 +237,7 @@ orca worktree create --environment etendard-agent --repo path:C:/Users/etendard-
   --prompt "Lance git fetch origin && git reset --hard origin/main, puis bash infra/agents/verifier-isolation.sh, et poste sa sortie complète en commentaire du ticket #70."
 ```
 
-Le script prend environ une minute et doit finir par « Isolation vérifiée. ».
+Le script prend une dizaine de minutes (audit des dossiers de l'étape 4) et doit finir par « Isolation vérifiée. ».
 Le commentaire posté par `hssrd-bot` prouve à lui seul que les PR et commentaires des agents sont au nom du bot.
 
 ## Révoquer

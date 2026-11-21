@@ -33,17 +33,21 @@ else
 fi
 
 echo "== 2. Fichiers de Flo"
-for chemin in "$PROFIL" "$PROFIL/.ssh" "$PROFIL/AppData/Roaming/GitHub CLI/hosts.yml" "$PROFIL/.etendard" "$DEPOT_FLO"; do
+for chemin in "$PROFIL" "$PROFIL/.ssh" "$PROFIL/AppData/Roaming/GitHub CLI/hosts.yml" "$PROFIL/.etendard" "$DEPOT_FLO" /c/ProgramData/floxf; do
   if ls "$chemin" >/dev/null 2>&1; then ko "$chemin est lisible"; else ok "$chemin est inaccessible"; fi
 done
-# Un dossier de Flo modifiable laisserait planter du code qu'il exécute (hooks git, PATH…).
-# Mêmes dossiers que l'étape 4 du README, plus le dossier du jeton (lecture seule pour l'agent).
-for dossier in /c/*/ /d/*/ /e/*/ /c/ProgramData/floxf/ /c/EtendardAgent/gh/; do
+# Un dossier de Flo modifiable laisserait planter du code qu'il exécute (hooks git, PATH, exécutables de jeux…).
+# Même audit qu'à l'étape 4 du README, vu depuis le compte agent (une dizaine de minutes).
+if ! ouverts=$(powershell -NoProfile -ExecutionPolicy Bypass -File "$(dirname "$0")/dossiers-ouverts.ps1"); then
+  ko "audit des dossiers impossible (dossiers-ouverts.ps1)"
+elif ouverts=$(tr -d '\r' <<<"$ouverts") && [ -z "$ouverts" ]; then
+  ok "aucun dossier de C:, D: et E: n'est modifiable par un groupe du compte agent"
+else
+  while IFS= read -r dossier; do ko "$dossier est modifiable (relance l'étape 4)"; done <<<"$ouverts"
+fi
+# Dossiers que l'audit ne parcourt pas : celui de Flo dans ProgramData et le jeton (lecture seule pour l'agent).
+for dossier in /c/ProgramData/floxf/ /c/EtendardAgent/gh/; do
   [ -d "$dossier" ] || continue
-  case "$dossier" in
-    /?/\$*/ | /?/"System Volume Information"/) continue ;;
-    /c/Windows/ | /c/Users/ | /c/ProgramData/ | /c/"Program Files"*/ | /c/WindowsApps/ | /c/WpSystem/ | /c/XboxGames/ | /c/Recovery/ | /c/"Documents and Settings"/ | /c/EtendardAgent/) continue ;;
-  esac
   if (: >"${dossier}test-isolation-$ID") 2>/dev/null || mkdir "${dossier}test-isolation-$ID" 2>/dev/null; then
     rm -rf "${dossier}test-isolation-$ID"
     ko "$dossier est modifiable"
