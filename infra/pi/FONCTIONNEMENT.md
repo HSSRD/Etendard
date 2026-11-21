@@ -68,7 +68,11 @@ La CSP n'est écrite que dans le `Caddyfile`. `tests/csp.spec.ts` l'y lit, sert 
 
 **Le `Caddyfile` ne part pas avec le site.** Sans `script-src 'self'` (Caddyfile d'avant #76), le site Expo s'affiche quand même : son HTML est pré-rendu, ses styles sont en fichiers ; seul son JavaScript est bloqué. `deploy.yml` ne livre que les fichiers du site ; le `Caddyfile` s'applique en relançant `install.sh` sur le Pi (étape 3 du [README](README.md)). Une PR qui change la CSP pour une nouvelle ressource doit donc être appliquée sur le Pi au moment du merge, sinon le Pi bloque cette ressource. `verify.sh pi` compare le `Caddyfile` installé et les en-têtes servis à la copie du dossier copié sur le Pi : il ne voit l'écart avec le repo que si ce dossier a été recopié.
 
-**HSTS est posé par Cloudflare, pas par Caddy.** HSTS engage tout le domaine en HTTPS ; c'est Cloudflare qui détient ce domaine et son certificat, et le HTTPS des visiteurs s'y termine (ADR 0002). Cloudflare répond aussi seul, par exemple avec sa page d'erreur quand le Pi est éteint : un HSTS posé par Caddy y manquerait. Il s'active dans le tableau de bord Cloudflare (SSL/TLS > Edge Certificates > HSTS), avec la mise en ligne et le domaine.
+**HSTS est posé par Cloudflare, pas par Caddy.** HSTS engage le nom du site en HTTPS (et ses sous-domaines avec `includeSubDomains`) ; c'est Cloudflare qui détient ce domaine et son certificat, et le HTTPS des visiteurs s'y termine (ADR 0002). Cloudflare répond aussi seul, par exemple avec sa page d'erreur quand le Pi est éteint : un HSTS posé par Caddy y manquerait. Il s'active dans le tableau de bord Cloudflare (SSL/TLS > Edge Certificates > HSTS), avec la mise en ligne et le domaine (#41).
+
+**Valeur retenue : `max-age=31536000`**, soit un an, **sans `includeSubDomains` ni `preload`**. Un an est la durée courante. `includeSubDomains` imposerait HTTPS à tous les sous-domaines, y compris ceux qui ne sont pas encore décidés. `preload` permet de demander l'inscription du domaine (sur hstspreload.org, qui exige aussi `includeSubDomains`) dans la liste intégrée aux navigateurs, dont on ne sort qu'en plusieurs mois. On pourra les ajouter plus tard ; les retirer serait lent.
+
+`bash verify.sh hsts <domaine>`, lancé depuis n'importe quel poste, lit l'en-tête sur `/` (200) et sur une page absente (404) du domaine public, ce qui écarte une page d'erreur de Cloudflare, et n'accepte que cette valeur exacte, dans un seul en-tête. `test/verify-hsts.test.sh` (dans `pnpm test:infra`) teste cette vérification avec un faux `curl`, sans le site en ligne. La procédure est dans le [README](README.md#à-la-mise-en-ligne--hsts-chez-cloudflare).
 
 #### Le cache des fichiers `/_expo/static/` (#36, #76)
 
@@ -249,6 +253,7 @@ La clé d'hôte est lue sur le Pi lui-même, par le réseau local, plutôt que p
 
 - **`test/etendard-receive.test.sh`** : tests locaux sur des archives saines et piégées, le verrou et `restore`. Ils n'ont pas besoin du Pi.
 - **`verify.sh pi`**, sur le Pi, et **`verify.sh ssh`**, depuis le PC : ils rejouent les critères du ticket et affichent ✅ ou ❌. Le 2026-11-07, le bilan était de 20/0 et 21/0. Les sorties complètes sont dans le ticket #4.
+- **`verify.sh hsts <domaine>`**, depuis n'importe quel poste une fois le site en ligne : HSTS posé par Cloudflare (#41). `test/verify-hsts.test.sh` le teste sans le site.
 - **Tests Tailscale** : ils sont rejoués par la console à chaque modification de la politique.
 
 Relance `verify.sh` après toute intervention sur le Pi : mise à jour système, réinstallation, changement de configuration SSH.
