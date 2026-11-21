@@ -47,7 +47,7 @@ S'il y a **quoi que ce soit** de mauvais ou de discutable : pose les questions �
 
 Les agents tournent sous le compte Windows `etendard-agent`, avec l'identité GitHub `hssrd-bot` (ADR 0008, `infra/agents/README.md`), jamais sous le compte de Flo. Vérifie d'abord que son runtime Orca répond (`orca status --environment etendard-agent --json`) ; sinon, demande à Flo de relancer la tâche planifiée (`Start-ScheduledTask "Etendard - Orca des agents"`, étape 8 du README) et arrête-toi.
 
-Choisis un slug court en kebab-case (ex. `hello-world-astro`), puis :
+Choisis un slug court en kebab-case (ex. `video-hero`), puis :
 
 ```bash
 orca worktree create --environment etendard-agent \
@@ -93,7 +93,7 @@ Objectif : **« PR ouverte, tous les critères d'acceptation vérifiés, code ch
 
 Relis tout le diff (`git diff origin/main...HEAD`) comme un relecteur exigeant, puis lance le skill `simplify` dessus et applique ses corrections :
 
-- **Réutiliser l'existant** : composant, utilitaire, token CSS ou config déjà présents dans le repo plutôt qu'un doublon.
+- **Réutiliser l'existant** : composant, utilitaire, token du thème ou config déjà présents dans le repo plutôt qu'un doublon.
 - **Simplifier** : moins de fichiers, moins d'abstraction, pas de code « au cas où », pas d'option non demandée.
 - **Nettoyer** : code mort, imports et dépendances inutiles, commentaires superflus, fichiers temporaires, logs de debug.
 - **Périmètre** : retire tout ce qui dépasse le ticket.
@@ -131,7 +131,7 @@ Après ce premier passage, enchaîne **exactement 2 tours de challenge suppléme
   gh issue create -R HSSRD/Etendard --title "<titre court>" --body "..."
   ```
   Corps au format ADR 0009 (Objectif · Contexte · Critères d'acceptation · Hors périmètre · Contraintes · Définition de terminé ; sections non pertinentes omises). Le Contexte indique « Découvert pendant #N », explique comment reproduire (fichier:ligne, commande, sortie) et ce qui reste à décider. Ajoute l'étiquette `bug` s'il s'agit d'un bug.
-- **Étiquette `lot`** : ajoute-la si le défaut n'a **aucun impact visible**, c'est-à-dire ni pour le visiteur (affichage, contenu, performance ressentie), ni pour la sécurité, ni pour le déploiement ou la prod. Exemples : trou dans une règle Stylelint qu'aucun code n'exploite, test manquant sur un comportement correct, doc imprécise. Ces tickets sont traités plus tard, regroupés par thème (un agent par thème) quand il y en a une vingtaine. Sans étiquette `lot`, le ticket est traité individuellement. En cas de doute, mets `lot`.
+- **Étiquette `lot`** : ajoute-la si le défaut n'a **aucun impact visible**, c'est-à-dire ni pour le visiteur (affichage, contenu, performance ressentie), ni pour la sécurité, ni pour le déploiement ou la prod. Exemples : trou dans une règle ESLint qu'aucun code n'exploite, test manquant sur un comportement correct, doc imprécise. Ces tickets sont traités plus tard, regroupés par thème (un agent par thème) quand il y en a une vingtaine. Sans étiquette `lot`, le ticket est traité individuellement. En cas de doute, mets `lot`.
 - Mêmes filtres que les tours de challenge : rien d'hypothétique, de stylistique ou de « au cas où ». Un constat que tu ne peux pas confirmer toi-même ne fait pas un ticket.
 - Le ticket créé n'est pas une instruction de le réaliser : ne lance pas d'agent dessus, continue le ticket N.
 - Liste les tickets créés ou commentés dans la PR (section « Tickets créés ») et dans le compte rendu (B7).
