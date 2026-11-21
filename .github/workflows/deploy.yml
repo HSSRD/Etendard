@@ -1,4 +1,4 @@
-# Déploie le site sur le Pi florasp à chaque push sur main (ADR 0006, ticket #5).
+# Déploie le site sur le Pi à chaque push sur main (ADR 0006, ticket #5).
 # Fonctionnement, secrets et rollback : infra/pi/FONCTIONNEMENT.md.
 name: deploy
 
@@ -26,7 +26,7 @@ jobs:
       contents: read
     # pnpm verify lance Playwright : même image que ci.yml (ADR 0003).
     container:
-      image: mcr.microsoft.com/playwright:v1.64.1-noble@sha256:2f05f8a734509a7b3f26a912639488ee08f58a7b292d14d62271bcff9038768f
+      image: mcr.microsoft.com/playwright:v1.65.1-noble@sha256:1507cbfc550a63a6b7396791ca4f00df17beb56342d2447b3f106c306f525579
       options: --ipc=host
     outputs:
       sha256: ${{ steps.archive.outputs.sha256 }}
@@ -84,18 +84,24 @@ jobs:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
           tags: tag:ci
+      # Le nom du Pi dans le tailnet reste un secret (#31) : « pi » n'est qu'un alias local.
       - &ssh
         name: Configurer SSH (empreinte du Pi vérifiée)
         env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
         run: |
+          if [ -z "$DEPLOY_HOST" ]; then
+            echo "::error::secret DEPLOY_HOST absent de production"
+            exit 1
+          fi
           install -d -m 700 ~/.ssh
           install -m 600 /dev/null ~/.ssh/deploy
           printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
-          cat > ~/.ssh/config <<'EOF'
-          Host florasp
+          printf 'Host pi\n  HostName %s\n' "$DEPLOY_HOST" > ~/.ssh/config
+          cat >> ~/.ssh/config <<'EOF'
             User deploy
             IdentityFile ~/.ssh/deploy
             IdentitiesOnly yes
@@ -109,7 +115,7 @@ jobs:
         id: before
         timeout-minutes: 1
         run: |
-          if sha="$(ssh florasp status 2> status.err)"; then
+          if sha="$(ssh pi status 2> status.err)"; then
             echo "sha=$sha" >> "$GITHUB_OUTPUT"
           elif grep -q 'aucune version servie' status.err; then
             echo "::warning::aucune version servie avant l'envoi : pas de rollback possible"
@@ -119,12 +125,12 @@ jobs:
           fi
       - name: Envoyer l'archive
         id: envoi
-        run: ssh florasp < etendard.tar.gz
+        run: ssh pi < etendard.tar.gz
       # Un status bloqué échoue ici plutôt qu'au délai du job.
       - name: Vérifier la version servie
         timeout-minutes: 2
         run: |
-          served="$(ssh florasp status)"
+          served="$(ssh pi status)"
           echo "servie : $served — attendue : $GITHUB_SHA"
           [ "$served" = "$GITHUB_SHA" ]
       # restore attend la fin d'un envoi encore en cours sur le Pi (annulation),
@@ -137,7 +143,7 @@ jobs:
         env:
           BEFORE: ${{ steps.before.outputs.sha }}
         run: |
-          out="$(ssh florasp restore "$BEFORE")"
+          out="$(ssh pi restore "$BEFORE")"
           echo "$out"
           case "$out" in "retour à la version"*) echo "effectue=true" >> "$GITHUB_OUTPUT" ;; esac
       # Version servie en fin de job, reprise dans l'e-mail de résultat.
@@ -147,7 +153,7 @@ jobs:
         if: always()
         timeout-minutes: 1
         continue-on-error: true # simple lecture : ne change jamais le résultat du job
-        run: echo "sha=$(ssh florasp status || true)" >> "$GITHUB_OUTPUT"
+        run: echo "sha=$(ssh pi status || true)" >> "$GITHUB_OUTPUT"
 
   release:
     needs: deploy
@@ -184,9 +190,9 @@ jobs:
       - *ssh
       - name: Revenir à la version précédente
         run: |
-          echo "servie avant : $(ssh florasp status)"
-          ssh florasp rollback
-          echo "servie après : $(ssh florasp status)"
+          echo "servie avant : $(ssh pi status)"
+          ssh pi rollback
+          echo "servie après : $(ssh pi status)"
       - *servi
 
   # E-mail Brevo après chaque déploiement ou rollback, quel qu'en soit le résultat (#32).

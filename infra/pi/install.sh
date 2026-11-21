@@ -103,4 +103,4 @@ fi
 systemctl is-enabled caddy
 systemctl is-active caddy
 
-step "Terminé. Preuves : sudo bash verify.sh pi (sur le Pi), puis bash verify.sh ssh (sur le PC)."
+step "Terminé. Preuves : sudo bash verify.sh pi (sur le Pi), puis HOST=<hote-du-pi> FLO=<login>@<ip-du-pi> bash verify.sh ssh (sur le PC)."
