@@ -72,11 +72,11 @@ un `fnm.cmd` déposé là s'exécuterait sous Flo à l'ouverture de son terminal
 règles explicites « Utilisateurs » ou « Tout le monde : Contrôle total », jusque dans des sous-dossiers
 (`C:\01-Steam`, `D:\02-Jeux\01-Steam`, `GameCenter` de Wargaming) : un exécutable remplacé là tournerait sous Flo.
 
-Le dépôt principal et `C:\ProgramData\floxf` sont réservés à Flo, lecture comprise. Pour les autres dossiers de
-tous les disques locaux (cachés compris, comme `C:\OneDriveTemp`), `dossiers-ouverts.ps1` retire l'écriture de tous
-les groupes dont le compte agent est membre (Utilisateurs, Utilisateurs authentifiés, Tout le monde, Interactif,
-Batch), au premier niveau comme dans les sous-dossiers à règle explicite ; Flo garde l'écriture, les autres droits
-ne changent pas. Les dossiers système et Store (`Windows`, `Program Files`, `WindowsApps`, `XboxGames`…) ne sont touchés sur aucun disque.
+`C:\04-Projets` (dépôt principal compris) et `C:\ProgramData\floxf` sont réservés à Flo, lecture comprise. Pour les
+autres dossiers de tous les disques locaux (cachés compris, comme `C:\OneDriveTemp`), `dossiers-ouverts.ps1` retire
+les droits de tous les groupes dont le compte agent est membre (Utilisateurs, Utilisateurs authentifiés, Tout le monde,
+Interactif, Batch), au premier niveau comme dans les sous-dossiers à règle explicite. Flo garde l'écriture ; les
+Utilisateurs gardent la lecture au premier niveau, et plus bas celle héritée du parent. Les dossiers système et Store (`Windows`, `Program Files`, `WindowsApps`, `XboxGames`…) ne sont touchés sur aucun disque.
 Le parcours prend quelques minutes. Relance-le après avoir créé un dossier à la racine d'un disque ou
 installé un logiciel hors de `Program Files`.
 
