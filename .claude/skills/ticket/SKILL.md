@@ -139,7 +139,7 @@ Après ce premier passage, enchaîne **exactement 2 tours de challenge suppléme
 ## B5. Vérifier
 
 - Rejoue chaque critère d'acceptation un par un (commandes réelles, pas de supposition) et note le résultat.
-- Si `pnpm verify` existe, il doit passer (ADR 0005). Sous Windows, les tests visuels Playwright peuvent échouer hors Docker : signale-le plutôt que de modifier les captures de référence.
+- `pnpm verify` doit passer (ADR 0005). Hors Docker, les captures `toHaveScreenshot` sont ignorées et la CI fait foi : si elle échoue sur une capture, suis « Captures sans Docker » d'`AGENTS.md`, jamais de modification à la main.
 - Un critère impossible à satisfaire → ne maquille pas : signale-le dans la PR et dans le compte rendu.
 
 ## B6. Livrer

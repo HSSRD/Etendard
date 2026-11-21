@@ -82,6 +82,7 @@ foreach ($d in 'C:\04-Projets','C:\ProgramData\floxf') {
   icacls $d /inheritance:r /grant:r "floxf:(OI)(CI)F" "*S-1-5-18:(OI)(CI)F" "*S-1-5-32-544:(OI)(CI)F" /Q
 }
 # Dossiers système exclus sur C: seulement ; sur D: et E:, seuls la corbeille et System Volume Information le sont.
+# Même liste dans le `case` de verifier-isolation.sh (étape 10) : modifie les deux ensemble.
 $systeme = 'Windows','Users','ProgramData','Program Files','Program Files (x86)','WindowsApps','WpSystem','XboxGames','Recovery','Documents and Settings','EtendardAgent'
 # Seuls les dossiers qui accordent encore un droit aux Utilisateurs authentifiés : une relance ne reparcourt pas les autres.
 $authentifies = { (Get-Acl -LiteralPath $_.FullName).GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier]) | Where-Object { $_.IdentityReference.Value -eq 'S-1-5-11' } }
