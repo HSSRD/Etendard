@@ -1,6 +1,8 @@
 // Carte d'un projet (ticket #14) : titre, résumé et paragraphes de sa fiche.
 // `intro` : présentation sans cadre, pour le projet qui chapeaute ses sous-unités.
+// Une fiche qui déclare sa `page` (ADR 0016) porte un lien vers elle.
 import { Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { TextLink } from '@/lib/anchors';
 import type { Project } from '@/lib/validate-projects';
 import { themedStyles } from '@/theme/theme';
 import { borderWidth, fontSize, radius, shadow, space } from '@/theme/tokens';
@@ -34,6 +36,13 @@ export default function ProjectCard({ project, intro = false, style }: Props) {
           </Text>
         ))}
       </View>
+      {project.page && (
+        <Text role={paragraph} style={typography.body}>
+          <TextLink href={project.page} style={typography.link}>
+            Voir la page du projet {project.title}
+          </TextLink>
+        </Text>
+      )}
     </View>
   );
 }

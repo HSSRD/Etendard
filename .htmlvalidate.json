@@ -10,6 +10,10 @@
     "attr-case": ["error", { "style": ["lowercase", "camelcase"] }],
     "attribute-boolean-style": "off",
     "no-redundant-role": "off",
+    "prefer-native-element": [
+      "error",
+      { "exclude": ["table", "row", "rowgroup", "cell", "columnheader"] }
+    ],
     "valid-id": ["error", { "relaxed": true }],
     "void-style": "off"
   }

@@ -44,9 +44,12 @@ captures en écart et échoue quand même.
 
 ## Structure
 
-- `src/app/` : routes d'Expo Router (`index.tsx` : la one page ; `+html.tsx` : gabarit HTML du web ; `styleguide/`).
+- `src/app/` : routes d'Expo Router (`index.tsx` : la one page ; `projets/<projet>/` : pages de projet, ADR 0016 ;
+  `+html.tsx` : gabarit HTML du web ; `styleguide/`).
 - `src/components/`, `src/layouts/` (`BaseLayout`), `src/lib/` (ancres et liens, projets), `src/theme/` (tokens, thème),
-  `src/content/projects.ts` (fiches validées au build par `src/lib/validate-projects.ts`).
+  `src/content/projects.ts` (fiches validées au build par `src/lib/validate-projects.ts`), `src/content/projets/<projet>/`
+  (`projet.ts` et une page par fichier, validés par `src/lib/validate-project-pages.ts` ; `scripts/jamais-publie.test.ts`
+  y refuse les données jamais publiées).
 - Variante d'une plateforme : `X.web.tsx` (web) à côté de `X.tsx` (iOS et Android), mêmes props.
 - `docs/dependances.md` : raison de chaque dépendance et configuration. Une dépendance ajoutée ou retirée y met à jour
   sa ligne ; versions et classement suivent ADR 0013 (`scripts/dependances.test.ts` vérifie la liste des dépendances et leurs versions).

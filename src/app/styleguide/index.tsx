@@ -12,6 +12,11 @@ const pages = [
   ['hero', 'Hero'],
   ['project-card', 'ProjectCard'],
   ['projects-section', 'ProjectsSection'],
+  ['status-badge', 'StatusBadge'],
+  ['data-table', 'DataTable'],
+  ['project-header', 'ProjectHeader'],
+  ['project-section', 'ProjectSection'],
+  ['project-nav', 'ProjectNav'],
 ] as const;
 
 export default function Styleguide() {
