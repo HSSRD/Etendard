@@ -5,8 +5,6 @@ import type { ProjectMeta } from '../../../lib/validate-project-pages';
 export default {
   id: 'dragon',
   title: 'Dragon',
-  summary:
-    'Un quadricoptère construit de A à Z, où chaque choix est documenté, justifié et challengé.',
   status: 'en-cours',
   repo: 'https://github.com/HSSRD/Dragon',
   pages: [{ slug: '', label: 'Présentation' }],

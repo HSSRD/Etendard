@@ -19,6 +19,12 @@ const slug = z
   .string()
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'identifiant en kebab-case');
 
+/** Page d'un projet : vide pour son accueil. */
+const pageSlug = z.union([z.literal(''), slug]);
+
+/** SHA complet d'un commit. */
+const fullSha = /^[0-9a-f]{40}$/;
+
 /** Message propre à une valeur absente ; sinon, le message de Zod. */
 const whenMissing = (message: string) => (issue: { input?: unknown }) =>
   issue.input === undefined ? message : undefined;
@@ -59,7 +65,7 @@ const source = z.strictObject(
     /** Commit lu, en entier. */
     sha: z
       .string({ error: whenMissing('source sans SHA') })
-      .regex(/^[0-9a-f]{40}$/, 'SHA complet de 40 caractères hexadécimaux'),
+      .regex(fullSha, 'SHA complet de 40 caractères hexadécimaux'),
     /** Date du relevé. */
     date: date('source'),
   },
@@ -74,6 +80,8 @@ const githubFile =
 const href = z
   .url({ protocol: /^https$/, error: 'URL https' })
   .superRefine((value, context) => {
+    // Zod passe ici même quand z.url a échoué : une URL invalide est déjà signalée.
+    if (!URL.canParse(value)) return;
     const url = new URL(value);
     const path = decodeURIComponent(url.pathname);
     if (!isLinkable(path)) {
@@ -83,7 +91,7 @@ const href = z
       });
     }
     const file = url.hostname === 'github.com' && githubFile.exec(path);
-    if (file && !/^[0-9a-f]{40}$/.test(file[1] ?? '')) {
+    if (file && !fullSha.test(file[1] ?? '')) {
       context.addIssue({
         code: 'custom',
         message: 'lien GitHub vers un fichier : épinglé à un SHA complet',
@@ -137,7 +145,7 @@ const projectPageSchema = z.strictObject({
   /** Identifiant du projet (son dossier). */
   project: slug,
   /** Vide pour l'accueil du projet. */
-  slug: z.union([z.literal(''), slug]),
+  slug: pageSlug,
   title: prose,
   /** Une phrase : résumé sous le titre et description de la page. */
   description: prose,
@@ -147,7 +155,6 @@ const projectPageSchema = z.strictObject({
 const projectMetaSchema = z.strictObject({
   id: slug,
   title: prose,
-  summary: prose,
   status,
   /** Racine du repo source. */
   repo: z
@@ -157,11 +164,7 @@ const projectMetaSchema = z.strictObject({
       'repo : https://github.com/<org>/<repo>, sans / final',
     ),
   /** Pages du projet, dans l'ordre de la navigation : l'accueil (slug vide) d'abord. */
-  pages: z
-    .array(
-      z.strictObject({ slug: z.union([z.literal(''), slug]), label: prose }),
-    )
-    .min(1),
+  pages: z.array(z.strictObject({ slug: pageSlug, label: prose })).min(1),
 });
 
 export type ProjectPage = z.infer<typeof projectPageSchema>;

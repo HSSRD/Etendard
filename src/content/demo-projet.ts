@@ -10,7 +10,6 @@ const repo = 'https://github.com/HSSRD/Dragon';
 const projet: ProjectMeta = {
   id: 'demo',
   title: 'Démonstration',
-  summary: 'Un projet de démonstration des pages de projet.',
   status: 'en-cours',
   repo,
   pages: [

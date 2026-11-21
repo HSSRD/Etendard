@@ -26,7 +26,6 @@ const page = (overrides: Record<string, unknown> = {}) => ({
 const meta = (overrides: Record<string, unknown> = {}) => ({
   id: 'essai',
   title: 'Essai',
-  summary: 'Un projet d’essai.',
   status: 'en-cours',
   repo: 'https://github.com/HSSRD/Essai',
   pages: [{ slug: '', label: 'Présentation' }],
@@ -187,6 +186,14 @@ describe('validateProjectContent', () => {
       withBlock({ type: 'links', items: [{ label: 'X', href }] }),
       'données jamais publiées',
     ]),
+    [
+      'un lien qui n’est pas une URL, sans masquer le fichier',
+      withBlock({
+        type: 'links',
+        items: [{ label: 'X', href: 'pas une url' }],
+      }),
+      'page-0.ts (section « essai », sections.0.blocks.0.items.0.href) : URL https',
+    ],
     [
       'une source dont le chemin porte une ancre',
       content([
