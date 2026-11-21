@@ -37,16 +37,31 @@
       "minimumReleaseAge": null
     },
     {
-      "description": "peerDependencies serrées (ADR 0001, ADR 0004) : PR séparées, merge humain.",
-      "matchPackageNames": ["typescript", "stylelint"],
+      "description": "TypeScript suit le SDK Expo (ADR 0015) : PR séparée, merge humain.",
+      "matchPackageNames": ["typescript"],
       "groupName": null,
       "automerge": false
     },
     {
-      "description": "Majeures écartées par l'ADR 0001 et l'ADR 0004 : listées dans le tableau de bord, sans PR, jusqu'à leur approbation.",
-      "matchPackageNames": ["typescript", "stylelint"],
+      "description": "Majeure de TypeScript : listée dans le tableau de bord, sans PR, jusqu'à son approbation.",
+      "matchPackageNames": ["typescript"],
       "matchUpdateTypes": ["major"],
       "dependencyDashboardApproval": true
+    },
+    {
+      "description": "Pile Expo (ADR 0015) : les versions de React, React Native et des modules Expo sont fixées par le SDK. Une seule PR, merge humain ; la montée de SDK se fait avec `expo install --fix`.",
+      "matchPackageNames": [
+        "expo",
+        "expo-*",
+        "@expo/*",
+        "react",
+        "react-dom",
+        "react-native",
+        "react-native-*",
+        "@types/react"
+      ],
+      "groupName": "Expo SDK",
+      "automerge": false
     }
   ]
 }

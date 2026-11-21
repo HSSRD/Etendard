@@ -6,6 +6,11 @@
       {
         "exclude": ["video"]
       }
-    ]
+    ],
+    "attr-case": ["error", { "style": ["lowercase", "camelcase"] }],
+    "attribute-boolean-style": "off",
+    "no-redundant-role": "off",
+    "valid-id": ["error", { "relaxed": true }],
+    "void-style": "off"
   }
 }

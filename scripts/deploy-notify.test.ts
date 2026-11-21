@@ -186,6 +186,8 @@ describe('script lancé par le job message', () => {
         ['scripts/deploy-notify.js', ...args],
         {
           env: {
+            // Exigé par les types globaux d'Expo (process.env.NODE_ENV), ignoré par le script.
+            NODE_ENV: 'test',
             GITHUB_API_URL: `http://127.0.0.1:${port}`,
             GITHUB_SERVER_URL: 'https://github.com',
             GITHUB_REPOSITORY: 'HSSRD/Etendard',

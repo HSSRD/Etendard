@@ -10,10 +10,11 @@ module.exports = {
     },
     {
       name: 'composant-sans-page',
-      comment: 'Un composant ou un layout ne dépend jamais d’une page.',
+      comment:
+        'Un composant ou un layout ne dépend jamais d’une page (src/app/).',
       severity: 'error',
       from: { path: '^src/(components|layouts)/' },
-      to: { path: '^src/pages/' },
+      to: { path: '^src/app/' },
     },
   ],
   options: {
