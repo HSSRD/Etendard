@@ -10,8 +10,8 @@ const caddyfile = await readFile(
 const csp = /^\s*Content-Security-Policy "([^"]+)"$/m.exec(caddyfile)?.[1];
 if (!csp) throw new Error('CSP introuvable dans infra/pi/Caddyfile');
 
-// La one page, puis une page de projet (ADR 0016).
-for (const url of ['/', '/projets/dragon']) {
+// La one page, puis des pages de projet (ADR 0016).
+for (const url of ['/', '/projets/dragon', '/projets/dragon/materiel']) {
   test(`${url} s’affiche sans violation de la CSP de Caddy`, async ({
     page,
   }) => {
