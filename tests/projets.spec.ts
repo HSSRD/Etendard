@@ -1,11 +1,13 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import accueil from '../src/content/projets/dragon/accueil';
 import type { ProjectPage, Table } from '../src/lib/validate-project-pages';
 import {
   appearances,
+  dataRows,
   expectNoAxeViolations,
   expectNoHorizontalScroll,
   expectNoInlineCode,
+  region,
 } from './helpers';
 
 // Accueil du projet Dragon (ADR 0016), route statique pré-rendue.
@@ -16,9 +18,6 @@ const content: ProjectPage = accueil;
 const blocks = content.sections.flatMap((section) => section.blocks);
 const phases =
   blocks.find((block): block is Table => block.type === 'table')?.rows ?? [];
-
-const region = (page: Page, name: string) =>
-  page.getByRole('region', { name, exact: true });
 
 test.describe('sans JavaScript', () => {
   test.use({ javaScriptEnabled: false });
@@ -66,10 +65,7 @@ test.describe('sans JavaScript', () => {
       'Le projet est piloté avec l’IA',
     );
     const roadmap = region(page, 'Feuille de route');
-    const rows = roadmap
-      .getByRole('table', { name: 'Phases du projet Dragon' })
-      .getByRole('row')
-      .filter({ has: page.getByRole('cell') });
+    const rows = dataRows(page, 'Phases du projet Dragon');
     await expect(rows).toHaveCount(7);
     // Phase, objectif et critère de sortie de accueil.ts, ligne par ligne, puis le badge de statut.
     for (const column of [0, 1, 2]) {

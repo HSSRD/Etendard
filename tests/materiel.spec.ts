@@ -1,36 +1,33 @@
-import { expect, test, type Page } from '@playwright/test';
-import materiel from '../src/content/projets/dragon/materiel';
-import { formatPrice } from '../src/lib/project-pages';
+import { expect, test } from '@playwright/test';
+import materiel, { fiches } from '../src/content/projets/dragon/materiel';
+import { formatPrice, pagePath } from '../src/lib/project-pages';
 import type { ProjectPage, Table } from '../src/lib/validate-project-pages';
 import {
   appearances,
+  dataRows,
   expectNoAxeViolations,
   expectNoHorizontalScroll,
   expectNoInlineCode,
+  region,
 } from './helpers';
 
 // Matériel du projet Dragon (ADR 0016, #99) : une section par fiche d'achat, puis la matrice.
-const url = '/projets/dragon/materiel';
-
 const content: ProjectPage = materiel;
-const fiches = content.sections.filter(({ source }) =>
-  source.path.includes('/achats/'),
-);
-const tables = (id: string) =>
-  content.sections
-    .find((section) => section.id === id)
-    ?.blocks.filter((block): block is Table => block.type === 'table') ?? [];
-const [matrix] = tables('compatibilite');
+const url = pagePath(content.project, content.slug);
 
-const region = (page: Page, name: string) =>
-  page.getByRole('region', { name, exact: true });
+const matrix = content.sections
+  .find((section) => section.id === 'compatibilite')
+  ?.blocks.find((block): block is Table => block.type === 'table');
+if (!matrix) throw new Error('matrice absente de materiel.ts');
 
-/** Lignes de données d'un tableau (hors en-tête), en liste comme en tableau. */
-const dataRows = (page: Page, name: string) =>
-  page
-    .getByRole('table', { name, exact: true })
-    .getByRole('row')
-    .filter({ has: page.getByRole('cell') });
+test('chaque fiche citée par la matrice est une section de la page', () => {
+  const titles = fiches.map(({ title }) => title);
+  for (const row of matrix.rows) {
+    for (const fiche of String(row[1]).split(', ')) {
+      expect(titles).toContain(fiche);
+    }
+  }
+});
 
 test.describe('sans JavaScript', () => {
   test.use({ javaScriptEnabled: false });
@@ -47,17 +44,12 @@ test.describe('sans JavaScript', () => {
     const nav = page.getByRole('navigation', {
       name: 'Pages du projet Dragon',
     });
-    await expect(nav.getByRole('link', { name: 'Matériel' })).toHaveAttribute(
-      'href',
-      url,
-    );
-    await expect(nav.getByRole('link', { name: 'Matériel' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    );
+    const link = nav.getByRole('link', { name: 'Matériel' });
+    await expect(link).toHaveAttribute('href', url);
+    await expect(link).toHaveAttribute('aria-current', 'page');
     await expect(
       nav.getByRole('link', { name: 'Présentation' }),
-    ).toHaveAttribute('href', '/projets/dragon');
+    ).toHaveAttribute('href', pagePath(content.project, ''));
     await expect(page.getByRole('heading', { level: 2 })).toHaveText(
       content.sections.map((section) => section.title),
     );
@@ -94,7 +86,6 @@ test.describe('sans JavaScript', () => {
   test('la matrice de compatibilité affiche ses 9 contraintes et leurs fiches', async ({
     page,
   }) => {
-    if (!matrix) throw new Error('matrice absente de materiel.ts');
     await page.goto(url);
 
     const rows = dataRows(page, matrix.caption);
@@ -103,13 +94,6 @@ test.describe('sans JavaScript', () => {
       await expect(rows).toContainText(
         matrix.rows.map((row) => String(row[column])),
       );
-    }
-    // Chaque fiche citée est le titre d'une section de la page.
-    const titles = fiches.map(({ title }) => title);
-    for (const row of matrix.rows) {
-      for (const fiche of String(row[1]).split(', ')) {
-        expect(titles).toContain(fiche);
-      }
     }
   });
 
