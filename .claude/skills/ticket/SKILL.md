@@ -91,12 +91,21 @@ Objectif : **« PR ouverte, tous les critères d'acceptation vérifiés, code ch
 ## B3. Implémenter
 
 - Fais le minimum qui satisfait tous les critères d'acceptation, rien de plus.
+- **Chaque ligne se justifie.** C'est la règle la plus importante du skill. Toute ligne, tout fichier, toute dépendance, option ou configuration ajoutée répond à un critère d'acceptation, à un ADR ou à une règle du repo (AGENTS.md, lint, test). Si tu ne sais pas dire pourquoi une ligne est là, elle n'a pas à y être : retire-la.
 - Chaque critère « Étant donné / Quand / Alors » doit être vérifiable ; ajoute le test correspondant quand l'outillage de test existe (Playwright, Vitest).
 - Commits au format Conventional Commits, en français, référençant le ticket (ex. `feat: ajouter la page d'accueil (#3)`).
 
 ## B4. Challenger son propre code
 
-Relis tout le diff (`git diff origin/main...HEAD`) comme un relecteur exigeant, puis lance le skill `simplify` dessus et applique ses corrections :
+Commence par **justifier le diff ligne par ligne** (`git diff origin/main...HEAD`), comme un relecteur qui demande « pourquoi ? » à chaque ligne :
+
+- Pour chaque fichier, chaque bloc et chaque ligne non évidente, note la raison : le critère d'acceptation, l'ADR, la règle du repo ou le test qui l'exige.
+- Ce qui n'a pas de raison est supprimé, même si cela « marche » ou « pourrait servir ».
+- Ce qui a une raison qui ne se lit pas dans le code reçoit un commentaire court qui dit **pourquoi**, jamais ce que fait le code.
+- Une dépendance, une option de configuration ou une exception à une règle se justifie aussi par l'alternative écartée.
+- Ces raisons alimentent le tableau de justification de la PR (B6).
+
+Puis lance le skill `simplify` sur le diff et applique ses corrections :
 
 - **Réutiliser l'existant** : composant, utilitaire, token du thème ou config déjà présents dans le repo plutôt qu'un doublon.
 - **Simplifier** : moins de fichiers, moins d'abstraction, pas de code « au cas où », pas d'option non demandée.
@@ -121,6 +130,7 @@ Après ce premier passage, enchaîne **exactement 2 tours de challenge suppléme
   - les préférences de style ou de nommage, et les micro-optimisations ;
   - les durcissements « au cas où ».
     Une revue automatique peut halluciner : si tu ne peux pas confirmer le problème toi-même (lecture du code, commande, test), ne corrige pas.
+- **Chaque ligne ajoutée ou modifiée pendant le tour repasse la justification** : une correction sans raison écrite n'est pas commitée.
 - **Après chaque tour**, relance `pnpm verify:fast` (et le Playwright ciblé si un composant a changé), puis commite le tour séparément (`refactor: …` ou `fix: …`). Si une vérification casse, annule ce correctif plutôt que de le forcer.
 - **Liste dans la PR** (« Pistes non appliquées ») seulement les remarques écartées qui méritent une décision humaine, avec leur raison. Ignore les autres.
 - Fais **toujours les 2 tours**, même si le premier ne trouve rien à corriger : ils conditionnent le merge automatique (B6 bis). Ne fais jamais plus de 2 tours supplémentaires.
@@ -163,7 +173,7 @@ Tu agis sur GitHub en tant que `hssrd-bot`, sans permission `workflows` (ADR 000
 - la PR ne peut être mergée qu'après ce push de Flo : passe en B7 avec « Ticket #N : PR prête, Flo doit pousser la modification de workflow » ;
 - une fois ce commit de Flo sur la branche, ne la rebase plus (ton push serait refusé) : si elle prend du retard sur `main`, demande à Flo de la mettre à jour.
 
-Corps de PR : résumé, tableau critère → comment il a été vérifié, ce que l'auto-revue a changé (premier passage, tour 1, tour 2), pistes non appliquées avec leur raison, tickets créés pour les cas hors périmètre, points d'attention, puis `Fixes #N`.
+Corps de PR : résumé, tableau critère → comment il a été vérifié, **tableau de justification** (chaque fichier du diff, et chaque dépendance, configuration ou bloc non évident → sa raison : critère, ADR, règle ou test ; une ligne par élément, sans paraphraser le code), ce que l'auto-revue a changé (premier passage, tour 1, tour 2), pistes non appliquées avec leur raison, tickets créés pour les cas hors périmètre, points d'attention, puis `Fixes #N`.
 
 ## B6 bis. Merge automatique (seulement si tout est vert)
 
@@ -177,7 +187,7 @@ gh pr view <numéro PR> -R HSSRD/Etendard --json headRefOid,isDraft,mergeable,me
 Tu ne merges **que si toutes ces conditions sont réunies** :
 
 1. **CI verte** : chaque check du dernier commit est en `SUCCESS` (aucun en échec, en attente ou annulé), y compris `verify`.
-2. **Les 2 tours d'auto-revue sont faits** après le premier passage, chacun avec `simplify` puis `code-review` (`xhigh`), et la PR les décrit. Aucun commit n'a été poussé après sans être repassé par la CI.
+2. **Les 2 tours d'auto-revue sont faits** après le premier passage, chacun avec `simplify` puis `code-review` (`xhigh`), et la PR les décrit. **Le tableau de justification est complet** : chaque fichier du diff y figure avec sa raison. Aucun commit n'a été poussé après sans être repassé par la CI.
 3. **Tous les critères d'acceptation sont ✅** : aucun ❌ ni « non vérifiable ».
 4. **Aucune validation humaine en attente** : la PR n'est pas en brouillon, et ni le ticket ni ton prompt de lancement ne demandent à Flo de relire, valider, trancher ou appliquer quelque chose avant le merge (textes, dessin, exception à un ADR, action sur le Pi ou dans une console…).
 5. **La PR est mergeable** (`mergeable: MERGEABLE`, sans conflit).
