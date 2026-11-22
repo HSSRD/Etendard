@@ -8,6 +8,7 @@ set -u
 PROFIL=C:/Users/floxf
 DEPOT_FLO=C:/04-Projets/HSSRD/Etendard
 REPO=HSSRD/Etendard
+DETAIL="$HOME/verifier-isolation-detail.txt" # chemins en cause, hors du ticket public
 ID=$(date +%s)
 echecs=0
 alertes=0
@@ -34,11 +35,19 @@ else
 fi
 
 echo "== 2. Fichiers de Flo"
-for chemin in "$PROFIL" "$PROFIL/.ssh" "$PROFIL/AppData/Roaming/GitHub CLI/hosts.yml" "$PROFIL/.etendard" "$DEPOT_FLO" /c/ProgramData/floxf; do
-  if ls "$chemin" >/dev/null 2>&1; then ko "$chemin est lisible"; else ok "$chemin est inaccessible"; fi
-done
+# Repo public : la sortie, postée sur le ticket, ne nomme ni dossier ni logiciel du poste ; le détail va dans $DETAIL.
+: >"$DETAIL"
+verifier_illisible() { # $1 : libellé, $2 : chemin
+  if ls "$2" >/dev/null 2>&1; then ko "$1 est lisible"; echo "lisible : $2" >>"$DETAIL"; else ok "$1 est inaccessible"; fi
+}
+verifier_illisible "le profil de Flo" "$PROFIL"
+verifier_illisible "ses clés SSH" "$PROFIL/.ssh"
+verifier_illisible "son gh" "$PROFIL/AppData/Roaming/GitHub CLI/hosts.yml"
+verifier_illisible "la clé de l'App" "$PROFIL/.etendard"
+verifier_illisible "son dépôt principal" "$DEPOT_FLO"
+verifier_illisible "son dossier ProgramData" /c/ProgramData/floxf
 # Un dossier de Flo modifiable laisserait planter du code qu'il exécute (hooks git, PATH, exécutables de jeux…).
-# Même audit qu'à l'étape 4 du README, vu depuis le compte agent (quelques minutes).
+# Même audit qu'à l'étape 4 du README, vu depuis le compte agent (jusqu'à une demi-heure).
 # Les dossiers « à fermer à la main » (Program Files, ProgramData) sont des alertes, pas des échecs : Windows et des
 # logiciels en ouvrent volontairement certains à tous (Microsoft\Crypto\RSA\MachineKeys, WER) ; Flo décide au cas par cas.
 script_audit="$(dirname "$0")/dossiers-ouverts.ps1"
@@ -47,31 +56,22 @@ if ! ouverts=$(powershell -NoProfile -ExecutionPolicy Bypass -Command \
   ko "audit des dossiers impossible (dossiers-ouverts.ps1)"
 else
   ouverts=${ouverts//$'\r'/}
-  a_corriger=0 manuels=0
-  while IFS= read -r dossier; do
-    case "$dossier" in
-      '') ;;
-      *"(à fermer à la main)")
-        manuels=$((manuels + 1))
-        [ "$manuels" -le 20 ] && printf 'ALERTE %s est modifiable\n' "$dossier" ;;
-      *) a_corriger=$((a_corriger + 1)); ko "$dossier est modifiable (étape 4 : dossiers-ouverts.ps1 -Corriger)" ;;
-    esac
-  done <<<"$ouverts"
-  [ "$manuels" -gt 20 ] && echo "ALERTE … et $((manuels - 20)) autres (liste complète : dossiers-ouverts.ps1 sans option)"
-  alertes=$manuels
-  [ "$a_corriger" -eq 0 ] && ok "aucun dossier hors Program Files et ProgramData n'est modifiable par un groupe du compte agent"
-fi
-# Dossiers que l'audit ne parcourt pas : celui de Flo dans ProgramData et le jeton (lecture seule pour l'agent).
-for dossier in /c/ProgramData/floxf/ /c/EtendardAgent/gh/; do
-  [ -d "$dossier" ] || continue
-  if (: >"${dossier}test-isolation-$ID") 2>/dev/null || mkdir "${dossier}test-isolation-$ID" 2>/dev/null; then
-    rm -rf "${dossier}test-isolation-$ID"
-    ko "$dossier est modifiable"
+  printf '%s\n' "$ouverts" >>"$DETAIL"
+  a_corriger=$(grep -v -c -e '(à fermer à la main)$' -e '^$' <<<"$ouverts")
+  alertes=$(grep -c '(à fermer à la main)$' <<<"$ouverts")
+  if [ "$a_corriger" -eq 0 ]; then
+    ok "aucun dossier hors Program Files et ProgramData n'est modifiable par un groupe du compte agent"
   else
-    ok "$dossier n'est pas modifiable"
+    ko "$a_corriger dossier(s) modifiable(s) à corriger (étape 4 : dossiers-ouverts.ps1 -Corriger)"
   fi
-done
-
+fi
+# Dossiers que l'audit ne parcourt pas : celui du jeton (lecture seule pour l'agent) et la configuration système de git.
+if (: >/c/EtendardAgent/gh/test-isolation-$ID) 2>/dev/null || mkdir /c/EtendardAgent/gh/test-isolation-$ID 2>/dev/null; then
+  rm -rf /c/EtendardAgent/gh/test-isolation-$ID
+  ko "le dossier du jeton est modifiable"
+else
+  ok "le dossier du jeton n'est pas modifiable"
+fi
 if mkdir /c/ProgramData/Git/test-isolation-$ID 2>/dev/null; then
   rmdir /c/ProgramData/Git/test-isolation-$ID
   ko "C:/ProgramData/Git est modifiable (configuration système du git de Flo)"
@@ -143,6 +143,7 @@ git checkout -q "$retour" && git branch -q -D "$branche_pi"
 
 echo
 if [ "$echecs" -eq 0 ]; then echo "Isolation vérifiée."; else echo "$echecs vérification(s) en échec."; fi
-[ "$alertes" -eq 0 ] || echo "$alertes dossier(s) de Program Files ou ProgramData restent modifiables : à fermer à la main si aucun logiciel n'en a besoin (jamais ceux de ProgramData\\Microsoft)."
+[ "$alertes" -eq 0 ] || echo "ALERTE $alertes dossier(s) de Program Files ou ProgramData restent modifiables : à fermer à la main si aucun logiciel n'en a besoin (jamais ceux de ProgramData\\Microsoft)."
+echo "Chemins en cause (lisibles, à corriger, à fermer à la main) : $DETAIL, sur le poste, à ne pas publier."
 # Code de sortie 0 ou 1 : un nombre d'échecs multiple de 256 sortirait en 0.
 [ "$echecs" -eq 0 ]

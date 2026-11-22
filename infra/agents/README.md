@@ -304,6 +304,8 @@ Le script prend une dizaine de minutes (audit des dossiers de l'étape 4, puis C
 et doit finir par « Isolation vérifiée. ». La PR de test attend sa CI : sans elle, « Bloque push main » refuserait
 déjà le merge et masquerait le ruleset. Le script ne tente le merge que si GitHub le bloque, CI verte ; il ferme
 ensuite la PR. Une PR de test restée ouverte (script interrompu) se ferme sans merger.
+La sortie, postée sur le ticket public, ne nomme ni dossier ni logiciel du poste : les chemins en cause sont dans
+`C:\Users\etendard-agent\verifier-isolation-detail.txt`, à lire depuis un PowerShell administrateur.
 Le commentaire posté par `hssrd-bot` prouve à lui seul que les PR et commentaires des agents sont au nom du bot.
 
 ## Révoquer
