@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import decisions, {
   adrs,
   choix,
+  decisionLabels,
   erreurs,
 } from '../src/content/projets/dragon/decisions';
 import { pagePath, statusLabels } from '../src/lib/project-pages';
@@ -51,12 +52,14 @@ test.describe('sans JavaScript', () => {
     for (const { title, status, blocks } of adrs) {
       const section = region(page, title);
       // Le badge vient du seul champ `status` (critère 3).
-      if (!status) throw new Error(`${title} : sans statut`);
+      if (status !== 'propose' && status !== 'accepte') {
+        throw new Error(`${title} : statut d’ADR attendu`);
+      }
       await expect(section.getByTestId('status-badge')).toHaveText(
         statusLabels[status],
       );
       await expect(section).toContainText(/Date : \d{4}-\d{2}-\d{2}\./);
-      await expect(section).toContainText('Décision proposée : ');
+      await expect(section).toContainText(`${decisionLabels[status]} : `);
       const [options, risks] = blocks.filter(
         (block): block is Table => block.type === 'table',
       );
@@ -66,15 +69,24 @@ test.describe('sans JavaScript', () => {
       await expectTable(page, options, section);
       await expectTable(page, risks, section);
     }
-    // Les ADR de Dragon sont proposés : la page n'écrit jamais « accepté ».
-    await expect(page.getByRole('main')).not.toContainText(/accepté/i);
+    // Seul le badge dit le statut : aucun texte n'écrit « accepté ».
+    const texts = await page
+      .getByRole('main')
+      .getByRole('paragraph')
+      .or(page.getByRole('main').getByRole('cell'))
+      .allTextContents();
+    expect(texts.join('\n')).not.toMatch(/accepté/i);
   });
 
   test('le challenge montre les 14 erreurs et les choix remis en cause, sans le club', async ({
     page,
   }) => {
-    // Dont le scénario de démonstration : le cadre d'environ 400 g, corrigé en 610 g.
     expect(erreurs.rows).toHaveLength(14);
+    // Scénario de démonstration : le cadre d'environ 400 g, corrigé en 610 g.
+    expect(erreurs.rows[0]?.slice(0, 2)).toEqual([
+      'Cadre X500 V2 : environ 400 g',
+      '610 g, d’après Holybro et un revendeur.',
+    ]);
     // §2.1 à §2.8 sans le §2.6.
     expect(choix.rows).toHaveLength(7);
     await page.goto(url);

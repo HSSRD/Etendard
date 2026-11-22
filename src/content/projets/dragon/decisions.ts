@@ -14,6 +14,12 @@ const read = '2026-11-22';
 
 const source = (path: string) => ({ path: `docs/${path}`, sha, date: read });
 
+/** Libellé de la décision d'un ADR selon son statut : seul le statut change quand il est validé. */
+export const decisionLabels = {
+  propose: 'Décision proposée',
+  accepte: 'Décision',
+} as const;
+
 const paragraph = (text: string) => ({ type: 'paragraph' as const, text });
 
 interface Adr {
@@ -23,7 +29,7 @@ interface Adr {
   /** Fichier de l'ADR dans docs/decisions/. */
   file: string;
   /** Statut de l'ADR dans Dragon : le seul champ à changer quand il évolue. */
-  status: NonNullable<Section['status']>;
+  status: keyof typeof decisionLabels;
   date: string;
   context: string[];
   decision: string;
@@ -44,7 +50,7 @@ const adr = ({ number, title, file, status, date, ...adr }: Adr): Section => {
     blocks: [
       paragraph(`Date : ${date}.`),
       ...adr.context.map(paragraph),
-      paragraph(`Décision proposée : ${adr.decision}`),
+      paragraph(`${decisionLabels[status]} : ${adr.decision}`),
       {
         type: 'table',
         caption: `${name} : options écartées`,
@@ -132,10 +138,10 @@ export const adrs: Section[] = [
     risks: [
       [
         'Poids sous-estimé : le cadre pèse 610 g, pas environ 400 g. Le drone pèse 1,6 à 1,7 kg en phase 1, environ 2 kg avec la charge des phases 3 et 4.',
-        'Compensé par une poussée réelle plus forte que prévu, 1 332 g par moteur : le rapport poussée/poids reste supérieur à 3.',
+        'Compensé par une poussée réelle plus forte que prévu, 1 332 g par moteur : le rapport poussée/poids reste supérieur à 3 en phase 1.',
       ],
       [
-        'Au-delà de 800 g, la réglementation française impose l’enregistrement du drone et un signalement électronique.',
+        'À partir de 800 g, la réglementation française impose l’enregistrement du drone et un signalement électronique.',
         'Assumé : les capteurs des phases suivantes l’imposeraient de toute façon.',
       ],
       [
@@ -326,7 +332,7 @@ export default {
   slug: 'decisions',
   title: 'Décisions',
   description:
-    'Les trois décisions d’architecture de Dragon, encore proposées, et le challenge du 2026-11-20 : les erreurs corrigées et les choix remis en cause.',
+    'Les trois décisions d’architecture de Dragon et le challenge du 2026-11-20 : les erreurs corrigées et les choix remis en cause.',
   sections: [
     ...adrs,
     {
