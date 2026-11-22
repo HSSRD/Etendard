@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { loadProjectContents } from '../scripts/project-content';
-import { pagePath, sourceUrl } from '../src/lib/project-pages';
+import { isLinkable, pagePath } from '../src/lib/project-pages';
 import type {
   ProjectMeta,
   ProjectPage,
@@ -30,9 +30,12 @@ for (const { project, page: content } of pages) {
       await expect(shown).toHaveText(
         `Source : ${source.path} au commit ${source.sha.slice(0, 7)}, relevé le ${source.date}`,
       );
-      const href = sourceUrl(project.repo, source.path, source.sha);
-      if (href) {
-        await expect(shown.getByRole('link')).toHaveAttribute('href', href);
+      // URL écrite ici, pas par sourceUrl : le test ne compare pas le code à lui-même.
+      if (isLinkable(source.path)) {
+        await expect(shown.getByRole('link')).toHaveAttribute(
+          'href',
+          `${project.repo}/blob/${source.sha}/${source.path}`,
+        );
       } else {
         await expect(shown.getByRole('link')).toHaveCount(0);
       }
