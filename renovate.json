@@ -16,6 +16,13 @@
       "automerge": true
     },
     {
+      "description": "Actions GitHub : les workflows sont relus par Flo (CODEOWNERS, ADR 0008). PR séparée, merge humain, pour ne pas bloquer les autres mineures et correctifs.",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "actions GitHub",
+      "automerge": false
+    },
+    {
       "description": "Une mineure 0.x peut casser : PR séparée, merge humain.",
       "matchUpdateTypes": ["minor"],
       "matchCurrentVersion": "/^v?0\\./",
