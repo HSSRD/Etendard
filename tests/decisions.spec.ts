@@ -52,9 +52,6 @@ test.describe('sans JavaScript', () => {
     for (const { title, status, blocks } of adrs) {
       const section = region(page, title);
       // Le badge vient du seul champ `status` (critère 3).
-      if (status !== 'propose' && status !== 'accepte') {
-        throw new Error(`${title} : statut d’ADR attendu`);
-      }
       await expect(section.getByTestId('status-badge')).toHaveText(
         statusLabels[status],
       );
@@ -63,9 +60,8 @@ test.describe('sans JavaScript', () => {
       const [options, risks] = blocks.filter(
         (block): block is Table => block.type === 'table',
       );
-      if (!options?.rows.length || !risks?.rows.length) {
-        throw new Error(`${title} : sans option écartée ou sans risque`);
-      }
+      // Au moins une ligne chacun : le type Adr l'impose.
+      if (!options || !risks) throw new Error(`${title} : tableaux`);
       await expectTable(page, options, section);
       await expectTable(page, risks, section);
     }

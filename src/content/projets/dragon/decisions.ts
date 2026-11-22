@@ -22,6 +22,12 @@ export const decisionLabels = {
 
 const paragraph = (text: string) => ({ type: 'paragraph' as const, text });
 
+/** Ligne d'un tableau d'ADR : l'option ou le risque, puis sa raison ou sa réponse. */
+type Row = [string, string];
+
+/** Section d'un ADR : son statut est un statut de décision. */
+type AdrSection = Section & { status: keyof typeof decisionLabels };
+
 interface Adr {
   /** « 001 » pour l'ADR-001. */
   number: string;
@@ -33,14 +39,21 @@ interface Adr {
   date: string;
   context: string[];
   decision: string;
-  rejected: [string, string][];
-  risks: [string, string][];
+  rejected: [Row, ...Row[]];
+  risks: [Row, ...Row[]];
   /** Ce qui ferait changer d'avis, points ouverts, après les tableaux. */
   notes: string[];
 }
 
 /** Section d'un ADR : date, contexte, décision proposée, options écartées, risques. */
-const adr = ({ number, title, file, status, date, ...adr }: Adr): Section => {
+const adr = ({
+  number,
+  title,
+  file,
+  status,
+  date,
+  ...adr
+}: Adr): AdrSection => {
   const name = `ADR-${number}`;
   return {
     id: `adr-${number}`,
@@ -69,7 +82,7 @@ const adr = ({ number, title, file, status, date, ...adr }: Adr): Section => {
 };
 
 /** Les trois ADR de Dragon. */
-export const adrs: Section[] = [
+export const adrs: AdrSection[] = [
   adr({
     number: '001',
     title: 'architecture logicielle',
@@ -340,10 +353,9 @@ export default {
       title: 'Challenge : les erreurs corrigées',
       source: source('phase-1-construction/challenge-2026-11-20.md'),
       blocks: [
-        {
-          type: 'paragraph',
-          text: 'Le 2026-11-20, une revue a attaqué la première version des fiches d’achat. Elle a vérifié chaque affirmation sur les pages des fabricants, les guides de la DGAC et les documents de l’Arcep.',
-        },
+        paragraph(
+          'Le 2026-11-20, une revue a attaqué la première version des fiches d’achat. Elle a vérifié chaque affirmation sur les pages des fabricants, les guides de la DGAC et les documents de l’Arcep.',
+        ),
         erreurs,
       ],
     },
@@ -352,10 +364,9 @@ export default {
       title: 'Challenge : les choix remis en cause',
       source: source('phase-1-construction/challenge-2026-11-20.md'),
       blocks: [
-        {
-          type: 'paragraph',
-          text: 'La même revue a remis en cause les grands choix de la phase 1 : pour chacun, l’attaque, puis le verdict.',
-        },
+        paragraph(
+          'La même revue a remis en cause les grands choix de la phase 1 : pour chacun, l’attaque, puis le verdict.',
+        ),
         choix,
       ],
     },
