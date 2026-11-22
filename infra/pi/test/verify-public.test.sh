@@ -8,49 +8,45 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
-# En-têtes de sécurité du Caddyfile, au format HTTP : le faux site sert exactement ceux-là.
+# En-têtes de sécurité du Caddyfile, au format HTTP/2 de Cloudflare (noms en minuscules) : le faux site sert
+# exactement ceux-là.
 awk '{ l = $0; sub(/^[[:space:]]+/, "", l) } l == "header {" { b = 1; next } b && l == "}" { b = 0 }
-  b && match(l, /^[A-Za-z-]+ "/) { n = substr(l, 1, RLENGTH - 2); v = substr(l, RLENGTH + 1); sub(/"$/, "", v); print n ": " v }' \
+  b && match(l, /^[A-Za-z-]+ "/) { n = substr(l, 1, RLENGTH - 2); v = substr(l, RLENGTH + 1); sub(/"$/, "", v); print tolower(n) ": " v "\r" }' \
   "$HERE/../Caddyfile" > "$WORK/securite"
 [ "$(grep -c . "$WORK/securite")" -eq 4 ] || { echo "FAIL - en-têtes du Caddyfile illisibles"; exit 1; }
 
-# Faux curl : -I donne le statut et les en-têtes, sinon le corps (sur stdout ou dans le fichier de -o).
-# Réglages : STUB_SCRIPT (balise ajoutée aux pages, comme une injection de Cloudflare), STUB_CSP (CSP servie),
-# STUB_STATUS_404 (statut d'une page absente), STUB_CORPS_404 (son corps), STUB_CACHE (cf-cache-status de
-# version.txt).
+# Faux curl : -sSI donne le statut et les en-têtes, sinon le corps. Réglages : STUB_SCRIPT (balise ajoutée aux
+# pages, comme une injection de Cloudflare), STUB_CSP (CSP servie), STUB_STATUS_404 (statut d'une page
+# absente), STUB_CORPS_404 (son corps), STUB_CACHE (cf-cache-status de version.txt).
 mkdir "$WORK/bin"
 cat > "$WORK/bin/curl" <<'SH'
 #!/bin/bash
-head=0 out=
-while [ "$#" -gt 0 ]; do
-  case "$1" in
+head=0
+for a; do
+  case "$a" in
     -sSI) head=1 ;;
-    -o) out="$2"; shift ;;
-    https://*) url="$1"; echo "$1" >> "$STUB_LOG" ;;
+    https://*) url="$a"; echo "$a" >> "$STUB_LOG" ;;
   esac
-  shift
 done
-path="/${url#https://*/}"
-page() { printf '<!doctype html><title>%s</title><script src="/_expo/static/js/web/entry-0123.js" defer></script>%s\n' "$1" "${STUB_SCRIPT:-}"; }
-case "$path" in
-  /) status=200 type=text/html cache=no-cache corps="$(page Accueil)" ;;
-  /+not-found.html) status=200 type=text/html cache=no-cache corps="$(page Introuvable)" ;;
-  /version.txt)
-    status=200 type=text/plain cache=no-store corps=0123456789abcdef cf="${STUB_CACHE:-DYNAMIC}" ;;
-  *) status="${STUB_STATUS_404:-404}" type=text/html cache=no-cache corps="${STUB_CORPS_404:-$(page Introuvable)}" ;;
+corps=
+case "/${url#https://*/}" in
+  /) status=200 type=text/html cache=no-cache titre=Accueil ;;
+  /+not-found.html) status=200 type=text/html cache=no-cache titre=Introuvable ;;
+  /version.txt) status=200 type=text/plain cache=no-store corps=0123456789abcdef cf="${STUB_CACHE:-DYNAMIC}" ;;
+  *) status="${STUB_STATUS_404:-404}" type=text/html cache=no-cache titre=Introuvable corps="${STUB_CORPS_404:-}" ;;
 esac
 if [ "$head" = 1 ]; then
   printf 'HTTP/2 %s\r\ncontent-type: %s\r\ncache-control: %s\r\n' "$status" "$type" "$cache"
   [ -n "${cf:-}" ] && printf 'cf-cache-status: %s\r\n' "$cf"
   if [ -n "${STUB_CSP:-}" ]; then
-    grep -v '^Content-Security-Policy:' "$STUB_SECURITE"; echo "Content-Security-Policy: $STUB_CSP"
+    grep -v '^content-security-policy:' "$STUB_SECURITE"; printf 'content-security-policy: %s\r\n' "$STUB_CSP"
   else
     cat "$STUB_SECURITE"
-  fi | sed 's/^[^:]*:/\L&/; s/$/\r/'   # noms en minuscules, comme Cloudflare en HTTP/2
-elif [ -n "$out" ]; then
-  printf '%s\n' "$corps" > "$out"
-else
+  fi
+elif [ -n "$corps" ]; then
   printf '%s\n' "$corps"
+else
+  printf '<!doctype html><title>%s</title><script src="/_expo/static/js/web/entry-0123.js" defer></script>%s\n' "$titre" "${STUB_SCRIPT:-}"
 fi
 SH
 chmod +x "$WORK/bin/curl"

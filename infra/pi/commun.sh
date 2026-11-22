@@ -6,9 +6,12 @@ ETENDARD_CONF="${ETENDARD_CONF:-/etc/etendard/serveur.conf}"
 
 # Logiciels exposés : mises à jour automatiques (avec le noyau en cours) et isolation systemd, appliquées
 # par install.sh, contrôlées par verify.sh. Pour en ajouter un : son paquet dans PAQUETS_MAJ_AUTO, son unité
-# et les dossiers où elle écrit dans SERVICES_ISOLES (le tunnel n'écrit nulle part, #125).
+# et les dossiers où elle écrit dans SERVICES_ISOLES (le tunnel n'écrit nulle part, #125). Si son paquet ne
+# relance pas le service après une mise à jour, comme cloudflared : une unité .path (etendard-tunnel-maj.path).
 PAQUETS_MAJ_AUTO=(caddy tailscale cloudflared)
 declare -A SERVICES_ISOLES=([caddy.service]="/var/lib/caddy /var/log/caddy" [etendard-tunnel.service]="")
+# Unités du tunnel (#125), copiées par install.sh dans /etc/systemd/system/ et comparées par verify.sh.
+UNITES_TUNNEL=(etendard-tunnel.service etendard-tunnel-maj.service etendard-tunnel-maj.path)
 # Nécessaires à l'accès de Flo ou au déploiement, en plus des services isolés : jamais masqués.
 SERVICES_PROTEGES=(ssh.service sshd.service ssh.socket tailscaled.service etendard-pare-feu.service)
 

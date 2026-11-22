@@ -96,7 +96,7 @@ sudo rm /etc/apt/apt.conf.d/52etendard-maj-auto           # mises à jour automa
 
 Ce qui est en place et pourquoi : [FONCTIONNEMENT.md](FONCTIONNEMENT.md#cloudflare-tunnel-125). `install.sh` installe le tunnel en même temps que le reste : il s'arrête avant tout changement tant que le jeton manque. Le durcissement (#113) se fait donc dans le même passage, avec les précautions de [Durcir le serveur](#durcir-le-serveur-113).
 
-1. **Dans Cloudflare**, fais toute la [liste des réglages](FONCTIONNEMENT.md#réglages-dans-cloudflare), sans lancer la commande d'installation proposée : le site sera public dès que le tunnel démarrera.
+1. **Dans Cloudflare**, fais toute la [liste des réglages](FONCTIONNEMENT.md#réglages-dans-cloudflare) : le site sera public dès que le tunnel démarrera.
 2. **Le jeton**, sur le Pi : un fichier lisible par root seul, puis colle le jeton (seul, sans `sudo cloudflared service install`) dans l'éditeur. Il ne passe ainsi ni par l'historique du shell ni par une ligne de commande.
    ```bash
    sudo install -d -m 755 /etc/etendard

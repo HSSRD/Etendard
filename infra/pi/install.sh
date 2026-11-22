@@ -156,13 +156,13 @@ cloudflared --version
 
 step "Service du tunnel (démarré en dernier, une fois le serveur durci)"
 tunnel_changed=0
-for f in etendard-tunnel.service etendard-tunnel-maj.service etendard-tunnel-maj.path; do
+for f in "${UNITES_TUNNEL[@]}"; do
   if ! cmp -s "$HERE/$f" "/etc/systemd/system/$f"; then
     install -o root -g root -m 644 "$HERE/$f" "/etc/systemd/system/$f"
     tunnel_changed=1
   fi
 done
-systemctl daemon-reload
+[ "$tunnel_changed" = 0 ] || systemctl daemon-reload
 
 # --- Isolation des services exposés (#113, critère 7) -------------------------
 # score <unité> : niveau d'exposition de systemd-analyze security (0 : isolé, 10 : aucune isolation).

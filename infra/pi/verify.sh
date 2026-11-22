@@ -20,6 +20,8 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 source "$HERE/commun.sh"
 pass=0 fail=0
 show=1   # 0 (modes pi et public) : seulement la description et le verdict, sans commande ni sortie
+# En-têtes de sécurité du bloc « header { » du Caddyfile, contrôlés en local (mode pi) et en public.
+EN_TETES_SECURITE=(Content-Security-Policy X-Content-Type-Options Referrer-Policy Permissions-Policy)
 
 # probe <attendu|interdit> <description> <motif grep -E> <commande...> :
 # affiche la commande, sa sortie et le verdict.
@@ -104,7 +106,7 @@ mode_pi() {
   # Chemins seuls dans la sortie : elle ne montre pas le port de Caddy (#113, critère 10).
   local missing=("$absent" "/projets$absent" "/_expo/static$absent.js")
   for url in / "${missing[@]}"; do
-    for name in Content-Security-Policy X-Content-Type-Options Referrer-Policy Permissions-Policy; do
+    for name in "${EN_TETES_SECURITE[@]}"; do
       check "$name sur $url, conforme au Caddyfile" '^conforme$' header "http://127.0.0.1:8080$url" "$name"
     done
   done
@@ -271,6 +273,8 @@ mode_pi() {
     # Le processus en cours, pas seulement l'unité : prouve qu'il a redémarré avec son isolation.
     pid="$(systemctl show -p MainPID --value "$unit")"
     check "$unit : processus en cours isolé" '^NoNewPrivs:[[:space:]]+1$' grep NoNewPrivs "/proc/$pid/status"
+    # Un binaire remplacé par une mise à jour sans relance reste en mémoire, marqué « (deleted) ».
+    refute "$unit : processus sur le binaire installé (mise à jour appliquée)" '[(]deleted[)]$' readlink "/proc/$pid/exe"
   done
 
   title "Ticket #113, critère 8 — services désactivés"
@@ -287,15 +291,13 @@ mode_pi() {
   check "clé du dépôt de Cloudflare : empreinte attendue" "^$EMPREINTE_CLOUDFLARE\$" \
     empreinte_cle /usr/share/keyrings/cloudflare-public-v2.gpg
   check "cloudflared installé" '^cloudflared version ' cloudflared --version
-  for f in etendard-tunnel.service etendard-tunnel-maj.service etendard-tunnel-maj.path; do
+  for f in "${UNITES_TUNNEL[@]}"; do
     check "$f identique à ce dossier" '^ok$' sh -c "cmp /etc/systemd/system/$f '$HERE/$f' && echo ok"
   done
   check "démarre au boot" '^enabled$' systemctl is-enabled etendard-tunnel
   check "actif" '^active$' systemctl is-active etendard-tunnel
   check "relance après une mise à jour de cloudflared active" '^active$' systemctl is-active etendard-tunnel-maj.path
   pid="$(systemctl show -p MainPID --value etendard-tunnel)"
-  # Un binaire remplacé sans relance reste en mémoire, marqué « (deleted) » : la mise à jour n'est pas appliquée.
-  check "processus sur le cloudflared installé" '^/usr/bin/cloudflared$' readlink "/proc/$pid/exe"
   check "processus sous un utilisateur sans privilèges" '^Uid:([[:space:]]+[1-9][0-9]*){4}$' grep '^Uid:' "/proc/$pid/status"
   # Le jeton passe à grep par un descripteur (printf est interne à bash) : jamais dans une ligne de commande.
   local jeton
@@ -328,7 +330,7 @@ mode_public() {
 
   title "Ticket #125 — en-têtes de sécurité identiques à ceux du Caddyfile"
   for url in / "$absent"; do
-    for name in Content-Security-Policy X-Content-Type-Options Referrer-Policy Permissions-Policy; do
+    for name in "${EN_TETES_SECURITE[@]}"; do
       check "$name sur $url, conforme au Caddyfile" '^conforme$' header "$base$url" "$name"
     done
   done
