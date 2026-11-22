@@ -17,7 +17,7 @@ test('le schéma est une image nommée qui contient chaque bloc et chaque liaiso
       step,
       ...(step.branches ?? []).map((branch) => ({
         ...branch,
-        via: `${branch.direction === 'in' ? '←' : '→'} ${branch.via}`,
+        via: `${branch.direction === 'in' ? '←' : '→'}\u00a0${branch.via}`,
       })),
     ]),
   ]);

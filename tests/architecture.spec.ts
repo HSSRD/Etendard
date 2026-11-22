@@ -160,6 +160,7 @@ for (const { name, ...media } of appearances) {
     if (testInfo.project.name !== 'chromium-375') return;
     await expect(page.getByTestId('schema')).toHaveScreenshot(
       `architecture-schema-${name}.png`,
+      { stylePath: 'tests/sans-header.css' },
     );
   });
 }

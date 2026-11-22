@@ -1,7 +1,7 @@
 // Schéma des liaisons entre composants (ADR 0016, #102) : des chaînes verticales de blocs reliés
 // par des flèches, en Views (aucune dépendance de dessin). Les chaînes passent l'une sous l'autre
 // quand la largeur manque, sans requête média. Une image pour les lecteurs d'écran : la page en
-// donne la liste des liaisons juste après.
+// donne la liste des liaisons juste après (`accessible` la regroupe sur iOS et Android).
 import { Text, View } from 'react-native';
 import { themedStyles } from '@/theme/theme';
 import {
@@ -61,7 +61,13 @@ export default function WiringDiagram({ label, chains }: WiringDiagramProps) {
   const styles = useStyles();
   const typography = useTypography();
   return (
-    <View role="img" aria-label={label} testID="schema" style={styles.diagram}>
+    <View
+      accessible
+      role="img"
+      aria-label={label}
+      testID="schema"
+      style={styles.diagram}
+    >
       {chains.map((chain) => (
         <View key={chain.title} style={styles.chain}>
           <Text style={[typography.body, styles.label]}>{chain.title}</Text>
@@ -71,7 +77,7 @@ export default function WiringDiagram({ label, chains }: WiringDiagramProps) {
                 <View style={styles.arrow}>
                   <Text style={typography.body}>↓</Text>
                   {step.via && (
-                    <Text style={[typography.body, styles.note]}>
+                    <Text style={[typography.body, styles.note, styles.via]}>
                       {step.via}
                     </Text>
                   )}
@@ -81,7 +87,9 @@ export default function WiringDiagram({ label, chains }: WiringDiagramProps) {
               {step.branches?.map((branch) => (
                 <View key={branch.label} style={styles.branch}>
                   <Text style={[typography.body, styles.note, styles.via]}>
-                    {branch.direction === 'in' ? '←' : '→'} {branch.via}
+                    {branch.direction === 'in' ? '←' : '→'}
+                    {'\u00a0'}
+                    {branch.via}
                   </Text>
                   <Node {...branch} />
                 </View>
@@ -101,10 +109,15 @@ const useStyles = themedStyles((colors) => ({
     flexWrap: 'wrap',
     rowGap: space[6],
   },
-  chain: { flexBasis: layout.diagramColumn, flexGrow: 1, rowGap: space[2] },
-  step: { rowGap: space[2] },
+  // flexShrink : sous la largeur de base (écran de moins de 312 px), la chaîne seule se rétrécit.
+  chain: {
+    flexBasis: layout.diagramColumn,
+    flexGrow: 1,
+    flexShrink: 1,
+    rowGap: space[2],
+  },
+  step: { alignItems: 'flex-start', rowGap: space[2] },
   node: {
-    alignSelf: 'flex-start',
     backgroundColor: colors.surface,
     borderColor: colors.accent,
     borderRadius: radius.md,
@@ -123,18 +136,13 @@ const useStyles = themedStyles((colors) => ({
     flexDirection: 'row',
     paddingLeft: space[4],
   },
-  // Trait vertical qui rattache la liaison latérale au bloc de l'étape.
+  // Décalée à droite de la colonne des flèches : la flèche suivante ne semble pas en partir.
+  // Sans retour à la ligne : la flèche reste collée à son bloc, le libellé se replie.
   branch: {
     alignItems: 'center',
-    borderColor: colors.textMuted,
-    borderLeftWidth: borderWidth,
-    borderStyle: 'solid',
     columnGap: space[2],
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginLeft: space[4],
-    paddingLeft: space[3],
-    rowGap: space[1],
+    marginLeft: space[7],
   },
   via: { flexShrink: 1 },
 }));

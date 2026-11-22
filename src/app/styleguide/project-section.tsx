@@ -25,7 +25,7 @@ export default function ProjectSectionPage() {
           node: (
             <ProjectSection
               section={{
-                ...section,
+                source: section.source,
                 id: 'schema',
                 title: 'Schéma',
                 blocks: [
