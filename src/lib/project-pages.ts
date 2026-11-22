@@ -20,19 +20,35 @@ export interface Price {
   date: string;
 }
 
-const euros = (amount: number) => String(amount).replace('.', ',');
+/** « 349,9 », « 1 200 », « −5 » : milliers séparés par une espace insécable, signe moins typographique. */
+const euros = (amount: number) => {
+  const [whole = '', decimals] = String(Math.abs(amount)).split('.');
+  const grouped = whole.replace(/\B(?=(\d{3})+$)/g, '\u00a0');
+  return `${amount < 0 ? '\u2212' : ''}${grouped}${decimals ? `,${decimals}` : ''}`;
+};
 
 /** « 5 à 10 €, relevé le 2026-11-20 » : un prix n'est jamais affiché sans sa date. */
 const formatPrice = ({ min, max, date }: Price) =>
   `${euros(min)} à ${euros(max)}\u00a0€, relevé le ${date}`;
 
-/** Texte affiché d'une cellule de tableau : le texte, le prix daté ou le libellé du statut. */
+/** « 1 200 €, prévu le 2026-11-20 », « −5 à 155 €, prévu le … » : un budget est daté comme un prix. */
+const formatBudget = ({ min, max, date }: Price) =>
+  `${min === max ? euros(min) : `${euros(min)} à ${euros(max)}`}\u00a0€, prévu le ${date}`;
+
+/** Texte affiché d'une cellule de tableau : le texte, le prix ou le budget daté, ou le libellé du statut. */
 export const cellText = (
-  cell: string | { status?: Status | undefined; price?: Price | undefined },
+  cell:
+    | string
+    | {
+        status?: Status | undefined;
+        price?: Price | undefined;
+        budget?: Price | undefined;
+      },
 ) => {
   if (typeof cell === 'string') return cell;
   if (cell.status) return statusLabels[cell.status];
-  return cell.price ? formatPrice(cell.price) : '';
+  if (cell.price) return formatPrice(cell.price);
+  return cell.budget ? formatBudget(cell.budget) : '';
 };
 
 /** Fichiers du repo source qui contiennent des données jamais publiées : jamais liés (barre finale comprise). */

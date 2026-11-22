@@ -52,6 +52,18 @@ const price = z
   })
   .refine(({ min, max }) => min < max, 'fourchette : min inférieur à max');
 
+/**
+ * Montant prévu au budget (plafond, dépense ou reste) : une valeur ou une fourchette, négative
+ * quand la prévision dépasse le plafond. Un prix, lui, est un relevé : jamais ponctuel ni négatif.
+ */
+const budget = z
+  .strictObject({
+    min: z.number(),
+    max: z.number(),
+    date: date('budget'),
+  })
+  .refine(({ min, max }) => min <= max, 'budget : min au plus égal à max');
+
 const source = z.strictObject(
   {
     /** Chemin du fichier dans le repo du projet. */
@@ -115,14 +127,20 @@ const href = z
     }
   });
 
-/** Cellule : un texte, ou un objet qui porte un statut ou un prix. */
+/** Cellule : un texte, ou un objet qui porte un statut, un prix ou un budget. */
 const cell = z.union([
   prose,
   z
-    .strictObject({ status: status.optional(), price: price.optional() })
+    .strictObject({
+      status: status.optional(),
+      price: price.optional(),
+      budget: budget.optional(),
+    })
     .refine(
-      ({ status, price }) => (status === undefined) !== (price === undefined),
-      'cellule : un statut ou un prix',
+      (value) =>
+        Object.values(value).filter((entry) => entry !== undefined).length ===
+        1,
+      'cellule : un statut, un prix ou un budget',
     ),
 ]);
 
