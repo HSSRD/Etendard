@@ -5,7 +5,7 @@
 
 ## Contexte
 
-Flo valide les PR d'agents sans lancer le projet sur sa machine. Il lui faut une URL par PR. La production reste sur le Pi (0002), qui ne doit jamais recevoir de code non mergé : il héberge aussi Sentry.
+Flo valide les PR d'agents sans lancer le projet sur sa machine. Il lui faut une URL par PR. La production reste sur le Pi (0002), qui ne doit jamais recevoir de code non mergé : il héberge aussi d'autres services.
 
 ## Décision
 
@@ -18,7 +18,7 @@ Flo valide les PR d'agents sans lancer le projet sur sa machine. Il lui faut une
 ## Alternatives écartées
 
 - **Cloudflare Pages** : fonctionne, mais la doc Cloudflare indique « Start new projects with Workers » (vérifié le 2026-11-07).
-- **Prévisualisation sur le Pi** : exposerait du code non relu sur la machine qui héberge Sentry.
+- **Prévisualisation sur le Pi** : exposerait du code non relu sur la machine qui héberge d'autres services.
 - **Aucune prévisualisation** (archive à télécharger) : une action humaine de plus à chaque PR.
 - **Netlify, Vercel** : un fournisseur de plus alors que Cloudflare est déjà utilisé pour le tunnel (0002).
 

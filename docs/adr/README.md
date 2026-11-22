@@ -11,11 +11,11 @@ Avant toute modification structurelle, lire les ADR acceptés et ne jamais les c
 | N° | Titre | Statut |
 |---|---|---|
 | 0001 | [Utiliser Astro 7 et TypeScript strict, Vue seulement à la première île](0001-utiliser-astro-et-typescript-strict.md) | Remplacé par 0015 |
-| 0002 | [Héberger sur le Raspberry Pi avec Caddy natif et Cloudflare Tunnel, sans Docker](0002-heberger-sur-le-pi-avec-caddy-et-cloudflare-tunnel.md) | Proposé, adapté par 0015 |
+| 0002 | [Héberger sur le Raspberry Pi avec Caddy natif et Cloudflare Tunnel, sans Docker](0002-heberger-sur-le-pi-avec-caddy-et-cloudflare-tunnel.md) | Proposé, adapté par 0015 et 0017 |
 | 0003 | [Tester les composants sur les pages `/styleguide` avec Playwright, sans Storybook](0003-tester-les-composants-sur-le-styleguide-avec-playwright.md) | Proposé, adapté par 0015 |
 | 0004 | [Écrire le CSS en natif avec des design tokens, BEM et un Stylelint strict](0004-ecrire-le-css-en-natif-avec-tokens-et-bem.md) | Remplacé par 0015 |
 | 0005 | [Faire de `pnpm verify` la définition unique de « terminé »](0005-faire-de-pnpm-verify-la-definition-de-termine.md) | Proposé, adapté par 0015 |
-| 0006 | [Déployer par GitHub Actions, Tailscale et SSH à commande forcée, avec rollback automatique](0006-deployer-via-tailscale-et-ssh-a-commande-forcee.md) | Proposé |
+| 0006 | [Déployer par GitHub Actions, Tailscale et SSH à commande forcée, avec rollback automatique](0006-deployer-via-tailscale-et-ssh-a-commande-forcee.md) | Proposé, adapté par 0017 |
 | 0007 | [Prévisualiser chaque PR sur Cloudflare Workers](0007-previsualiser-les-pr-sur-cloudflare-workers.md) | Proposé |
 | 0008 | [Identifier les agents par la GitHub App `hssrd-bot`, sans permission `workflows`](0008-identifier-les-agents-par-une-github-app-sans-permission-workflows.md) | Accepté |
 | 0009 | [Suivre les tâches dans GitHub Issues avec des formulaires et des étiquettes](0009-suivre-les-taches-dans-github-issues.md) | Proposé |
@@ -26,3 +26,4 @@ Avant toute modification structurelle, lire les ADR acceptés et ne jamais les c
 | 0014 | [Modéliser le contenu en collections Astro validées par Zod](0014-modeliser-le-contenu-en-collections-astro.md) | Remplacé par 0015 |
 | 0015 | [Construire le site et les apps avec Expo et React Native](0015-construire-le-site-et-les-apps-avec-expo.md) | Accepté |
 | 0016 | [Publier des pages de projet en copie rédigée et datée de leurs sources](0016-publier-des-pages-de-projet-en-copie-redigee-et-datee.md) | Proposé |
+| 0017 | [Durcir le serveur et le mettre en ligne avant le départ des autres services](0017-durcir-le-serveur-avant-la-mise-en-ligne.md) | Proposé |
