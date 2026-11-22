@@ -1,13 +1,13 @@
 # Pi : ce qui est en place et pourquoi
 
-Ce document explique la préparation du Pi faite au ticket #4 (PR #7). Pour l'installer ou la refaire, suis le [README](README.md). Les décisions de fond sont dans les ADR [0002](../../docs/adr/0002-heberger-sur-le-pi-avec-caddy-et-cloudflare-tunnel.md) (hébergement) et [0006](../../docs/adr/0006-deployer-via-tailscale-et-ssh-a-commande-forcee.md) (déploiement).
+Ce document explique la préparation du Pi faite au ticket #4 (PR #7) et son durcissement (#113). Pour l'installer ou la refaire, suis le [README](README.md). Les décisions de fond sont dans les ADR [0002](../../docs/adr/0002-heberger-sur-le-pi-avec-caddy-et-cloudflare-tunnel.md) (hébergement) et [0006](../../docs/adr/0006-deployer-via-tailscale-et-ssh-a-commande-forcee.md) (déploiement).
 
 ## Le but
 
 À chaque merge sur `main`, GitHub Actions doit déposer la nouvelle version du site sur le Pi. Ce dépôt passe par le workflow `deploy.yml` de #5, décrit plus bas. Deux contraintes :
 
 - **la CI ne doit jamais avoir de terminal sur le Pi.** Le repo est public : un workflow compromis ne doit rien pouvoir faire d'autre que livrer le site ;
-- **le Pi héberge aussi Sentry** (caméra, ports 5000 et 8000). La CI ne doit pas pouvoir l'atteindre.
+- **le Pi héberge aussi d'autres services.** La CI ne doit pas pouvoir les atteindre.
 
 ## Le trajet d'un déploiement
 
@@ -28,7 +28,7 @@ Pour l'instant, personne d'autre que le Pi ne voit le site. Flo le consulte par 
 
 | Protection | Ce qu'elle empêche | Où |
 |---|---|---|
-| **Tailscale** : `tag:ci` ne joint que le port 22 du Pi | une machine de CI qui atteindrait Sentry, tes autres appareils ou un autre port | `tailscale-policy.hujson` |
+| **Tailscale** : `tag:ci` ne joint que le port 22 du Pi | une machine de CI qui atteindrait les autres services du Pi, tes autres appareils ou un autre port | `tailscale-policy.hujson` |
 | **Clé à commande forcée** : `command="…etendard-receive",restrict` | un terminal, une autre commande, sftp, un tunnel | `~deploy/.ssh/authorized_keys` |
 | **Utilisateur `deploy`** : sans mot de passe, sans sudo, sans groupe | toute action hors de `/srv/etendard` | `install.sh` |
 | **`etendard-receive`** : contrôle de l'archive avant extraction | qu'une archive piégée écrive hors de son dossier ou fasse servir un fichier du système | `etendard-receive` |
@@ -76,7 +76,7 @@ La CSP n'est écrite que dans le `Caddyfile`. `tests/csp.spec.ts` l'y lit, sert 
 
 #### Le cache des fichiers `/_expo/static/` (#36, #76)
 
-Expo écrit les scripts et les feuilles de style dans `/_expo/static/`, sous un nom qui contient une empreinte de leur contenu : `entry-3e639b39dd27ef8428b3e8b1df27be02.js`, `inline-d4eb76fb9541e2f6.css` (`scripts/export-web.js`). Caddy les sert avec `Cache-Control: public, max-age=31536000, immutable`. Le navigateur et Cloudflare les gardent donc un an, sans jamais les redemander, et la feuille de style, qui bloque l'affichage, ne fait plus l'aller-retour Cloudflare, tunnel, Pi en Wi-Fi à chaque visite.
+Expo écrit les scripts et les feuilles de style dans `/_expo/static/`, sous un nom qui contient une empreinte de leur contenu : `entry-3e639b39dd27ef8428b3e8b1df27be02.js`, `inline-d4eb76fb9541e2f6.css` (`scripts/export-web.js`). Caddy les sert avec `Cache-Control: public, max-age=31536000, immutable`. Le navigateur et Cloudflare les gardent donc un an, sans jamais les redemander, et la feuille de style, qui bloque l'affichage, ne fait plus l'aller-retour Cloudflare, tunnel, Pi à chaque visite.
 
 **Ce cache est sans risque.** Un fichier de `/_expo/static/` ne change jamais de contenu : si le CSS change, l'empreinte change, donc le nom aussi. La nouvelle page HTML pointe vers ce nouveau nom, que personne n'a encore en cache. L'ancien fichier reste en cache, mais plus aucune page ne le demande. Les autres fichiers (`/`, la vidéo, `favicon.svg`, `version.txt`) gardent un nom fixe : ils n'ont pas cet en-tête, sinon une nouvelle version mettrait jusqu'à un an à arriver.
 
@@ -106,7 +106,7 @@ Expo exporte la route `projets/dragon/materiel` en `projets/dragon/materiel.html
 
 #### Le journal d'accès
 
-Caddy écrit chaque requête, en JSON, dans `/var/log/caddy/etendard-access.log`. À 10 Mio, le fichier est renommé et compressé ; Caddy garde les 4 derniers. Le journal occupe donc au plus 50 Mio sur la carte SD. Il appartient à l'utilisateur `caddy`, sous lequel tourne le service : `install.sh` lui rend le dossier après `caddy validate`, qui, lancé en root, crée le fichier s'il n'existe pas.
+Caddy écrit chaque requête, en JSON, dans `/var/log/caddy/etendard-access.log`. À 10 Mio, le fichier est renommé et compressé ; Caddy garde les 4 derniers. Le journal occupe donc au plus 50 Mio sur le disque. Il appartient à l'utilisateur `caddy`, sous lequel tourne le service : `install.sh` lui rend le dossier après `caddy validate`, qui, lancé en root, crée le fichier s'il n'existe pas.
 
 Le journal contient l'adresse IP des visiteurs et les en-têtes de leurs requêtes ; Caddy supprime un fichier archivé 90 jours après son archivage (sa valeur par défaut). L'archivage n'ayant lieu qu'à 10 Mio, une ligne peut rester bien plus longtemps sur un site peu visité. Derrière Cloudflare Tunnel, l'IP enregistrée sera `127.0.0.1` et la vraie dans l'en-tête `Cf-Connecting-Ip` : à régler avec la mise en ligne.
 
@@ -168,22 +168,62 @@ L'ordre des versions repose sur leur date de publication, c'est-à-dire la date 
 
 ### Tailscale
 
-**État constaté au départ :**
-- la politique était celle par défaut, où tout le monde joint tout ;
-- de nombreux nœuds `github-runnervm…` traînaient dans le tailnet. Ils venaient des workflows de **Sentry et d'Overwatch** et pouvaient joindre Sentry.
-
 **Ce qui a été fait :**
-- **Nœuds supprimés.**
+- **Nœuds `github-runnervm…` périmés supprimés** : non éphémères et sans tag, ils avaient l'accès des appareils de Flo.
 - **Tailscale SSH coupé sur le Pi** (`RunSSH: false`). Sinon, il répondrait lui-même sur le port 22 du tailnet, sans lire `authorized_keys` : la commande forcée serait contournée.
 - **Politique** :
   - tes appareils gardent l'accès complet, comme avant ;
   - `tag:ci` ne joint que le Pi, et seulement en `tcp:22`.
 - **Tests dans la politique.** La console refuse d'enregistrer si l'un d'eux échoue :
-  - `tag:ci` est refusé sur 5000, 8000, 8080, 80 et 443 ;
-  - ton identifiant Tailscale garde 22, 5000 et 8000.
+  - `tag:ci` est refusé sur les ports des services existants, 8080, 80 et 443 ;
+  - ton identifiant Tailscale garde 22 et les ports des services existants.
 - **Client OAuth `GitHubAction`**, avec une seule portée, `auth_keys`, et le tag `tag:ci`. Même s'il fuit, il ne peut créer que des machines `tag:ci`, donc limitées au port 22 du Pi. `tailscale/github-action` crée avec lui des nœuds éphémères, retirés du tailnet après chaque job.
 
-Le dépôt contient une version générique de la politique, avec des valeurs `À_REMPLACER`. La version complétée (IP du Pi, identifiant de Flo) n'existe que dans la console.
+Le dépôt contient une version générique de la politique, avec des valeurs `À_REMPLACER`. La version complétée (IP du Pi, identifiant de Flo, ports des services existants) n'existe que dans la console.
+
+## Le durcissement du serveur (#113)
+
+Le site sera public alors que le Pi héberge encore d'autres services (ADR [0017](../../docs/adr/0017-durcir-le-serveur-avant-la-mise-en-ligne.md)). Cloudflare Tunnel n'ouvre aucun port vers Internet : le risque est une faille du serveur web ou du tunnel, puis une élévation de privilèges sur le Pi. `install.sh` applique les protections ci-dessous, par ordre d'effet, et `verify.sh pi` les contrôle. La procédure et le retour arrière sont dans le [README](README.md#durcir-le-serveur-113).
+
+### Le fichier local
+
+Le repo est public : il ne contient ni les ports des services existants, ni leurs noms, ni l'état du Pi. Ces valeurs sont dans `/etc/etendard/serveur.conf`, sur le Pi seulement, au format de [`serveur.conf.exemple`](serveur.conf.exemple) : une ligne `PORT=`, `SERVICE=` ou `DEPOT_EXCLU=` par valeur. Le fichier n'est jamais exécuté, seulement lu : une ligne inconnue ou une valeur invalide arrête `install.sh` avant tout changement, avec son numéro de ligne mais sans sa valeur. Sans ce fichier, `install.sh` et `verify.sh pi` s'arrêtent en le disant.
+
+`verify.sh pi` désigne chaque valeur par son numéro (« port n°1 du fichier local ») et n'affiche ni les commandes ni leur sortie : elle se colle telle quelle dans un ticket. `test/verify-pi.test.sh` le vérifie avec de fausses commandes qui affichent des adresses, des noms et des ports.
+
+### Les mises à jour automatiques
+
+`unattended-upgrades` installe chaque jour les correctifs de sécurité du système (configuration du paquet) et, par `/etc/apt/apt.conf.d/52etendard-maj-auto`, ceux du dépôt du noyau en cours, qui fournit aussi son firmware, et des dépôts de Caddy et de Tailscale. Ces dépôts sont lus sur le Pi (`origine_maj` de `commun.sh`) : le repo ne nomme pas le système. Un dépôt listé en `DEPOT_EXCLU=` n'est pas ajouté.
+
+**Pas de redémarrage automatique** : il couperait le site et les services existants à une heure non choisie. Un nouveau noyau ne sert qu'après un redémarrage : `verify.sh pi` affiche « ⚠️ redémarrage en attente » quand le système le demande.
+
+**Pour ajouter un logiciel exposé** (`cloudflared`, ticket suivant) : son paquet dans `PAQUETS_MAJ_AUTO` de `commun.sh`.
+
+### L'isolation du serveur web
+
+Caddy reçoit une surcharge systemd, `/etc/systemd/system/caddy.service.d/etendard-isolation.conf` : le contenu d'[`isolation.conf`](isolation.conf), plus `ReadWritePaths=` avec ses seuls dossiers d'écriture (`/var/lib/caddy`, `/var/log/caddy`). L'unité du paquet n'est jamais modifiée : une mise à jour la remplacerait. Une faille de Caddy ne donnerait ni nouveau privilège, ni écriture ailleurs, ni accès aux dossiers personnels, aux périphériques, au noyau ou à une capacité root. `install.sh` affiche le score `systemd-analyze security` avant et après (0 : isolé, 10 : aucune isolation). `verify.sh pi` lit la configuration chargée et l'état du processus en cours, ce qui prouve qu'il a redémarré avec elle.
+
+**Pour isoler un autre service** : son unité dans `SERVICES_ISOLES` de `commun.sh`, et une ligne `isoler <unité> <dossiers où il écrit>` dans `install.sh`.
+
+### Le pare-feu d'entrée
+
+La table nftables `inet etendard` refuse toute entrée, sauf :
+
+- le trafic local (`lo`) et les réponses aux connexions établies : une session SSH ouverte survit à l'application ;
+- en IPv6, la découverte des voisins et du routeur et les réponses DHCPv6, sans quoi le Pi perd son adresse ;
+- SSH (port lu dans `sshd -T`) et les ports `PORT=` du fichier local, depuis l'interface Tailscale et depuis le réseau local : les préfixes directement joignables par l'interface de la route par défaut, détectés à chaque `install.sh`.
+
+Le Pi ne répond donc plus au ping. Après un changement de réseau local (box, plage d'adresses), relance `install.sh`.
+
+**Pourquoi une table à part, chargée par son propre service** (`etendard-pare-feu.service`, avant le réseau). Tailscale, comme tout logiciel qui gère des conteneurs, réécrit ses propres règles et en accepte certaines. Dans nftables, un paquet doit passer **chaque** chaîne accrochée à l'entrée : le refus de cette table l'emporte sur l'acceptation d'une autre, et ces réécritures ne la touchent pas. Le service `nftables` du système commence au contraire par vider toutes les règles : il effacerait celles de Tailscale. Un port redirigé (NAT) avant la chaîne d'entrée, comme celui d'un conteneur publié, ne la traverserait pas : `install.sh` s'arrête s'il en trouve un parmi les ports autorisés, et `verify.sh pi` le contrôle aussi.
+
+### SSH par clé uniquement
+
+`/etc/ssh/sshd_config.d/00-etendard.conf` (copie de [`sshd-etendard.conf`](sshd-etendard.conf)) refuse les mots de passe, le clavier interactif et la connexion root. Son nom commence par `00` : sshd garde la première valeur lue, et ce dossier est lu en tête de `sshd_config`. La clé de déploiement est une clé : elle fonctionne toujours. `install.sh` s'arrête avant tout changement si le compte qui l'a lancé par `sudo` n'a aucune clé autorisée (`cle_admin_autorisee` de `commun.sh`, testée par `test/commun.test.sh`), puis vérifie avec `sshd -T` qu'aucune autre configuration ne l'emporte.
+
+### Rien d'inutile
+
+Le Pi démarre sans environnement graphique (`multi-user.target`, au prochain redémarrage : la session graphique en cours n'est pas coupée). Chaque `SERVICE=` du fichier local est masqué et arrêté : masqué plutôt que désactivé, pour qu'aucun autre service ni socket ne le relance. La lecture du fichier refuse les services nécessaires à l'accès ou au site (SSH, Tailscale, Caddy, le pare-feu).
 
 ## Le workflow `deploy.yml` (#5)
 
@@ -262,7 +302,7 @@ La clé d'hôte est lue sur le Pi lui-même, par le réseau local, plutôt que p
 ## Comment on sait que ça marche
 
 - **`test/etendard-receive.test.sh`** : tests locaux sur des archives saines et piégées, le verrou et `restore`. Ils n'ont pas besoin du Pi.
-- **`verify.sh pi`**, sur le Pi, et **`verify.sh ssh`**, depuis le PC : ils rejouent les critères du ticket et affichent ✅ ou ❌. Le 2026-11-07, le bilan était de 20/0 et 21/0. Les sorties complètes sont dans le ticket #4.
+- **`verify.sh pi`**, sur le Pi, et **`verify.sh ssh`**, depuis le PC : ils rejouent les critères des tickets et affichent ✅ ou ❌ ; `verify.sh pi` contrôle aussi le durcissement (#113). Le 2026-11-07, le bilan était de 20/0 et 21/0. Les sorties complètes sont dans le ticket #4.
 - **`verify.sh hsts <domaine>`**, depuis n'importe quel poste une fois le site en ligne : HSTS posé par Cloudflare (#41). `test/verify-hsts.test.sh` le teste sans le site.
 - **Tests Tailscale** : ils sont rejoués par la console à chaque modification de la politique.
 
@@ -270,11 +310,5 @@ Relance `verify.sh` après toute intervention sur le Pi : mise à jour système,
 
 ## Ce qui reste à faire, hors de ce ticket
 
-- **Runners de Sentry et d'Overwatch** : s'ils rejoignent encore le tailnet avec une clé sans tag, Tailscale les traite comme tes appareils, avec un accès complet. Il faudra leur donner un tag dédié, avec ses propres règles.
-- **Durcissement du Pi, avant toute publication** (ADR 0002) :
-  - désactiver la connexion SSH par mot de passe ;
-  - installer un pare-feu et les mises à jour automatiques ;
-  - corriger Sentry, qui écoute sur toutes les interfaces ;
-  - retirer CUPS, Avahi et le bureau ;
-  - à terme, réinstaller un Pi dédié.
-- **Ansible** : ces fichiers seront repris dans `HSSRD/infra`.
+- **Runners des autres projets** : s'ils rejoignent encore le tailnet avec une clé sans tag, Tailscale les traite comme tes appareils, avec un accès complet. Il faudra leur donner un tag dédié, avec ses propres règles.
+- **Départ des autres services, puis réinstallation d'un Pi dédié** (ADR 0002 et 0017).

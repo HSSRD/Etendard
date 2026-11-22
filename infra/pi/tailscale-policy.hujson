@@ -1,6 +1,6 @@
 // Politique Tailscale du tailnet de Flo (ticket #4, ADR 0006).
 // À coller dans la console : Access controls > Edit file, en suivant tailscale-checklist.md.
-// Avant de coller : remplacer les deux valeurs « À_REMPLACER », et reporter toute règle
+// Avant de coller : remplacer les valeurs « À_REMPLACER », et reporter toute règle
 // propre au tailnet actuel (voir l'étape 1 de la checklist). La console refuse
 // d'enregistrer tant qu'une valeur est invalide ou qu'un test du bloc « tests » échoue.
 {
@@ -37,12 +37,13 @@
 		{
 			"src":    "tag:ci",
 			"accept": ["pi:22"],
-			"deny":   ["pi:5000", "pi:8000", "pi:8080", "pi:80", "pi:443"],
+			// Une entrée « pi:<port> » par ligne PORT= du fichier local du Pi (#113) à la place de la dernière, retirée s'il n'y en a aucune.
+			"deny":   ["pi:8080", "pi:80", "pi:443", "pi:À_REMPLACER_PORTS_DU_FICHIER_LOCAL"],
 		},
 		{
-			// Les appareils de Flo gardent leur accès au Pi (SSH et Sentry).
+			// Les appareils de Flo gardent leur accès au Pi (SSH et services existants, mêmes ports que ci-dessus).
 			"src":    "À_REMPLACER_IDENTIFIANT_TAILSCALE_DE_FLO",
-			"accept": ["pi:22", "pi:5000", "pi:8000"],
+			"accept": ["pi:22", "pi:À_REMPLACER_PORTS_DU_FICHIER_LOCAL"],
 		},
 	],
 }
