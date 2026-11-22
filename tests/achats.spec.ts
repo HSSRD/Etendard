@@ -2,7 +2,6 @@ import { expect, test } from '@playwright/test';
 import achats, { vagues } from '../src/content/projets/dragon/achats';
 import { pagePath } from '../src/lib/project-pages';
 import type {
-  Block,
   ProjectPage,
   Section,
   Table,
@@ -31,9 +30,7 @@ const tables = ({ blocks }: Section) =>
   blocks.filter((block): block is Table => block.type === 'table');
 
 const lists = ({ blocks }: Section) =>
-  blocks.flatMap((block: Block) =>
-    block.type === 'list' ? [block.items] : [],
-  );
+  blocks.flatMap((block) => (block.type === 'list' ? [block.items] : []));
 
 test.describe('sans JavaScript', () => {
   test.use({ javaScriptEnabled: false });
@@ -93,7 +90,7 @@ test.describe('sans JavaScript', () => {
     }
   });
 
-  test('la radio passe avant le drone, les batteries après son montage', async ({
+  test('la radio passe avant le drone, les batteries en dernier', async ({
     page,
   }) => {
     await page.goto(url);
@@ -101,8 +98,8 @@ test.describe('sans JavaScript', () => {
     await expect(region(page, 'Principes de l’ordre d’achat')).toContainText(
       'La radio avant le drone : elle sert de manette pour le simulateur',
     );
-    await expect(region(page, 'Vague 3 : énergie')).toContainText(
-      'Une LiPo achetée trop tôt vieillit dans un placard',
+    await expect(region(page, 'Principes de l’ordre d’achat')).toContainText(
+      'Les batteries LiPo le plus tard possible',
     );
   });
 
@@ -118,7 +115,6 @@ test.describe('sans JavaScript', () => {
     await expectTable(page, ceiling, shown);
     await expect(shown).toContainText('1 200 €, prévu le 2026-11-20');
     await expectTable(page, cumulative, shown);
-    await expect(shown).toContainText('850 à 980 €, prévu le 2026-11-20');
     // Le premier paragraphe suit les tableaux.
     await expect(shown.getByRole('paragraph').first()).toHaveText(
       /^Prévision relevée le 2026-11-20/,

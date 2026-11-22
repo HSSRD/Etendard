@@ -27,13 +27,17 @@ const euros = (amount: number) => {
   return `${amount < 0 ? '\u2212' : ''}${grouped}${decimals ? `,${decimals}` : ''}`;
 };
 
+/** « 1 200 » pour une valeur, « 5 à 10 » pour une fourchette. */
+const amounts = (min: number, max: number) =>
+  min === max ? euros(min) : `${euros(min)} à ${euros(max)}`;
+
 /** « 5 à 10 €, relevé le 2026-11-20 » : un prix n'est jamais affiché sans sa date. */
 const formatPrice = ({ min, max, date }: Price) =>
-  `${euros(min)} à ${euros(max)}\u00a0€, relevé le ${date}`;
+  `${amounts(min, max)}\u00a0€, relevé le ${date}`;
 
 /** « 1 200 €, prévu le 2026-11-20 », « −5 à 155 €, prévu le … » : un budget est daté comme un prix. */
 const formatBudget = ({ min, max, date }: Price) =>
-  `${min === max ? euros(min) : `${euros(min)} à ${euros(max)}`}\u00a0€, prévu le ${date}`;
+  `${amounts(min, max)}\u00a0€, prévu le ${date}`;
 
 /** Texte affiché d'une cellule de tableau : le texte, le prix ou le budget daté, ou le libellé du statut. */
 export const cellText = (

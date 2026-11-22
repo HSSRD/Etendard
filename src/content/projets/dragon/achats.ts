@@ -38,15 +38,13 @@ interface Vague {
 
 /** Section d'une vague : son contenu, la raison de son moment, puis ses conditions en liste. */
 const vague = ({
-  id,
-  title,
   content,
   why,
   next,
   conditions,
+  ...heading
 }: Vague): Section => ({
-  id,
-  title,
+  ...heading,
   source: source('ordre-achat.md'),
   blocks: [
     ...content,
