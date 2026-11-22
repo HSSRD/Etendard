@@ -78,7 +78,7 @@ export const tabTo = async (page: Page, target: Locator, maxPresses = 10) => {
 };
 
 /** Apparences d'une page du styleguide : thème clair, sombre, puis couleurs forcées (ADR 0016). */
-const appearances = [
+export const appearances = [
   { name: 'light', colorScheme: 'light', forcedColors: 'none' },
   { name: 'dark', colorScheme: 'dark', forcedColors: 'none' },
   { name: 'forced-colors', colorScheme: 'light', forcedColors: 'active' },

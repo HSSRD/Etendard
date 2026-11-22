@@ -14,6 +14,7 @@ test('chaque carte montre le titre, le résumé et le corps de sa fiche', async 
     'Hussard',
     'Overwatch',
     'Sentry',
+    'Dragon',
     'Démonstration',
   ]);
   // Résumé puis au moins un paragraphe du corps, chacun non vide.
@@ -37,7 +38,10 @@ test('seule une fiche qui déclare sa page porte un lien vers elle', async ({
       name: 'Voir la page du projet Démonstration',
     }),
   ).toHaveAttribute('href', '/projets/demo');
-  await expect(articles.getByRole('link')).toHaveCount(1);
+  await expect(
+    articles.getByRole('link', { name: 'Voir la page du projet Dragon' }),
+  ).toHaveAttribute('href', '/projets/dragon');
+  await expect(articles.getByRole('link')).toHaveCount(2);
 });
 
 test('la présentation (intro) n’a pas de cadre, les cartes en ont un', async ({

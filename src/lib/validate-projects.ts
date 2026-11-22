@@ -28,8 +28,8 @@ const projectSchema = z.strictObject({
 export type Project = z.infer<typeof projectSchema>;
 
 /**
- * Valide les fiches et leurs liens : un projet racine (non référencé) a des units, une sous-unité
- * n'en a pas, chaque fiche est référencée au plus une fois. Lève une erreur qui liste chaque problème.
+ * Valide les fiches et leurs liens : un projet racine (non référencé) a des units ou sa page, une
+ * sous-unité n'en a pas, chaque fiche est référencée au plus une fois. Lève une erreur qui liste chaque problème.
  */
 export const validateProjects = (input: unknown): Project[] => {
   const parsed = z.array(projectSchema).safeParse(input);
@@ -60,8 +60,9 @@ export const validateProjects = (input: unknown): Project[] => {
     if (referenced.has(project.id) && hasUnits) {
       errors.push(`${project.id} : une sous-unité ne peut pas avoir de units.`);
     }
-    // Une racine sans units est une sous-unité oubliée dans les units de son projet.
-    if (!referenced.has(project.id) && !hasUnits) {
+    // Une racine sans units ni page est une sous-unité oubliée dans les units de son projet ;
+    // avec sa page (ADR 0016), c'est un projet autonome (Dragon).
+    if (!referenced.has(project.id) && !hasUnits && !project.page) {
       errors.push(`${project.id} : absent des units de tout projet.`);
     }
   }
