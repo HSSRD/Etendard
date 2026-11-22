@@ -48,6 +48,16 @@ test('une source aux données jamais publiées est citée sans lien', async ({
   await expect(page.locator('a[href*="bom.md"]')).toHaveCount(0);
 });
 
+test('une figure se place entre le titre et les blocs', async ({ page }) => {
+  await page.goto('/styleguide/project-section');
+
+  const section = page.getByRole('region', { name: 'Schéma', exact: true });
+  // Le schéma suit le bloc du titre et précède le premier paragraphe.
+  await expect(
+    section.locator(':has(> h2) + [data-testid="schema"] + p'),
+  ).toHaveText('La figure précède les blocs.');
+});
+
 test('l’index du styleguide mène à la page de ProjectSection', async ({
   page,
 }) => {

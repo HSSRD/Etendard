@@ -86,6 +86,8 @@ export const layout = {
   tableColumn: 160,
   /** Écart entre les colonnes d'un tableau, compté dans la largeur de bascule en tableau. */
   tableGap: space[4],
+  /** Largeur minimale d'une chaîne du schéma des liaisons : en dessous, les chaînes s'empilent. */
+  diagramColumn: 280,
 } as const;
 
 /** Hauteur d'un écran sous le header (web) ; iOS et Android la calculent avec la fenêtre. */
