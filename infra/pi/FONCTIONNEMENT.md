@@ -221,7 +221,7 @@ Le repo est public : il ne contient ni les ports des services existants, ni leur
 
 Caddy reçoit une surcharge systemd, `/etc/systemd/system/caddy.service.d/etendard-isolation.conf` : le contenu d'[`isolation.conf`](isolation.conf), plus `ReadWritePaths=` avec ses seuls dossiers d'écriture (`/var/lib/caddy`, `/var/log/caddy`). L'unité du paquet n'est jamais modifiée : une mise à jour la remplacerait. Une faille de Caddy ne donnerait ni nouveau privilège, ni écriture ailleurs, ni accès aux dossiers personnels, aux périphériques, au noyau ou à une capacité root. `install.sh` affiche le score `systemd-analyze security` avant et après (0 : isolé, 10 : aucune isolation). `verify.sh pi` lit la configuration chargée et l'état du processus en cours, ce qui prouve qu'il a redémarré avec elle.
 
-`cloudflared` reçoit la même surcharge, sans `ReadWritePaths=` : il n'écrit nulle part ([plus bas](#cloudflare-tunnel-125)).
+`cloudflared` reçoit la même surcharge, avec un `ReadWritePaths=` vide : il n'écrit nulle part ([plus bas](#cloudflare-tunnel-125)).
 
 **Pour isoler un autre service** : son unité et les dossiers où il écrit dans `SERVICES_ISOLES` de `commun.sh`.
 

@@ -24,7 +24,7 @@ cat > "$WORK/bin/curl" <<'SH'
 head=0 out=
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    -sSI | -I) head=1 ;;
+    -sSI) head=1 ;;
     -o) out="$2"; shift ;;
     https://*) url="$1"; echo "$1" >> "$STUB_LOG" ;;
   esac

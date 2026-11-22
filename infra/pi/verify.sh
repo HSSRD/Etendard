@@ -45,16 +45,16 @@ verdict() {
 check() { probe attendu "$@"; }
 refute() { probe interdit "$@"; }
 
-# served <url> <nom> [options curl…] : la ligne de l'en-tête servi.
-served() { curl -sSI "${@:3}" "$1" | tr -d '\r' | grep -i "^$2:"; }
+# served <url> <nom> [options curl…] : la ligne de l'en-tête servi, son nom écrit comme demandé (en HTTP/2,
+# par Cloudflare, les noms arrivent en minuscules).
+served() { curl -sSI "${@:3}" "$1" | tr -d '\r' | grep -i "^$2:" | sed "s/^[^:]*:/$2:/"; }
 
 # header <url> <nom> [matcher [options curl…]] : affiche l'en-tête servi, puis « conforme » s'il est
 # identique à celui du bloc « header [matcher] { » du Caddyfile de ce dossier (une config modifiée
 # mais pas rechargée ne l'est pas). Sans matcher, le bloc des en-têtes de sécurité.
 header() {
   local got want
-  # Nom réécrit tel que demandé : en HTTP/2 (Cloudflare), les noms d'en-tête arrivent en minuscules.
-  got="$(served "$1" "$2" "${@:4}" | sed "s/^[^:]*:/$2:/")"
+  got="$(served "$1" "$2" "${@:4}")"
   want="$(awk -v name="$2" -v block="header ${3:+$3 }{" '
     { line = $0; sub(/^[[:space:]]+/, "", line) }
     line == block { inside = 1; next }
@@ -262,12 +262,10 @@ mode_pi() {
   [ -e /run/reboot-required ] && echo "  ⚠️ redémarrage en attente, pour appliquer une mise à jour"
 
   title "Ticket #113, critère 7 — isolation des services exposés"
-  local unit pid rw
+  local unit pid
   for unit in "${!SERVICES_ISOLES[@]}"; do
-    # Un service sans dossier d'écriture (le tunnel) n'en reçoit aucun.
-    rw='ReadWritePaths=/'
-    [ -n "${SERVICES_ISOLES[$unit]}" ] || rw='ReadWritePaths=$'
-    for p in NoNewPrivileges=yes ProtectSystem=strict ProtectHome=yes PrivateDevices=yes "$rw" 'RestrictAddressFamilies=AF_'; do
+    # ReadWritePaths= : exactement les dossiers de SERVICES_ISOLES (aucun pour le tunnel).
+    for p in NoNewPrivileges=yes ProtectSystem=strict ProtectHome=yes PrivateDevices=yes "ReadWritePaths=${SERVICES_ISOLES[$unit]}\$" 'RestrictAddressFamilies=AF_'; do
       check "$unit : ${p%%=*}" "^$p" systemctl show -p "${p%%=*}" "$unit"
     done
     # Le processus en cours, pas seulement l'unité : prouve qu'il a redémarré avec son isolation.
@@ -296,9 +294,9 @@ mode_pi() {
   check "processus sous un utilisateur sans privilèges" '^Uid:([[:space:]]+[1-9][0-9]*){4}$' grep '^Uid:' "/proc/$pid/status"
   # Le jeton passe à grep par un descripteur (printf est interne à bash) : jamais dans une ligne de commande.
   local jeton
-  jeton="$(grep . "$JETON_TUNNEL")"
+  jeton="$(lire_jeton)"
   [ -n "$jeton" ] && [ -r "/proc/$pid/cmdline" ] && [ -r "/proc/$pid/environ" ] \
-    && ! grep -qaFf <(printf '%s\n' "${jeton%$'\r'}") "/proc/$pid/cmdline" "/proc/$pid/environ"
+    && ! grep -qaFf <(printf '%s\n' "$jeton") "/proc/$pid/cmdline" "/proc/$pid/environ"
   verdict $? "jeton absent de la ligne de commande (ps) et de l'environnement du service"
   # ss lit le processus de chaque port : la première ligne prouve qu'il le voit, la seconde qu'aucun autre port.
   check "métriques de cloudflared sur la boucle locale" '127\.0\.0\.1:[0-9]+ .*"cloudflared"' ss -Hltnp
@@ -314,16 +312,14 @@ mode_public() {
   # Les erreurs de curl citent le domaine ou une adresse.
   [ "$show" = 1 ] || exec 2>/dev/null
   echo "verify.sh public — $(date -Is)"
-  d="$(mktemp -d)"; trap 'rm -rf "$d"' EXIT
 
   title "Ticket #125 — réponses du site"
   check "/ répond 200" '^HTTP/[0-9.]+ 200([[:space:]]|$)' curl -sSI "$base/"
   check "$absent répond 404" '^HTTP/[0-9.]+ 404([[:space:]]|$)' curl -sSI "$base$absent"
-  # La page 404 du site est aussi servie sous son nom : une page d'erreur de Cloudflare en diffère.
-  curl -s -o "$d/absente" "$base$absent"
-  curl -s -o "$d/page-404" "$base/+not-found.html"
-  [ -s "$d/page-404" ] && cmp -s "$d/absente" "$d/page-404"
-  verdict $? "corps de $absent identique à /+not-found.html"
+  # La page 404 du site est aussi servie sous son nom : une page d'erreur de Cloudflare en diffère. Une page
+  # vide des deux côtés échoue plus bas (« charge ses scripts »).
+  meme_corps() { cmp -s <(curl -s "$1") <(curl -s "$2") && echo ok; }
+  check "corps de $absent identique à /+not-found.html" '^ok$' meme_corps "$base$absent" "$base/+not-found.html"
 
   title "Ticket #125 — en-têtes de sécurité identiques à ceux du Caddyfile"
   for url in / "$absent"; do
@@ -346,12 +342,10 @@ mode_public() {
   title "Ticket #125 — version.txt jamais servi depuis le cache de Cloudflare"
   check "/version.txt répond 200" '^HTTP/[0-9.]+ 200([[:space:]]|$)' curl -sSI "$base/version.txt"
   check "Cache-Control sur /version.txt, conforme au Caddyfile" '^conforme$' header "$base/version.txt" Cache-Control /version.txt
-  # cache_cloudflare <url> : l'en-tête cf-cache-status, en minuscules. Deux lectures : la première
-  # mettrait le fichier en cache, la seconde l'y lirait.
-  cache_cloudflare() { served "$1" cf-cache-status | tr '[:upper:]' '[:lower:]'; }
+  # Deux lectures : la première mettrait le fichier en cache, la seconde l'y lirait.
   for i in 1 2; do
-    refute "/version.txt hors du cache de Cloudflare (lecture $i)" '^cf-cache-status: (hit|stale|updating|revalidated)' \
-      cache_cloudflare "$base/version.txt"
+    refute "/version.txt hors du cache de Cloudflare (lecture $i)" '^cf-cache-status: (HIT|STALE|UPDATING|REVALIDATED)' \
+      served "$base/version.txt" cf-cache-status
   done
 }
 

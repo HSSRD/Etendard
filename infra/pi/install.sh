@@ -148,9 +148,8 @@ if [ "$(dpkg-query -W -f='${Status}' cloudflared 2>/dev/null)" != 'install ok in
   chmod 644 "$cle.new"
   mv -f "$cle.new" "$cle"
   echo "deb [signed-by=$cle] https://pkg.cloudflare.com/cloudflared any main" > /etc/apt/sources.list.d/cloudflared.list
-  apt-get update
-  apt_a_jour=1
-  DEBIAN_FRONTEND=noninteractive apt-get install -y cloudflared
+  apt_a_jour=0   # nouveau dépôt : paquets relance « apt-get update »
+  paquets cloudflared
 fi
 cloudflared --version
 
@@ -179,7 +178,7 @@ isoler() {
   local unit="$1" d="/etc/systemd/system/$1.d" avant
   avant="$(score "$unit")"
   install -d -m 755 "$d"
-  { cat "$HERE/isolation.conf"; [ "$#" -lt 2 ] || echo "ReadWritePaths=${*:2}"; } > "$d/etendard-isolation.conf.new"
+  { cat "$HERE/isolation.conf"; echo "ReadWritePaths=${*:2}"; } > "$d/etendard-isolation.conf.new"
   if cmp -s "$d/etendard-isolation.conf.new" "$d/etendard-isolation.conf"; then
     rm -f "$d/etendard-isolation.conf.new"
     echo "$unit : isolation inchangée, score systemd-analyze security $avant"

@@ -89,7 +89,7 @@ empreinte_cle() {
 # controler_jeton : réussit si $JETON_TUNNEL est un fichier ordinaire à root, lisible par root seul, qui ne
 # contient qu'un jeton. Sinon, écrit la raison sur stderr, jamais le contenu, et renvoie 1.
 controler_jeton() {
-  local f="$JETON_TUNNEL" ligne
+  local f="$JETON_TUNNEL"
   if [ ! -e "$f" ]; then
     echo "jeton du tunnel absent ($f) : crée le tunnel dans Cloudflare, puis écris-y son jeton (README.md)" >&2
     return 1
@@ -103,13 +103,17 @@ controler_jeton() {
     return 1
   fi
   # Le tableau de bord affiche le jeton dans une commande (« cloudflared service install <jeton> ») : seul le
-  # jeton doit être copié. Lu sans être affiché ; lignes vides et fin de ligne Windows tolérées, comme par
-  # cloudflared (qui retire les blancs autour du jeton).
-  ligne="$(grep . "$f")"
-  if [ "$(grep -c . "$f")" != 1 ] || ! [[ "${ligne%$'\r'}" =~ ^[A-Za-z0-9+/_=-]{20,}$ ]]; then
+  # jeton doit être copié. Lu sans être affiché ; plusieurs lignes ne correspondent pas au motif.
+  if ! [[ "$(lire_jeton)" =~ ^[A-Za-z0-9+/_=-]{20,}$ ]]; then
     echo "$f doit contenir le seul jeton du tunnel, sur une ligne, sans la commande qui l'entoure" >&2
     return 1
   fi
+}
+
+# lire_jeton : le jeton, sans lignes vides ni fin de ligne Windows, comme le lit cloudflared (qui retire les
+# blancs autour). À garder dans une variable : jamais affiché, jamais dans une ligne de commande.
+lire_jeton() {
+  tr -d '\r' < "$JETON_TUNNEL" | grep .
 }
 
 # cle_admin_autorisee <compte> <dossier personnel> : réussit si sshd accepterait au moins une clé publique
