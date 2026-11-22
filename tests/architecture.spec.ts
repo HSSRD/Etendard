@@ -69,6 +69,7 @@ test.describe('sans JavaScript', () => {
     // Chaque liaison du §2 a sa phrase.
     for (const part of [
       /radiocommande.*récepteur radio/,
+      /récepteur radio.*contrôleur de vol/,
       /GPS.*contrôleur de vol/,
       /contrôleur de vol.*ESC/,
       /batterie 4S.*module de puissance/,

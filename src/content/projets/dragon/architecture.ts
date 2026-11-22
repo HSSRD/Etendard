@@ -265,7 +265,7 @@ export default {
           items: [
             'Inscription comme exploitant sur AlphaTango, le portail de la DGAC : obligatoire pour un drone de 250 g ou plus, ou équipé d’une caméra.',
             'Examen en ligne de la catégorie Ouverte (A1/A3) : obligatoire au-dessus de 250 g. Il est gratuit, compte 40 questions, demande 75 % de bonnes réponses et vaut 5 ans. L’ancienne formation « Fox AlphaTango » ne compte plus.',
-            'Enregistrement du drone et signalisation électronique : obligatoires à partir de 800 g. Dragon est concerné à coup sûr : son cadre seul pèse 610 g.',
+            'Enregistrement du drone et signalisation électronique : obligatoires à partir de 800 g. Dragon est concerné à coup sûr : son cadre seul pèse déjà 610 g, le drone complet environ 1,6 à 1,7 kg.',
             'Un drone construit soi-même de plus de 250 g vole en catégorie A3 uniquement : à 150 m au moins des zones habitées, commerciales, industrielles et récréatives, sans personne à proximité, à 120 m de hauteur au plus.',
             'Le télépilote est responsable de plein droit des dommages causés au sol.',
           ],
