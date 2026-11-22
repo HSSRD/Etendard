@@ -82,7 +82,7 @@ test.describe('sans JavaScript', () => {
       const [why, conditions] = lists(vague);
       const items = shown.getByRole('list');
       await expect(items).toHaveCount(2);
-      // Chaque élément commence par sa puce.
+      // toContainText : chaque élément est précédé de sa puce.
       await expect(items.nth(0).getByRole('listitem')).toContainText(why ?? []);
       await expect(items.nth(1).getByRole('listitem')).toContainText(
         conditions ?? [],

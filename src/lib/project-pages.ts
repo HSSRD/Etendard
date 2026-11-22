@@ -16,7 +16,7 @@ export type Status = keyof typeof statusLabels;
 export interface Price {
   min: number;
   max: number;
-  /** Date du relevé, AAAA-MM-JJ. */
+  /** Date du relevé (prix) ou de la prévision (budget), AAAA-MM-JJ. */
   date: string;
 }
 
