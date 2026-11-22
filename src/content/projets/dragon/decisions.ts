@@ -239,7 +239,7 @@ export const erreurs: Table = {
       'Voir l’ADR-003.',
     ],
     [
-      'ESC AM32 individuels de 30 à 40 A, faciles à trouver',
+      'ESC AM32 individuels de 30 à 40 A',
       'Quasi introuvables : les modèles de 45 A sont chers et en rupture.',
       'Les ESC de 20 A du kit sont gardés.',
     ],
@@ -274,7 +274,7 @@ export const erreurs: Table = {
       'Vérifier la prise, ou prévoir de la changer.',
     ],
     [
-      'Signalement électronique : le Remote ID d’ArduPilot suffit, et une balise faite maison est à éviter',
+      'Signalement électronique : le Remote ID d’ArduPilot est possible, et une balise faite maison est à éviter',
       'Un module Remote ID européen n’émet pas forcément le format français. La balise faite maison est autorisée, avec le code constructeur prévu pour ce cas (note DSAC 21-001).',
       'Fiche de la balise réécrite.',
     ],
@@ -335,7 +335,7 @@ export const choix: Table = {
     [
       'Que ne jamais acheter d’occasion ni sur une place de marché anonyme ?',
       'Certaines pièces sont des organes de sécurité, d’autres sont contrefaites.',
-      'Jamais d’occasion ni sans marque : les batteries LiPo (historique inconnu, risque d’incendie), le smoke stopper et le chargeur, le contrôleur de vol Matek vendu sur une place de marché (contrefaçons signalées), une balise sans mention explicite du format français. Bien d’occasion : la radio, un chargeur de marque, l’outillage et le fer à souder.',
+      'Jamais d’occasion ni sur une place de marché anonyme : les batteries LiPo (historique inconnu, risque d’incendie) ; le smoke stopper et un chargeur sans marque, organes de sécurité ; le contrôleur de vol Matek vendu sur une place de marché (contrefaçons signalées) ; une balise sans mention explicite du format français. Bien d’occasion : la radio, un chargeur de marque, l’outillage et le fer à souder.',
     ],
   ],
 };
@@ -354,7 +354,7 @@ export default {
       source: source('phase-1-construction/challenge-2026-11-20.md'),
       blocks: [
         paragraph(
-          'Le 2026-11-20, une revue a attaqué la première version des fiches d’achat. Elle a vérifié chaque affirmation sur les pages des fabricants, les guides de la DGAC et les documents de l’Arcep.',
+          'Le 2026-11-20, une revue a attaqué la première version des fiches d’achat. Elle a vérifié ses affirmations sur les pages des fabricants, les guides de la DGAC et les documents de l’Arcep ; deux points restent à confirmer.',
         ),
         erreurs,
       ],
