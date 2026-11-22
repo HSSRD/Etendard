@@ -1,6 +1,6 @@
 #!/bin/bash
 # Produit les preuves des critères 1 à 5 du ticket #4, à coller en commentaire, du critère 4 du ticket #25,
-# du critère 2 du ticket #36, du critère 3 du ticket #52 et des critères 1 et 2 du ticket #41.
+# du critère 2 du ticket #36, du critère 3 du ticket #52, des critères 1 et 2 du ticket #41 et du ticket #106.
 #   sudo bash verify.sh pi      sur le Pi, après install.sh (critères 1, 2, 3 et verrou ; en-têtes, journal, cache)
 #   HOST=… FLO=… bash verify.sh ssh   sur le PC, avec la clé privée (critères 1, 4 et 5)
 #   bash verify.sh hsts <domaine>   depuis n'importe quel poste, une fois le site en ligne (HSTS de Cloudflare)
@@ -105,6 +105,23 @@ mode_pi() {
   check "Cache-Control sur la revalidation de / (If-None-Match), conforme au Caddyfile" '^conforme$' \
     header http://127.0.0.1:8080/ Cache-Control @html -H "If-None-Match: $etag"
   check "Cache-Control sur /version.txt, conforme au Caddyfile" '^conforme$' header http://127.0.0.1:8080/version.txt Cache-Control /version.txt
+
+  title "Ticket #106 — pages sans extension"
+  # Une page réelle du site demandée sans « .html », et l'index d'un sous-dossier sans barre oblique finale :
+  # 200 sans redirection, revalidées comme les autres pages.
+  # current est un lien symbolique : la barre oblique finale fait entrer find dedans.
+  # Les noms viennent des fichiers de deploy : jamais dans une chaîne passée à un shell (verify.sh tourne en root).
+  local page dir
+  page="$(find /srv/etendard/current/ -name '*.html' ! -name index.html -printf '/%P\n' -quit)"
+  dir="$(find /srv/etendard/current/ -mindepth 2 -name index.html -printf '/%P\n' -quit)"
+  if [ -n "$page" ] && [ -n "$dir" ]; then
+    for url in "${page%.html}" "${dir%/index.html}"; do
+      check "$url répond 200" '^HTTP/1.1 200' curl -sSI "http://127.0.0.1:8080$url"
+      check "Cache-Control sur $url, conforme au Caddyfile" '^conforme$' header "http://127.0.0.1:8080$url" Cache-Control @html
+    done
+  else
+    fail=$((fail + 1)); echo "  ❌ le site servi n'a pas de page hors index.html ou de sous-dossier avec index.html"; echo
+  fi
 
   title "Critère 2 — utilisateur deploy"
   check "utilisateur deploy, sans groupe secondaire" '^uid=[0-9]+\(deploy\) gid=[0-9]+\(deploy\) groups=[0-9]+\(deploy\)$' id deploy

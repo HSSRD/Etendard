@@ -27,11 +27,17 @@ http://:8080 {
 		match status 2xx 304
 	}
 
-	# Pages HTML revalidées à chaque visite (ETag, réponse 304 légère) : après un déploiement,
-	# un navigateur ne réutilise pas une ancienne page qui demanderait d'anciens /_expo/static/ (#52).
-	@html path */ *.html
-	header @html {
-		Cache-Control "no-cache"
+	# Pages sans extension (#106) : /projets/dragon/materiel sert materiel.html, /projets/dragon son
+	# index.html, sans redirection. Dans route, try_files réécrit le chemin avant le matcher @html.
+	route {
+		try_files {path} {path}.html {path}/index.html
+
+		# Pages HTML revalidées à chaque visite (ETag, réponse 304 légère) : après un déploiement,
+		# un navigateur ne réutilise pas une ancienne page qui demanderait d'anciens /_expo/static/ (#52).
+		@html path */ *.html
+		header @html {
+			Cache-Control "no-cache"
+		}
 	}
 
 	# Jamais en cache : le test de fumée lit le SHA déployé à travers Cloudflare (ADR 0006).
