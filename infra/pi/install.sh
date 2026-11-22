@@ -1,8 +1,9 @@
 #!/bin/bash
-# Prépare et durcit le Pi qui sert Étendard (tickets #4 et #113, ADR 0002, 0006 et 0017).
+# Prépare, durcit et met en ligne le Pi qui sert Étendard (tickets #4, #113 et #125, ADR 0002, 0006 et 0017).
 # À lancer en root sur le Pi, par sudo depuis le compte d'administration, dans ce dossier :
 #   sudo bash install.sh github-deploy.pub
-# Lit les valeurs propres au serveur dans /etc/etendard/serveur.conf (format : serveur.conf.exemple).
+# Lit les valeurs propres au serveur dans /etc/etendard/serveur.conf (format : serveur.conf.exemple), et le
+# jeton du tunnel Cloudflare dans /etc/etendard/tunnel.jeton (README.md), sans jamais l'afficher.
 # Idempotent : peut être relancé sans dommage, sur ce Pi comme sur un système neuf.
 # Ne modifie pas les services existants du Pi, sauf ceux que le fichier local demande de désactiver.
 # SSH et le pare-feu changent en dernier : garde une session ouverte jusqu'au bout (README.md).
@@ -38,6 +39,7 @@ read -r key_type key_b64 _ < "$PUBKEY_FILE" || true   # pas d'erreur si la ligne
 ssh-keygen -l -f "$PUBKEY_FILE" >/dev/null || die "clé publique illisible par ssh-keygen"
 
 lire_conf || die "fichier local invalide, rien n'a été modifié"
+controler_jeton || die "jeton du tunnel refusé, rien n'a été modifié"
 
 # Garde-fou contre le verrouillage : sans clé autorisée, couper les mots de passe fermerait la porte à Flo.
 admin="${SUDO_USER:-}"
@@ -133,6 +135,41 @@ fi
 systemctl is-enabled caddy
 systemctl is-active caddy
 
+# --- Cloudflare Tunnel (#125) --------------------------------------------------
+step "Paquet cloudflared (dépôt apt officiel de Cloudflare, clé vérifiée par son empreinte)"
+if [ "$(dpkg-query -W -f='${Status}' cloudflared 2>/dev/null)" != 'install ok installed' ]; then
+  paquets curl gpg
+  cle=/usr/share/keyrings/cloudflare-public-v2.gpg
+  curl -fsSL https://pkg.cloudflare.com/cloudflare-public-v2.gpg -o "$cle.new"
+  if [ "$(empreinte_cle "$cle.new")" != "$EMPREINTE_CLOUDFLARE" ]; then
+    rm -f "$cle.new"
+    die "la clé servie par pkg.cloudflare.com n'est pas celle attendue (EMPREINTE_CLOUDFLARE de commun.sh) : dépôt non ajouté"
+  fi
+  chmod 644 "$cle.new"
+  mv -f "$cle.new" "$cle"
+  echo "deb [signed-by=$cle] https://pkg.cloudflare.com/cloudflared any main" > /etc/apt/sources.list.d/cloudflared.list
+  apt-get update
+  apt_a_jour=1
+  DEBIAN_FRONTEND=noninteractive apt-get install -y cloudflared
+fi
+cloudflared --version
+
+step "Service cloudflared (tunnel, démarrage au boot)"
+tunnel_changed=0
+if ! cmp -s "$HERE/cloudflared.service" /etc/systemd/system/cloudflared.service; then
+  install -o root -g root -m 644 "$HERE/cloudflared.service" /etc/systemd/system/cloudflared.service
+  systemctl daemon-reload
+  tunnel_changed=1
+fi
+systemctl enable cloudflared
+if [ "$tunnel_changed" = 1 ] || ! systemctl is-active --quiet cloudflared; then
+  # Type=notify : le redémarrage ne réussit qu'une fois le tunnel connecté à Cloudflare.
+  systemctl restart cloudflared \
+    || die "le tunnel ne se connecte pas à Cloudflare (jeton révoqué ? réseau ?) : journalctl -u cloudflared"
+fi
+systemctl is-enabled cloudflared
+systemctl is-active cloudflared
+
 # --- Isolation des services exposés (#113, critère 7) -------------------------
 # score <unité> : niveau d'exposition de systemd-analyze security (0 : isolé, 10 : aucune isolation).
 score() { systemd-analyze security --no-pager "$1" 2>/dev/null | awk '/Overall exposure level/ { for (i = 1; i <= NF; i++) if ($i ~ /^[0-9]+\.[0-9]+$/) print $i }'; }
@@ -142,7 +179,7 @@ isoler() {
   local unit="$1" d="/etc/systemd/system/$1.d" avant
   avant="$(score "$unit")"
   install -d -m 755 "$d"
-  { cat "$HERE/isolation.conf"; echo "ReadWritePaths=${*:2}"; } > "$d/etendard-isolation.conf.new"
+  { cat "$HERE/isolation.conf"; [ "$#" -lt 2 ] || echo "ReadWritePaths=${*:2}"; } > "$d/etendard-isolation.conf.new"
   if cmp -s "$d/etendard-isolation.conf.new" "$d/etendard-isolation.conf"; then
     rm -f "$d/etendard-isolation.conf.new"
     echo "$unit : isolation inchangée, score systemd-analyze security $avant"
@@ -280,4 +317,4 @@ systemctl reload-or-restart etendard-pare-feu
 systemctl is-active etendard-pare-feu
 
 step "Terminé. Avant de fermer cette session, ouvre-en une nouvelle depuis le réseau local et depuis le tailnet (README.md)."
-echo "Preuves : sudo bash verify.sh pi (sur le Pi), puis HOST=<hote-du-pi> FLO=<login>@<ip-du-pi> bash verify.sh ssh (sur le PC)."
+echo "Preuves : sudo bash verify.sh pi (sur le Pi), puis HOST=<hote-du-pi> FLO=<login>@<ip-du-pi> bash verify.sh ssh et bash verify.sh public <domaine> (sur le PC)."

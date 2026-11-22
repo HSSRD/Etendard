@@ -1,6 +1,6 @@
 # Pi : ce qui est en place et pourquoi
 
-Ce document explique la préparation du Pi faite au ticket #4 (PR #7) et son durcissement (#113). Pour l'installer ou la refaire, suis le [README](README.md). Les décisions de fond sont dans les ADR [0002](../../docs/adr/0002-heberger-sur-le-pi-avec-caddy-et-cloudflare-tunnel.md) (hébergement) et [0006](../../docs/adr/0006-deployer-via-tailscale-et-ssh-a-commande-forcee.md) (déploiement).
+Ce document explique la préparation du Pi faite au ticket #4 (PR #7), son durcissement (#113) et sa mise en ligne par Cloudflare Tunnel (#125). Pour l'installer ou la refaire, suis le [README](README.md). Les décisions de fond sont dans les ADR [0002](../../docs/adr/0002-heberger-sur-le-pi-avec-caddy-et-cloudflare-tunnel.md) (hébergement) et [0006](../../docs/adr/0006-deployer-via-tailscale-et-ssh-a-commande-forcee.md) (déploiement).
 
 ## Le but
 
@@ -22,7 +22,7 @@ sshd du Pi ── clé github-deploy ──▶ commande forcée : /usr/local/bin
                          /srv/etendard/current ──▶ Caddy (127.0.0.1:8080)
 ```
 
-Pour l'instant, personne d'autre que le Pi ne voit le site. Flo le consulte par un tunnel SSH : `ssh -L 8080:127.0.0.1:8080 <login>@<ip-du-pi>`, puis http://localhost:8080. La publication sur Internet viendra avec Cloudflare Tunnel, dans un autre ticket.
+Le public, lui, passe par Cloudflare Tunnel (#125, [plus bas](#cloudflare-tunnel-125)) : `https://<domaine>` → Cloudflare → `cloudflared` sur le Pi → Caddy. Avant la mise en ligne, Flo consulte le site par un tunnel SSH : `ssh -L 8080:127.0.0.1:8080 <login>@<ip-du-pi>`, puis http://localhost:8080.
 
 ## Quatre protections, chacune utile si une autre lâche
 
@@ -39,7 +39,7 @@ Pour l'instant, personne d'autre que le Pi ne voit le site. Flo le consulte par 
 
 Caddy lit les fichiers de `/srv/etendard/current` et les renvoie au navigateur. Le site exporté par Expo est statique : ni Node ni base de données à faire tourner, juste des fichiers à servir.
 
-- **Il écoute sur `127.0.0.1:8080` uniquement.** Ni le réseau local ni le tailnet ne le joignent. Plus tard, Cloudflare Tunnel se branchera sur cette même adresse, sans ouvrir de port sur la box.
+- **Il écoute sur `127.0.0.1:8080` uniquement.** Ni le réseau local ni le tailnet ne le joignent. Cloudflare Tunnel s'y branche (#125), sans ouvrir de port sur la box.
 - **`admin off` et `auto_https off`.** Par défaut, Caddy ouvre aussi une API d'administration (port 2019) et des écoutes sur les ports 80 et 443. Ces options les suppriment. En contrepartie, un changement de configuration s'applique par `systemctl restart caddy` : `reload` ne fonctionne plus.
 - **Le paquet vient du dépôt apt officiel de Caddy.** Le `Caddyfile` est écrit *avant* l'installation, pour que Caddy ne démarre jamais avec la configuration par défaut du paquet (qui écoute sur le port 80 de toutes les interfaces).
 
@@ -90,7 +90,7 @@ Expo écrit les scripts et les feuilles de style dans `/_expo/static/`, sous un 
 
 Le matcher `@html` vise les chemins en `/` et en `.html`, c'est-à-dire les pages exportées par Expo, et non le type de la réponse : une `304` n'a pas de `Content-Type`, elle perdrait l'en-tête.
 
-**`version.txt` porte `Cache-Control: no-store`** : ni le navigateur ni Cloudflare ne le gardent, et le test de fumée lit toujours le SHA réellement servi (ADR 0006). Que Cloudflare le respecte reste à vérifier à la mise en ligne.
+**`version.txt` porte `Cache-Control: no-store`** : ni le navigateur ni Cloudflare ne le gardent, et le test de fumée lit toujours le SHA réellement servi (ADR 0006). `verify.sh public` vérifie que Cloudflare le respecte (#125).
 
 `verify.sh pi` contrôle les deux en-têtes, et la `304` de `/`.
 
@@ -211,15 +211,17 @@ Le repo est public : il ne contient ni les ports des services existants, ni leur
 
 ### Les mises à jour automatiques
 
-`unattended-upgrades` installe chaque jour les correctifs de sécurité du système (configuration du paquet) et, par `/etc/apt/apt.conf.d/52etendard-maj-auto`, ceux du dépôt du noyau en cours, qui fournit aussi son firmware (tout ce dépôt, avec ses autres paquets), et des dépôts de Caddy et de Tailscale. Ces dépôts sont lus sur le Pi (`origines_maj` de `commun.sh`) : le repo ne nomme pas le système. Un dépôt listé en `DEPOT_EXCLU=` n'est pas ajouté.
+`unattended-upgrades` installe chaque jour les correctifs de sécurité du système (configuration du paquet) et, par `/etc/apt/apt.conf.d/52etendard-maj-auto`, ceux du dépôt du noyau en cours, qui fournit aussi son firmware (tout ce dépôt, avec ses autres paquets), et des dépôts de Caddy, de Tailscale et de `cloudflared`. Ces dépôts sont lus sur le Pi (`origines_maj` de `commun.sh`) : le repo ne nomme pas le système. Un dépôt listé en `DEPOT_EXCLU=` n'est pas ajouté.
 
 **Pas de redémarrage automatique** : il couperait le site et les services existants à une heure non choisie. Un nouveau noyau ne sert qu'après un redémarrage : `verify.sh pi` affiche « ⚠️ redémarrage en attente » quand le système le demande.
 
-**Pour ajouter un logiciel exposé** (`cloudflared`, ticket suivant) : son paquet dans `PAQUETS_MAJ_AUTO` de `commun.sh`.
+**Pour ajouter un logiciel exposé** : son paquet dans `PAQUETS_MAJ_AUTO` de `commun.sh` (`cloudflared` y est depuis #125).
 
 ### L'isolation du serveur web
 
 Caddy reçoit une surcharge systemd, `/etc/systemd/system/caddy.service.d/etendard-isolation.conf` : le contenu d'[`isolation.conf`](isolation.conf), plus `ReadWritePaths=` avec ses seuls dossiers d'écriture (`/var/lib/caddy`, `/var/log/caddy`). L'unité du paquet n'est jamais modifiée : une mise à jour la remplacerait. Une faille de Caddy ne donnerait ni nouveau privilège, ni écriture ailleurs, ni accès aux dossiers personnels, aux périphériques, au noyau ou à une capacité root. `install.sh` affiche le score `systemd-analyze security` avant et après (0 : isolé, 10 : aucune isolation). `verify.sh pi` lit la configuration chargée et l'état du processus en cours, ce qui prouve qu'il a redémarré avec elle.
+
+`cloudflared` reçoit la même surcharge, sans `ReadWritePaths=` : il n'écrit nulle part ([plus bas](#cloudflare-tunnel-125)).
 
 **Pour isoler un autre service** : son unité et les dossiers où il écrit dans `SERVICES_ISOLES` de `commun.sh`.
 
@@ -241,7 +243,53 @@ Le Pi ne répond donc plus au ping. Après un changement de réseau local (box, 
 
 ### Rien d'inutile
 
-Le Pi démarre sans environnement graphique (`multi-user.target`, au prochain redémarrage : la session graphique en cours n'est pas coupée). Chaque `SERVICE=` du fichier local est masqué et arrêté : masqué plutôt que désactivé, pour qu'aucun autre service ni socket ne le relance. La lecture du fichier refuse les services nécessaires à l'accès ou au site (SSH, Tailscale, Caddy, le pare-feu).
+Le Pi démarre sans environnement graphique (`multi-user.target`, au prochain redémarrage : la session graphique en cours n'est pas coupée). Chaque `SERVICE=` du fichier local est masqué et arrêté : masqué plutôt que désactivé, pour qu'aucun autre service ni socket ne le relance. La lecture du fichier refuse les services nécessaires à l'accès ou au site (SSH, Tailscale, Caddy, le tunnel, le pare-feu).
+
+## Cloudflare Tunnel (#125)
+
+```
+visiteur ── HTTPS ──▶ Cloudflare (<domaine>, certificat, « Always Use HTTPS »)
+                         ▲
+                         │  connexions ouvertes depuis le Pi, vers Cloudflare (aucun port entrant)
+                         │
+              cloudflared (Pi) ──▶ Caddy (127.0.0.1:8080)
+```
+
+`cloudflared` ouvre lui-même ses connexions vers Cloudflare et y reçoit les requêtes des visiteurs : la box et le pare-feu d'entrée n'ont aucun port à ouvrir, les réponses passent par la règle des connexions établies. Le HTTPS des visiteurs se termine chez Cloudflare (ADR 0002).
+
+**Le tunnel est géré depuis le tableau de bord Cloudflare.** Sa seule règle, `<domaine>` → `http://127.0.0.1:8080`, y est écrite ; le Pi n'a ni fichier de configuration du tunnel ni certificat de compte (`cloudflared tunnel login`). Il n'a que le **jeton** du tunnel, son seul secret : il permet de se faire passer pour le tunnel, donc de servir un autre site sur le domaine, mais ni de modifier la règle ni d'accéder au compte. Un jeton qui fuit se remplace dans le tableau de bord (« Refresh token »), puis dans le fichier du Pi.
+
+**Le jeton** est dans `/etc/etendard/tunnel.jeton`, à côté du fichier local, lisible par root seul. `install.sh` s'arrête avant tout changement s'il manque, s'il est lisible par un autre compte ou s'il contient autre chose que le jeton (`controler_jeton` de `commun.sh`), sans jamais l'afficher. Le service le reçoit par `LoadCredential=` : systemd le lit en root et le copie dans un dossier visible du seul service ; `cloudflared` le lit par `--token-file`. Il n'apparaît ni dans la ligne de commande (visible par `ps`), ni dans l'environnement du processus, ni dans le repo.
+
+**Le service** [`cloudflared.service`](cloudflared.service) est installé par `install.sh` dans `/etc/systemd/system/` (le paquet n'en fournit pas) :
+
+- `DynamicUser=yes` : un utilisateur sans privilèges, créé par systemd à chaque démarrage, sans dossier ni mot de passe. S'y ajoute la surcharge d'[`isolation.conf`](isolation.conf), comme pour Caddy, sans dossier d'écriture : `cloudflared` n'écrit rien (son journal va dans celui de systemd). `install.sh` affiche son score `systemd-analyze security` ;
+- `--protocol http2` : des connexions TCP sortantes. Avec QUIC (UDP), le choix par défaut, `cloudflared` ouvrirait un port UDP sur toutes les interfaces ; il n'écoute ainsi que sur la boucle locale ;
+- `--metrics 127.0.0.1:0` : son seul port d'écoute, sur la boucle locale, au numéro choisi par le système (aucun conflit avec un service existant) ;
+- `--no-autoupdate` : les mises à jour viennent d'apt, par `unattended-upgrades` ;
+- `Type=notify` : `systemctl start` ne réussit qu'une fois le tunnel connecté, ce qui fait échouer `install.sh` sur un jeton révoqué.
+
+**Le paquet** vient du dépôt apt officiel de Cloudflare (`pkg.cloudflare.com`). `install.sh` n'ajoute sa clé de signature que si son empreinte est celle écrite dans `commun.sh` (`EMPREINTE_CLOUDFLARE`) : un serveur qui se ferait passer pour Cloudflare ne pourrait pas faire installer ses paquets. Si Cloudflare change de clé, `install.sh` s'arrête ; la nouvelle empreinte se relève sur sa page d'installation, se vérifie (`gpg --show-keys`) puis se reporte dans `commun.sh`.
+
+### Réglages dans Cloudflare
+
+Faits par Flo dans le tableau de bord, sans jeton d'API sur le Pi. Les noms des menus changent parfois : le réglage, lui, reste.
+
+- [ ] **Domaine ajouté** au compte Cloudflare, serveurs de noms remplacés chez le registraire par ceux de Cloudflare, domaine « Active ».
+- [ ] **Tunnel créé** : Zero Trust > Networks > Tunnels > Create a tunnel > Cloudflared, nom neutre. À l'étape d'installation, **ne lance pas la commande proposée** : copie seulement le jeton (la longue chaîne après `service install`) dans `/etc/etendard/tunnel.jeton` ([README](README.md#mettre-en-ligne-125)).
+- [ ] **Règle du tunnel** (Public Hostname) : `<domaine>`, chemin vide, type `HTTP`, URL `127.0.0.1:8080`. Aucune autre règle : le tunnel ne sert que le site.
+- [ ] **Always Use HTTPS** activé (SSL/TLS > Edge Certificates) : une visite en `http://` est redirigée.
+- [ ] **Rien qui injecte un script ou modifie le HTML** : la CSP (`script-src 'self'`) le bloquerait et `verify.sh public` échouerait.
+  - [ ] Rocket Loader désactivé (Speed > Optimization) ;
+  - [ ] Email Address Obfuscation désactivé (Scrape Shield, ou Security > Settings) ;
+  - [ ] Web Analytics : pas d'installation automatique sur ce domaine (Analytics & Logs > Web Analytics). Les statistiques sont un autre ticket (ADR 0002).
+- [ ] **Aucune règle de cache qui ignore les en-têtes du site** (Caching > Cache Rules, « Cache Everything », « Edge TTL » forcé) : `version.txt` doit rester `no-store`, sinon le test de fumée lit un ancien SHA et revient en arrière à tort.
+
+HSTS s'active ensuite, une fois le site vérifié ([README](README.md#à-la-mise-en-ligne--hsts-chez-cloudflare), #41).
+
+### Couper la mise en ligne
+
+`sudo systemctl disable --now cloudflared` arrête le tunnel et l'empêche de repartir au démarrage : Cloudflare répond par sa page d'erreur, Caddy, le déploiement et les services existants continuent. `sudo systemctl enable --now cloudflared` remet le site en ligne. Le [README](README.md#couper-et-relancer-la-mise-en-ligne) précise ce qui change pendant la coupure.
 
 ## Le workflow `deploy.yml` (#5)
 
@@ -250,7 +298,7 @@ Le Pi démarre sans environnement graphique (`multi-user.target`, au prochain re
 | Job | Ce qu'il fait | Droits |
 |---|---|---|
 | `build` | construit le site et son archive, avec `version.txt` (SHA du commit) | lecture du code |
-| `deploy` | Environment `production` : envoie l'archive au Pi par le tailnet et vérifie la version servie | aucun droit GitHub |
+| `deploy` | Environment `production` : envoie l'archive au Pi par le tailnet et vérifie la version servie, par SSH puis à travers Cloudflare | aucun droit GitHub |
 | `release` | publie la Release `deploy-<sha court>`, seulement si `deploy` a réussi | écriture du code (tags, Releases) |
 | `rollback` | seulement avec l'entrée `rollback` : revient à la version précédente | aucun droit GitHub |
 | `message` | dans tous les cas : compose l'e-mail de résultat (#32), sans aucun secret | lecture du code et des PR |
@@ -278,7 +326,7 @@ Pour revenir ensuite à la dernière version, relance le workflow sans cocher la
 
 La branche est celle de la PR mergée ; sans PR (push direct), c'est le titre du commit. Le corps donne la PR, le SHA complet, la version servie par le Pi, le lien de l'exécution et celui de la Release (ou son échec). Si l'API GitHub ne répond pas, l'e-mail part avec le SHA court à la place de la branche et « PR : non lue ». Un envoi raté, ou des secrets absents, laisse un avertissement dans le journal sans changer le résultat du déploiement. Pour voir l'e-mail sans l'envoyer : `GITHUB_REPOSITORY=HSSRD/Etendard GITHUB_SHA=<sha> DEPLOY_RESULT=success node scripts/deploy-notify.js --a-blanc` (ajoute `GITHUB_RUN_ID` et `SERVI` pour des liens et une version servie réalistes).
 
-**Vérification.** Tant que le site n'est pas public, elle passe par `status` et non par un test HTTPS de `version.txt` (écart temporaire à l'ADR 0006, levé à la mise en ligne).
+**Vérification.** Après l'envoi, `ssh pi status` doit donner le SHA du commit, puis le test de fumée public (ADR 0006, #125) lit `${SITE_URL}/version.txt` à travers Cloudflare : six essais espacés de 10 s, 3 minutes au plus. S'il ne lit pas ce SHA, l'étape échoue et le rollback automatique ramène la version d'avant. `SITE_URL` (`https://<domaine>`) est une variable de l'Environment `production`, pas un secret : le domaine est public, mais le repo ne l'écrit pas. Sans elle, le test est sauté avec un avertissement dans le journal.
 
 ### Les secrets de l'Environment `production`
 
@@ -317,11 +365,18 @@ gh secret set NOTIFY_EMAIL_TO   --env production -R HSSRD/Etendard   # colle la 
 
 La clé d'hôte est lue sur le Pi lui-même, par le réseau local, plutôt que par `ssh-keyscan`, qui accepterait la réponse de n'importe quelle machine. Le workflow vérifie l'empreinte (`StrictHostKeyChecking yes`) : si le Pi est réinstallé, il faut refaire la dernière commande.
 
+La variable du test de fumée public, une fois le site en ligne ([README](README.md#mettre-en-ligne-125)) :
+
+```bash
+gh variable set SITE_URL --env production -R HSSRD/Etendard --body 'https://<domaine>'
+```
+
 ## Comment on sait que ça marche
 
 - **`test/etendard-receive.test.sh`** : tests locaux sur des archives saines et piégées, le verrou et `restore`. Ils n'ont pas besoin du Pi.
-- **`verify.sh pi`**, sur le Pi, et **`verify.sh ssh`**, depuis le PC : ils rejouent les critères des tickets et affichent ✅ ou ❌ ; `verify.sh pi` contrôle aussi le durcissement (#113). Le 2026-11-07, le bilan était de 20/0 et 21/0. Les sorties complètes sont dans le ticket #4.
+- **`verify.sh pi`**, sur le Pi, et **`verify.sh ssh`**, depuis le PC : ils rejouent les critères des tickets et affichent ✅ ou ❌ ; `verify.sh pi` contrôle aussi le durcissement (#113) et le tunnel (#125). Le 2026-11-07, le bilan était de 20/0 et 21/0. Les sorties complètes sont dans le ticket #4.
 - **`verify.sh hsts <domaine>`**, depuis n'importe quel poste une fois le site en ligne : HSTS posé par Cloudflare (#41). `test/verify-hsts.test.sh` le teste sans le site.
+- **`verify.sh public <domaine>`**, depuis n'importe quel poste : le site à travers Cloudflare (#125). `/` répond 200 ; une page absente répond 404 avec la page 404 du site ; chaque en-tête de sécurité est identique à celui du `Caddyfile` (une valeur modifiée ou ajoutée par Cloudflare le fait échouer) ; aucun `<script>` hors de `/_expo/static/` (Rocket Loader, obfuscation des e-mails ou Web Analytics en ajoutent un) ; `version.txt` jamais lu depuis le cache de Cloudflare (`cf-cache-status`, sur deux lectures). Sa sortie ne contient que des chemins, pas le domaine. `test/verify-public.test.sh` le teste avec un faux `curl`, et `test/commun.test.sh` la lecture du jeton.
 - **Tests Tailscale** : ils sont rejoués par la console à chaque modification de la politique.
 
 Relance `verify.sh` après toute intervention sur le Pi : mise à jour système, réinstallation, changement de configuration SSH.

@@ -5,10 +5,10 @@
 ETENDARD_CONF="${ETENDARD_CONF:-/etc/etendard/serveur.conf}"
 
 # Logiciels exposés : mises à jour automatiques (avec le noyau en cours) et isolation systemd, appliquées
-# par install.sh, contrôlées par verify.sh. Pour en ajouter un (cloudflared, ticket suivant) : son paquet
-# dans PAQUETS_MAJ_AUTO, son unité et les dossiers où elle écrit dans SERVICES_ISOLES.
-PAQUETS_MAJ_AUTO=(caddy tailscale)
-declare -A SERVICES_ISOLES=([caddy.service]="/var/lib/caddy /var/log/caddy")
+# par install.sh, contrôlées par verify.sh. Pour en ajouter un : son paquet dans PAQUETS_MAJ_AUTO, son unité
+# et les dossiers où elle écrit dans SERVICES_ISOLES (le tunnel n'écrit nulle part, #125).
+PAQUETS_MAJ_AUTO=(caddy tailscale cloudflared)
+declare -A SERVICES_ISOLES=([caddy.service]="/var/lib/caddy /var/log/caddy" [cloudflared.service]="")
 # Nécessaires à l'accès de Flo ou au déploiement, en plus des services isolés : jamais masqués.
 SERVICES_PROTEGES=(ssh.service sshd.service ssh.socket tailscaled.service etendard-pare-feu.service)
 
@@ -69,6 +69,47 @@ lire_conf() {
       echo "$f : clé $key absente (écris « $key= » s'il n'y a aucune valeur)" >&2; return 1
     fi
   done
+}
+
+# Jeton du tunnel Cloudflare (#125), seul secret du tunnel, à côté du fichier local et comme lui hors du
+# repo. cloudflared.service le reprend (LoadCredential=) : systemd le lit en root et le passe au service.
+JETON_TUNNEL="${JETON_TUNNEL:-/etc/etendard/tunnel.jeton}"
+
+# Clé de signature du dépôt apt de Cloudflare (cloudflare-public-v2.gpg, « CloudFlare Software Packaging
+# 2025 »), relevée le 2026-11-22 sur https://pkg.cloudflare.com/ : install.sh refuse toute autre clé.
+EMPREINTE_CLOUDFLARE=CC94B39C77AE7342A68B89628A682D308D4E5E73
+
+# empreinte_cle <fichier> : empreinte de la clé principale du trousseau, vide s'il en contient plusieurs
+# (une clé ajoutée signerait aussi des paquets acceptés par apt) ou aucune.
+empreinte_cle() {
+  gpg --show-keys --with-colons "$1" 2>/dev/null \
+    | awk -F: '$1 == "pub" { n++; p = 1; next } p && $1 == "fpr" { f = $10; p = 0 } END { if (n == 1) print f }'
+}
+
+# controler_jeton : réussit si $JETON_TUNNEL est un fichier ordinaire à root, lisible par root seul, qui ne
+# contient qu'un jeton. Sinon, écrit la raison sur stderr, jamais le contenu, et renvoie 1.
+controler_jeton() {
+  local f="$JETON_TUNNEL" ligne
+  if [ ! -e "$f" ]; then
+    echo "jeton du tunnel absent ($f) : crée le tunnel dans Cloudflare, puis écris-y son jeton (README.md)" >&2
+    return 1
+  fi
+  # Un lien ferait lire un autre fichier que celui dont les droits sont contrôlés ici.
+  if [ -L "$f" ] || [ ! -f "$f" ]; then
+    echo "$f n'est pas un fichier ordinaire" >&2; return 1
+  fi
+  if ! [[ "$(stat -c '%u %a' "$f")" =~ ^0\ [46]00$ ]]; then
+    echo "$f doit appartenir à root et n'être lisible que par lui : sudo chown root:root $f && sudo chmod 600 $f" >&2
+    return 1
+  fi
+  # Le tableau de bord affiche le jeton dans une commande (« cloudflared service install <jeton> ») : seul le
+  # jeton doit être copié. Lu sans être affiché ; lignes vides et fin de ligne Windows tolérées, comme par
+  # cloudflared (qui retire les blancs autour du jeton).
+  ligne="$(grep . "$f")"
+  if [ "$(grep -c . "$f")" != 1 ] || ! [[ "${ligne%$'\r'}" =~ ^[A-Za-z0-9+/_=-]{20,}$ ]]; then
+    echo "$f doit contenir le seul jeton du tunnel, sur une ligne, sans la commande qui l'entoure" >&2
+    return 1
+  fi
 }
 
 # cle_admin_autorisee <compte> <dossier personnel> : réussit si sshd accepterait au moins une clé publique

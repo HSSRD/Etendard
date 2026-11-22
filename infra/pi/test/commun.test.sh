@@ -119,6 +119,46 @@ printf '#!/bin/bash\necho "noyau-temoin:arm64: /boot/vmlinuz-6.1.0-temoin"\n' > 
 chmod +x "$WORK/bin/uname" "$WORK/bin/dpkg"
 [ "$(paquet_noyau)" = noyau-temoin:arm64 ] && ok "paquet du noyau avec son architecture" || ko "paquet du noyau : $(paquet_noyau)"
 
+# Jeton du tunnel (#125) : un faux stat donne le propriétaire et les droits (FAUX_DROITS), que le bash de
+# Git ne sait pas poser. Un message ne doit jamais recopier le jeton : JETON en sert de témoin.
+printf '#!/bin/bash\necho "$FAUX_DROITS"\n' > "$WORK/bin/stat"
+chmod +x "$WORK/bin/stat"
+JETON=eyJhIjoiamV0b24tdGVtb2luIn0aBcD0123456789
+export JETON_TUNNEL="$WORK/tunnel.jeton"
+jeton() { # <description> <motif attendu dans l'erreur, vide si le jeton est accepté> <droits>
+  local err code
+  err="$(FAUX_DROITS="$3" controler_jeton 2>&1)"; code=$?
+  if [ -z "$2" ]; then
+    [ "$code" -eq 0 ] && ok "$1" || ko "$1 : refusé ($err)"
+  elif [ "$code" -eq 0 ]; then
+    ko "$1 : accepté"
+  elif ! grep -q -- "$2" <<<"$err"; then
+    ko "$1 : message inattendu ($err)"
+  elif grep -qF "$JETON" <<<"$err"; then
+    ko "$1 : le jeton est recopié ($err)"
+  else
+    ok "$1"
+  fi
+}
+jeton "jeton absent : arrêt expliqué" 'jeton du tunnel absent' '0 600'
+mkdir "$JETON_TUNNEL"
+jeton "dossier au lieu d'un fichier" "n'est pas un fichier ordinaire" '0 600'
+rmdir "$JETON_TUNNEL"
+printf '%s\n' "$JETON" > "$JETON_TUNNEL"
+jeton "jeton à root, 600 : accepté" '' '0 600'
+jeton "jeton à root, 400 : accepté" '' '0 400'
+jeton "lisible par le groupe : arrêt" "n'être lisible que par lui" '0 640'
+jeton "lisible par tous : arrêt" "n'être lisible que par lui" '0 644'
+jeton "propriétaire autre que root : arrêt" "doit appartenir à root" '1000 600'
+printf 'sudo cloudflared service install %s\n' "$JETON" > "$JETON_TUNNEL"
+jeton "commande entière copiée : arrêt" 'sans la commande' '0 600'
+printf '%s\n%s\n' "$JETON" "$JETON" > "$JETON_TUNNEL"
+jeton "deux lignes : arrêt" 'sur une ligne' '0 600'
+printf '\r\n%s\r\n\r\n' "$JETON" > "$JETON_TUNNEL"
+jeton "fins de ligne Windows et lignes vides tolérées" '' '0 600'
+: > "$JETON_TUNNEL"
+jeton "fichier vide : arrêt" 'sur une ligne' '0 600'
+
 echo
 echo "$pass réussis, $fail échoués"
 [ "$fail" -eq 0 ]
