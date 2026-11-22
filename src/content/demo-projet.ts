@@ -1,6 +1,7 @@
 // Projet de démonstration du styleguide (ADR 0016), jamais publié en page : chaque état des
 // composants de projet, indépendant du vrai contenu (ses captures ne bougent pas quand il change).
 // Extraits du repo Dragon au commit relevé ; validé par Vitest (scripts/project-content.test.ts).
+import type { WiringDiagramProps } from '../components/WiringDiagram';
 import type { ProjectMeta, ProjectPage } from '../lib/validate-project-pages';
 import type { Project } from '../lib/validate-projects';
 
@@ -151,4 +152,42 @@ const carte: Project = {
   page: '/projets/demo',
 };
 
-export default { projet, pages: [accueil, materiel], carte };
+/** Schéma (WiringDiagram) : liaison libellée ou non, latérale entrante, sortante et prévue pour plus tard. */
+const schema: WiringDiagramProps = {
+  label: 'Schéma de démonstration des liaisons.',
+  chains: [
+    {
+      title: 'Commande',
+      steps: [
+        { label: 'Radiocommande', detail: 'au sol' },
+        {
+          label: 'Contrôleur de vol',
+          via: 'commandes',
+          branches: [{ direction: 'in', label: 'GPS', via: 'position' }],
+        },
+      ],
+    },
+    {
+      title: 'Puissance',
+      steps: [
+        { label: 'Batterie' },
+        {
+          label: 'Module de puissance',
+          via: 'alimentation',
+          branches: [
+            {
+              direction: 'out',
+              label: 'BEC',
+              detail: 'phase 3',
+              via: 'alimentation',
+              later: true,
+            },
+          ],
+        },
+        { label: 'Moteurs' },
+      ],
+    },
+  ],
+};
+
+export default { projet, pages: [accueil, materiel], carte, schema };

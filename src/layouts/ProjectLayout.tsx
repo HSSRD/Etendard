@@ -1,5 +1,7 @@
 // Page d'un projet (ADR 0016) : header et footer du site, en-tête du projet, navigation entre ses
-// pages, puis les sections. Chaque route de src/app/projets/ ne fait que lui passer son contenu.
+// pages, puis les sections. Chaque route de src/app/projets/ ne fait que lui passer son contenu,
+// et ses figures s'il y en a.
+import type { ReactNode } from 'react';
 import { View } from 'react-native';
 import ProjectHeader from '@/components/ProjectHeader';
 import ProjectNav from '@/components/ProjectNav';
@@ -14,9 +16,11 @@ import { pageStyles } from './page-styles';
 interface Props {
   project: ProjectMeta;
   page: ProjectPage;
+  /** Figure de chaque section qui en a une, par id de section. */
+  figures?: Record<string, ReactNode>;
 }
 
-export default function ProjectLayout({ project, page }: Props) {
+export default function ProjectLayout({ project, page, figures }: Props) {
   const title = [page.title, page.slug && project.title, 'Étendard']
     .filter(Boolean)
     .join(' — ');
@@ -37,6 +41,7 @@ export default function ProjectLayout({ project, page }: Props) {
             key={section.id}
             section={section}
             repo={project.repo}
+            figure={figures?.[section.id]}
           />
         ))}
       </View>

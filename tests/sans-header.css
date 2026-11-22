@@ -1,0 +1,4 @@
+/* Captures d’un élément plus haut que l’écran : le header collant le recouvrirait. */
+header {
+  visibility: hidden;
+}
