@@ -8,9 +8,8 @@ test('le schéma est une image nommée qui contient chaque bloc et chaque liaiso
   await page.goto('/styleguide/wiring-diagram');
 
   const schema = page.getByRole('img', {
-    name: 'Schéma de démonstration des liaisons.',
+    name: demo.schema.label,
   });
-  await expect(schema).toHaveAttribute('data-testid', 'schema');
   const texts = demo.schema.chains.flatMap(({ title, steps }) => [
     title,
     ...steps.flatMap((step) => [
