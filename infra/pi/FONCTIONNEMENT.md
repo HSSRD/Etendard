@@ -94,6 +94,16 @@ Le matcher `@html` vise les chemins en `/` et en `.html`, c'est-à-dire les page
 
 `verify.sh pi` contrôle les deux en-têtes, et la `304` de `/`.
 
+#### Les pages sans extension (#106)
+
+Expo exporte la route `projets/dragon/materiel` en `projets/dragon/materiel.html`, et l'accueil d'un projet en `projets/dragon/index.html`. Les liens du site les visent sans extension ni barre oblique finale (`/projets/dragon/materiel`, `/projets/dragon`), comme `expo serve` les sert. Un `file_server` seul répondrait 404 à la première adresse et redirigerait la seconde (308 vers `/projets/dragon/`).
+
+**`try_files {path} {path}.html {path}/index.html` réécrit le chemin** vers le premier fichier qui existe : le fichier demandé, puis la même adresse en `.html`, puis l'`index.html` du dossier. Les deux adresses répondent donc 200, sans redirection. Une adresse sans fichier répond toujours 404.
+
+**`try_files` et le matcher `@html` sont dans un même `route`.** Hors d'un `route`, Caddy range lui-même ses directives et passe `header` avant `try_files` : `@html` verrait le chemin demandé, sans `.html`, et ces pages perdraient `Cache-Control: no-cache`. Dans `route`, les directives s'appliquent dans l'ordre écrit : `@html` voit le chemin réécrit.
+
+`verify.sh pi` demande, sans extension, une page réelle du site autre qu'un `index.html`, puis un sous-dossier sans barre oblique finale : 200 et `Cache-Control` conforme.
+
 #### Le journal d'accès
 
 Caddy écrit chaque requête, en JSON, dans `/var/log/caddy/etendard-access.log`. À 10 Mio, le fichier est renommé et compressé ; Caddy garde les 4 derniers. Le journal occupe donc au plus 50 Mio sur la carte SD. Il appartient à l'utilisateur `caddy`, sous lequel tourne le service : `install.sh` lui rend le dossier après `caddy validate`, qui, lancé en root, crée le fichier s'il n'existe pas.
