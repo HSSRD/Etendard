@@ -109,6 +109,22 @@ jobs:
             StrictHostKeyChecking yes
             ConnectTimeout 30
           EOF
+      # Adresse du test de fumée public (#125), lue avant l'envoi : une valeur invalide arrête le job sans
+      # rien changer au site. SITE_URL (https://<domaine>) est une variable, pas un secret : le domaine est
+      # public, mais hors du repo.
+      - name: Lire l'adresse publique du site
+        id: site
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: |
+          if [ -z "$SITE_URL" ]; then
+            echo "::warning::variable SITE_URL absente : test de fumée public sauté"
+          elif [[ "$SITE_URL" =~ ^https://[A-Za-z0-9.-]+/?$ ]]; then
+            echo "url=${SITE_URL%/}" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::SITE_URL doit valoir https://<domaine>"
+            exit 1
+          fi
       # Sans version de départ, le rollback ne saurait pas où revenir : rien n'est
       # envoyé si status échoue, sauf quand aucune version n'est encore servie.
       - name: Lire la version servie avant l'envoi
@@ -133,6 +149,23 @@ jobs:
           served="$(ssh pi status)"
           echo "servie : $served — attendue : $GITHUB_SHA"
           [ "$served" = "$GITHUB_SHA" ]
+      # Test de fumée à travers Cloudflare (ADR 0006, #125) : en échec, le rollback ci-dessous s'applique.
+      # La réponse n'est affichée que si c'est un SHA : le site ne doit pas pouvoir écrire de commande « :: ».
+      - name: Vérifier la version servie au public
+        if: steps.site.outputs.url != ''
+        timeout-minutes: 3
+        env:
+          SITE_URL: ${{ steps.site.outputs.url }}
+        run: |
+          # Six essais espacés de 10 s : le temps qu'un tunnel coupé un instant se reconnecte.
+          for essai in 1 2 3 4 5 6; do
+            servi="$(curl -fsS --max-time 10 "$SITE_URL/version.txt" 2> /dev/null || true)"
+            [[ "$servi" =~ ^[0-9a-f]{40}$ ]] || servi="(pas un SHA)"
+            echo "essai $essai : servie au public $servi — attendue : $GITHUB_SHA"
+            [ "$servi" = "$GITHUB_SHA" ] && exit 0
+            [ "$essai" -eq 6 ] || sleep 10
+          done
+          exit 1
       # restore attend la fin d'un envoi encore en cours sur le Pi (annulation),
       # puis sert la version d'avant l'envoi ; il ne fait rien si elle l'est déjà.
       # cancelled() : failure() vaut false si le job est annulé (à la main ou par son délai).
