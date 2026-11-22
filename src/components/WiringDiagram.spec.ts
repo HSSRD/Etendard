@@ -11,24 +11,23 @@ test('le schéma est une image nommée qui contient chaque bloc et chaque liaiso
     name: 'Schéma de démonstration des liaisons.',
   });
   await expect(schema).toHaveAttribute('data-testid', 'schema');
-  const nodes = demo.schema.chains.flatMap(({ title, steps }) => [
+  const texts = demo.schema.chains.flatMap(({ title, steps }) => [
     title,
     ...steps.flatMap((step) => [
-      step,
-      ...(step.branches ?? []).map((branch) => ({
-        ...branch,
-        via: `${branch.direction === 'in' ? '←' : '→'}\u00a0${branch.via}`,
-      })),
+      step.label,
+      step.detail,
+      step.via,
+      ...(step.branches ?? []).flatMap((branch) => [
+        branch.label,
+        branch.detail,
+        `${branch.direction === 'in' ? '←' : '→'}\u00a0${branch.via}`,
+      ]),
     ]),
   ]);
-  const texts = nodes.flatMap((node) =>
-    typeof node === 'string'
-      ? [node]
-      : [node.label, node.detail, node.via].filter(
-          (text) => text !== undefined,
-        ),
-  );
-  for (const text of [...texts, 'Plus tard']) {
+  for (const text of [
+    ...texts.filter((text) => text !== undefined),
+    'Plus tard',
+  ]) {
     await expect(schema.getByText(text, { exact: true })).toBeVisible();
   }
 });

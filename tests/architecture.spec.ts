@@ -21,11 +21,11 @@ import {
 const content: ProjectPage = architecture;
 const url = pagePath(content.project, content.slug);
 
-/** Blocs d'une section du contenu, par son id. */
-const blocks = (id: string) =>
-  content.sections.find((section) => section.id === id)?.blocks ?? [];
+/** Tableaux d'une section du contenu, par son id. */
 const tables = (id: string) =>
-  blocks(id).filter((block): block is Table => block.type === 'table');
+  (content.sections.find((section) => section.id === id)?.blocks ?? []).filter(
+    (block): block is Table => block.type === 'table',
+  );
 
 test.describe('sans JavaScript', () => {
   test.use({ javaScriptEnabled: false });
@@ -61,19 +61,12 @@ test.describe('sans JavaScript', () => {
     await page.goto(url);
     const section = region(page, 'Schéma des liaisons');
 
-    const image = section.getByRole('img', { name: schema.label });
-    await expect(image).toBeVisible();
-    const labels = schema.chains.flatMap(({ steps }) =>
-      steps.flatMap((step) => [step, ...(step.branches ?? [])]),
-    );
-    for (const { label } of [...labels, { label: 'Plus tard' }]) {
-      await expect(
-        image.getByText(label, { exact: true }).first(),
-      ).toBeVisible();
-    }
-
-    const items = section.getByRole('listitem');
-    await expect(items).toContainText(liaisons);
+    // Le contenu du schéma est vérifié par WiringDiagram.spec.ts.
+    await expect(
+      section.getByRole('img', { name: schema.label }),
+    ).toBeVisible();
+    await expect(section.getByRole('listitem')).toContainText(liaisons);
+    // Chaque liaison du §2 a sa phrase.
     for (const part of [
       /radiocommande.*récepteur radio/,
       /GPS.*contrôleur de vol/,
@@ -85,7 +78,7 @@ test.describe('sans JavaScript', () => {
       /hélice/,
       /Plus tard.*BEC/,
     ]) {
-      await expect(items.filter({ hasText: part })).not.toHaveCount(0);
+      expect(liaisons.some((liaison) => part.test(liaison))).toBe(true);
     }
   });
 
@@ -156,8 +149,9 @@ for (const { name, ...media } of appearances) {
     await page.goto(url);
     await expectNoAxeViolations(page);
     await expectNoHorizontalScroll(page);
-    // Une capture du vrai schéma suffit, à la largeur la plus étroite : le styleguide le capture aux trois.
-    if (testInfo.project.name !== 'chromium-375') return;
+    // Captures du vrai schéma en sombre et en couleurs forcées (critère 2), à la largeur la plus
+    // étroite : le styleguide capture le composant à toutes les largeurs et apparences.
+    if (testInfo.project.name !== 'chromium-375' || name === 'light') return;
     await expect(page.getByTestId('schema')).toHaveScreenshot(
       `architecture-schema-${name}.png`,
       { stylePath: 'tests/sans-header.css' },
