@@ -9,7 +9,7 @@ import {
 } from './project-pages.ts';
 import { text } from './validate-projects.ts';
 
-/** Texte affiché : pas de montant en euros hors d'un prix daté. */
+/** Texte affiché : pas de montant en euros hors d'un prix ou d'un budget daté. */
 const prose = text.refine(
   (value) => !/€|\beuros?\b|\bEUR\b/i.test(value),
   'montant hors d’un prix ou d’un budget : écris une cellule { price } ou { budget } datée',

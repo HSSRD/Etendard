@@ -71,6 +71,14 @@ describe('validateProjectContent', () => {
                       { price: { min: 20, max: 40, date: '2026-11-20' } },
                     ],
                     ['Phase 1', { status: 'a-venir' }],
+                    [
+                      'Plafond',
+                      { budget: { min: 40, max: 40, date: '2026-11-20' } },
+                    ],
+                    [
+                      'Reste',
+                      { budget: { min: -5, max: 155, date: '2026-11-20' } },
+                    ],
                   ]),
                   {
                     type: 'links',

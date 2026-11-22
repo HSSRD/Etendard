@@ -20,10 +20,10 @@ export interface Price {
   date: string;
 }
 
-/** « 349,9 », « 1 200 », « −5 » : milliers séparés par une espace insécable, signe moins typographique. */
+/** « 349,9 », « 1 200 », « −5 » : milliers séparés par une espace fine insécable, signe moins typographique. */
 const euros = (amount: number) => {
   const [whole = '', decimals] = String(Math.abs(amount)).split('.');
-  const grouped = whole.replace(/\B(?=(\d{3})+$)/g, '\u00a0');
+  const grouped = whole.replace(/\B(?=(\d{3})+$)/g, '\u202f');
   return `${amount < 0 ? '\u2212' : ''}${grouped}${decimals ? `,${decimals}` : ''}`;
 };
 

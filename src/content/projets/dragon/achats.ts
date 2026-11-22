@@ -234,7 +234,7 @@ export const vagues: Section[] = [
             'Même raison que le chargeur.',
           ],
           [
-            'Deux LiPo 4S de 5 000 à 5 200 mAh, prise XT60, moins de 480 g',
+            'Deux LiPo 4S de 5\u202f000 à 5\u202f200 mAh, prise XT60, moins de 480 g',
             'Prise XT60 déjà montée : pas de soudure sur une LiPo chargée.',
             'Le drone est monté : place aux tests sous tension.',
           ],
@@ -372,7 +372,7 @@ export default {
         },
         {
           type: 'paragraph',
-          text: 'Prévision relevée le 2026-11-20, à partir des prix des fiches d’achat : chaque prix reste à confirmer le jour de la commande. Un reste négatif est un dépassement du plafond.',
+          text: `Prévision relevée le ${planned} dans l’ordre d’achat de Dragon : chaque prix reste à confirmer le jour de la commande. Un reste négatif est un dépassement du plafond.`,
         },
         {
           type: 'paragraph',

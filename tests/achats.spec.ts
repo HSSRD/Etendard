@@ -82,15 +82,16 @@ test.describe('sans JavaScript', () => {
       const [why, conditions] = lists(vague);
       const items = shown.getByRole('list');
       await expect(items).toHaveCount(2);
-      // toContainText : chaque élément est précédé de sa puce.
-      await expect(items.nth(0).getByRole('listitem')).toContainText(why ?? []);
-      await expect(items.nth(1).getByRole('listitem')).toContainText(
-        conditions ?? [],
-      );
+      for (const [index, expected] of [why, conditions].entries()) {
+        const shownItems = items.nth(index).getByRole('listitem');
+        await expect(shownItems).toHaveCount(expected?.length ?? 0);
+        // toContainText : chaque élément est précédé de sa puce.
+        await expect(shownItems).toContainText(expected ?? []);
+      }
     }
   });
 
-  test('la radio passe avant le drone, les batteries en dernier', async ({
+  test('les principes expliquent la radio avant le drone et les batteries le plus tard possible', async ({
     page,
   }) => {
     await page.goto(url);
@@ -114,9 +115,9 @@ test.describe('sans JavaScript', () => {
     const [ceiling, cumulative] = tables(budget);
     if (!ceiling || !cumulative) throw new Error('budget : tableaux');
     await expectTable(page, ceiling, shown);
-    await expect(shown).toContainText('1 200 €, prévu le 2026-11-20');
+    await expect(shown).toContainText('1\u202f200 €, prévu le 2026-11-20');
     await expectTable(page, cumulative, shown);
-    // Le premier paragraphe suit les tableaux.
+    // La date de la prévision ouvre les paragraphes de la section.
     await expect(shown.getByRole('paragraph').first()).toHaveText(
       /^Prévision relevée le 2026-11-20/,
     );
@@ -147,6 +148,8 @@ test.describe('sans JavaScript', () => {
       /dronavia/i,
       /drone-fpv-racer/i,
       /unmanned tech/i,
+      /rotorama/i,
+      /aliexpress/i,
       /pay[ée]/i,
     ]) {
       expect(text).not.toMatch(banned);
