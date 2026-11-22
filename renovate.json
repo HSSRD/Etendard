@@ -65,6 +65,7 @@
         "react-dom",
         "react-native",
         "react-native-*",
+        "@react-native-masked-view/masked-view",
         "@types/react"
       ],
       "groupName": "Expo SDK",

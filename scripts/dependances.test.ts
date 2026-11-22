@@ -3,15 +3,17 @@ import { expect, test } from 'vitest';
 
 // Chaque dépendance directe a sa ligne dans docs/dependances.md, et ses versions suivent ADR 0013.
 const read = (path: string) => readFileSync(path, 'utf8');
-const { dependencies, devDependencies } = JSON.parse(read('package.json'));
+const { dependencies, devDependencies, expo } = JSON.parse(
+  read('package.json'),
+);
 const declared: Record<string, string> = {
   ...dependencies,
   ...devDependencies,
 };
 
-/** Noms de la première colonne des lignes du tableau qui suit le titre `### <field>`. */
-const documented = (doc: string, field: string) => {
-  const start = doc.indexOf(`\n### ${field}\n`);
+/** Noms de la première colonne des lignes du tableau qui suit le titre `heading`. */
+const documented = (doc: string, heading: string) => {
+  const start = doc.indexOf(`\n${heading}\n`);
   const end = doc.indexOf('\n#', start + 1);
   return [...doc.slice(start, end).matchAll(/^\| `([^`]+)` +\|/gm)]
     .map((match) => match[1])
@@ -21,12 +23,25 @@ const documented = (doc: string, field: string) => {
 test('docs/dependances.md a une ligne par dépendance, dans le tableau de son champ', () => {
   const doc = read('docs/dependances.md');
 
-  expect(documented(doc, 'dependencies')).toEqual(
+  expect(documented(doc, '### dependencies')).toEqual(
     Object.keys(dependencies).toSorted(),
   );
-  expect(documented(doc, 'devDependencies')).toEqual(
+  expect(documented(doc, '### devDependencies')).toEqual(
     Object.keys(devDependencies).toSorted(),
   );
+});
+
+test('un module exclu de l’autolinking a sa ligne dans docs/dependances.md et n’est pas déclaré', () => {
+  const excluded: string[] = expo.autolinking.exclude;
+
+  expect(
+    documented(
+      read('docs/dependances.md'),
+      '## Modules natifs exclus de l’autolinking',
+    ),
+  ).toEqual(excluded.toSorted());
+  // Un module déclaré est importé par le bundle (#89) : exclu, il manquerait aux apps.
+  expect(excluded.filter((name) => Object.hasOwn(declared, name))).toEqual([]);
 });
 
 test('une version est exacte, sauf la plage que pose `expo install` pour le SDK', () => {
