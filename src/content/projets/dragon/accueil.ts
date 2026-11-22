@@ -4,6 +4,16 @@ import type { ProjectPage } from '../../../lib/validate-project-pages';
 /** Commit de Dragon relevé. */
 const sha = '3afc561a33cdb9241e380040d74ab37cdd1d8f1f';
 
+/** Règles de sécurité de Dragon, reprises par la page Architecture. */
+export const securite = [
+  'Hélices démontées pour tout travail sur table : configuration, moteurs, firmware. Elles ne reviennent qu’au moment de voler.',
+  'Première mise sous tension après une soudure derrière un smoke stopper, ou une alimentation de laboratoire limitée en courant.',
+  'Batteries LiPo chargées sous surveillance, dans un sac ignifuge ; jamais de batterie gonflée ou abîmée.',
+  'Un interrupteur d’armement et de coupure sur la radiocommande, et un failsafe testé avant le premier vol.',
+  'Premiers vols dans un espace dégagé, sans personne autour, pilote derrière le drone.',
+  'Respect de la réglementation de la DGAC.',
+];
+
 export default {
   project: 'dragon',
   slug: '',
@@ -108,14 +118,7 @@ export default {
         },
         {
           type: 'list',
-          items: [
-            'Hélices démontées pour tout travail sur table : configuration, moteurs, firmware. Elles ne reviennent qu’au moment de voler.',
-            'Première mise sous tension après une soudure derrière un smoke stopper, ou une alimentation de laboratoire limitée en courant.',
-            'Batteries LiPo chargées sous surveillance, dans un sac ignifuge ; jamais de batterie gonflée ou abîmée.',
-            'Un interrupteur d’armement et de coupure sur la radiocommande, et un failsafe testé avant le premier vol.',
-            'Premiers vols dans un espace dégagé, sans personne autour, pilote derrière le drone.',
-            'Respect de la réglementation de la DGAC.',
-          ],
+          items: securite,
         },
       ],
     },

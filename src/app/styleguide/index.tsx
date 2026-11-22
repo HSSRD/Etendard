@@ -17,6 +17,7 @@ const pages = [
   ['project-header', 'ProjectHeader'],
   ['project-section', 'ProjectSection'],
   ['project-nav', 'ProjectNav'],
+  ['wiring-diagram', 'WiringDiagram'],
 ] as const;
 
 export default function Styleguide() {

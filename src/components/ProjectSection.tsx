@@ -1,5 +1,6 @@
-// Section d'une page de projet (ADR 0016) : titre, statut, blocs (paragraphes, listes, tableaux,
-// liens), puis sa source : fichier du repo, commit et date du relevé.
+// Section d'une page de projet (ADR 0016) : titre, statut, figure facultative, blocs (paragraphes,
+// listes, tableaux, liens), puis sa source : fichier du repo, commit et date du relevé.
+import type { ReactNode } from 'react';
 import { Text, View } from 'react-native';
 import { AnchorTarget, TextLink } from '@/lib/anchors';
 import { sourceUrl } from '@/lib/project-pages';
@@ -56,9 +57,11 @@ interface Props {
   section: Section;
   /** Racine du repo source, pour lier le fichier de la source. */
   repo: string;
+  /** Composant posé avant les blocs (schéma) : le modèle de contenu n'a que du texte. */
+  figure?: ReactNode;
 }
 
-export default function ProjectSection({ section, repo }: Props) {
+export default function ProjectSection({ section, repo, figure }: Props) {
   const styles = useStyles();
   const typography = useTypography();
   const { path, sha, date } = section.source;
@@ -82,6 +85,7 @@ export default function ProjectSection({ section, repo }: Props) {
         </Text>
         {section.status && <StatusBadge status={section.status} />}
       </View>
+      {figure}
       {section.blocks.map((block, index) => (
         <SectionBlock key={index} block={block} />
       ))}

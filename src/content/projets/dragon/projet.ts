@@ -12,5 +12,6 @@ export default {
     { slug: 'materiel', label: 'Matériel' },
     { slug: 'decisions', label: 'Décisions' },
     { slug: 'achats', label: 'Achats' },
+    { slug: 'architecture', label: 'Architecture' },
   ],
 } satisfies ProjectMeta;
