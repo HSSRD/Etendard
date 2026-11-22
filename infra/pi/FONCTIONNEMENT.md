@@ -104,6 +104,24 @@ Expo exporte la route `projets/dragon/materiel` en `projets/dragon/materiel.html
 
 `verify.sh pi` demande, sans extension, une page HTML du site servi autre qu'un `index.html`, la première que `find` rencontre (aujourd'hui `+not-found.html`, la seule), puis un sous-dossier sans barre oblique finale : 200 et `Cache-Control` conforme. Il lui faut une vraie version dans `current`, pas la version de test de `verify.sh ssh`.
 
+#### La page 404 (#114)
+
+Expo exporte `src/app/+not-found.tsx` en `+not-found.html`. Pour une adresse sans fichier, `file_server` lève une erreur 404 ; `handle_errors 404` sert alors cette page à la place d'un corps vide, **avec le statut 404** : ni redirection vers l'accueil, ni 200 qui ferait indexer une adresse fausse.
+
+**La page charge le JavaScript du site.** Expo Router y affiche la route qui correspond à l'adresse s'il en connaît une, toujours sous le statut 404 : `/projets/dragon/materiel/` (barre oblique finale, que `try_files` ne sert pas) montre la page Matériel, et `/styleguide` le styleguide tant que ses routes restent dans le JavaScript de production (#85).
+
+**Ses en-têtes :**
+
+- Les en-têtes de sécurité, posés par le bloc `header` du site avant l'erreur, restent sur la réponse : ils ne sont écrits qu'une fois dans le `Caddyfile`.
+- `Cache-Control: no-cache`, comme les pages HTML, est posé dans `handle_errors` : `@html` a vu l'adresse demandée (`/absente`), pas `+not-found.html`. Une page 404 corrigée par un déploiement n'est donc pas réutilisée.
+- Le cache d'un an de `/_expo/static/` ne s'applique pas : il ne vise que les 2xx et 304.
+
+**`request_header` retire de la requête `If-None-Match`, `If-Modified-Since`, `Range`, `If-Match` et `If-Unmodified-Since`.** Dans `handle_errors`, `file_server` garde le statut 404 mais traite encore ces en-têtes : la revalidation d'une 404 déjà vue (touche F5, ou Cloudflare à cause de `no-cache`) répondrait une 404 vide, une plage une 404 tronquée, une précondition non remplie (412) une 404 vide. Sans eux, la page part entière.
+
+Une autre erreur (405 d'un `POST`, par exemple) garde son corps vide.
+
+`verify.sh pi` demande une adresse sans fichier à la racine, dans un dossier du site et sous `/_expo/static/` : 404, `Content-Type: text/html`, corps identique à `+not-found.html`, y compris avec chacun de ces cinq en-têtes, en-têtes de sécurité et `Cache-Control` conformes. Il lui faut une vraie version dans `current` : celle de `verify.sh ssh` n'a pas de `+not-found.html`.
+
 #### Le journal d'accès
 
 Caddy écrit chaque requête, en JSON, dans `/var/log/caddy/etendard-access.log`. À 10 Mio, le fichier est renommé et compressé ; Caddy garde les 4 derniers. Le journal occupe donc au plus 50 Mio sur le disque. Il appartient à l'utilisateur `caddy`, sous lequel tourne le service : `install.sh` lui rend le dossier après `caddy validate`, qui, lancé en root, crée le fichier s'il n'existe pas.

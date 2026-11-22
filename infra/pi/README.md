@@ -10,9 +10,9 @@ Ce qui est en place et pourquoi : [FONCTIONNEMENT.md](FONCTIONNEMENT.md). Ce REA
 | `commun.sh` | Fonctions de `install.sh` et `verify.sh` : lecture du fichier local, garde-fou SSH, dépôts des mises à jour, logiciels exposés |
 | `serveur.conf.exemple` | Format du fichier local `/etc/etendard/serveur.conf`, aux valeurs neutres |
 | `sshd-etendard.conf`, `isolation.conf`, `etendard-pare-feu.service` | SSH par clé uniquement, isolation systemd de Caddy, pare-feu d'entrée |
-| `Caddyfile` | Caddy sur `127.0.0.1:8080` uniquement, racine `/srv/etendard/current`, pages sans extension, en-têtes de sécurité, cache de `/_expo/static/`, des pages HTML et de `version.txt`, journal d'accès |
+| `Caddyfile` | Caddy sur `127.0.0.1:8080` uniquement, racine `/srv/etendard/current`, pages sans extension, page 404, en-têtes de sécurité, cache de `/_expo/static/`, des pages HTML et de `version.txt`, journal d'accès |
 | `etendard-receive` | Seule commande de la clé de déploiement : réception (stdin), `rollback`, `restore <sha>`, `status` |
-| `verify.sh` | Preuves des critères 1 à 5 du ticket #4, des en-têtes et du journal (#25), du cache de `/_expo/static/` (#36), des pages HTML et de `version.txt` (#52), de HSTS sur le domaine public (#41), des pages sans extension (#106), du durcissement (#113) |
+| `verify.sh` | Preuves des critères 1 à 5 du ticket #4, des en-têtes et du journal (#25), du cache de `/_expo/static/` (#36), des pages HTML et de `version.txt` (#52), de HSTS sur le domaine public (#41), des pages sans extension (#106), de la page 404 (#114), du durcissement (#113) |
 | `tailscale-policy.hujson`, `tailscale-checklist.md` | Critères 6 et 7 |
 | `test/etendard-receive.test.sh` | Tests locaux du script (archives saines et piégées) |
 | `test/verify-hsts.test.sh` | Tests locaux de `verify.sh hsts`, avec un faux `curl` |

@@ -1,8 +1,8 @@
 #!/bin/bash
 # Produit les preuves des critères 1 à 5 du ticket #4, à coller en commentaire, du critère 4 du ticket #25,
-# du critère 2 du ticket #36, du critère 3 du ticket #52, des critères 1 et 2 du ticket #41, du ticket #106
-# et des critères 4 à 8 du ticket #113.
-#   sudo bash verify.sh pi      sur le Pi, après install.sh (critères 1, 2, 3 et verrou ; en-têtes, journal, cache ;
+# du critère 2 du ticket #36, du critère 3 du ticket #52, des critères 1 et 2 du ticket #41, du ticket #106,
+# des critères 1 et 2 du ticket #114 et des critères 4 à 8 du ticket #113.
+#   sudo bash verify.sh pi      sur le Pi, après install.sh (critères 1, 2, 3 et verrou ; en-têtes, journal, cache, page 404 ;
 #                               durcissement). Sortie sans adresse, nom de machine, port ni liste de logiciels :
 #                               elle se colle telle quelle dans un ticket. « sudo DETAIL=1 bash verify.sh pi »
 #                               affiche aussi chaque commande et sa sortie, pour chercher une panne (à ne pas coller).
@@ -92,10 +92,13 @@ mode_pi() {
 
   title "Ticket #25 — en-têtes de sécurité et journal d'accès"
   check "Caddyfile installé, identique à celui de ce dossier" '^ok$' sh -c "cmp /etc/caddy/Caddyfile '$HERE/Caddyfile' && echo ok"
-  # Une page servie et une erreur 404 : les en-têtes doivent être sur chaque réponse.
+  # Une page servie et des erreurs 404 (la page 404 du site, #114) : les en-têtes doivent être sur chaque réponse.
   # Chemin propre à ce passage : sa ligne dans le journal ne peut venir que de lui.
   local url name absent="/absente-verify-sh-$(date +%s)"
-  for url in / "$absent"; do
+  # À la racine, dans un dossier du site, sous /_expo/static/ (cache d'un an) : trois routes de Caddy.
+  # Chemins seuls dans la sortie : elle ne montre pas le port de Caddy (#113, critère 10).
+  local missing=("$absent" "/projets$absent" "/_expo/static$absent.js")
+  for url in / "${missing[@]}"; do
     for name in Content-Security-Policy X-Content-Type-Options Referrer-Policy Permissions-Policy; do
       check "$name sur $url, conforme au Caddyfile" '^conforme$' header "http://127.0.0.1:8080$url" "$name"
     done
@@ -144,6 +147,23 @@ mode_pi() {
   else
     fail=$((fail + 1)); echo "  ❌ le site servi n'a pas de page hors index.html ou de sous-dossier avec index.html"; echo
   fi
+
+  title "Ticket #114 — page 404 du site"
+  local h
+  # notfound [options curl…] <url> : « ok » si le corps servi est la page 404 du site servi.
+  notfound() { curl -s "$@" | cmp -s - /srv/etendard/current/+not-found.html && echo ok; }
+  for url in "${missing[@]}"; do
+    check "$url répond 404" '^HTTP/1.1 404' curl -sSI "http://127.0.0.1:8080$url"
+    check "Content-Type text/html sur $url" '^Content-Type: text/html' served "http://127.0.0.1:8080$url" Content-Type
+    check "corps de $url identique à +not-found.html" '^ok$' notfound "http://127.0.0.1:8080$url"
+    # Une revalidation, une plage ou une précondition reçoit aussi la page entière, pas une 404 vide ou
+    # tronquée. Chaque valeur déclencherait 304, 206 ou 412 sur le fichier, sans lire ses ETag et date.
+    for h in 'If-None-Match: *' 'If-Modified-Since: Fri, 01 Jan 2100 00:00:00 GMT' 'Range: bytes=0-9' \
+      'If-Match: "absent"' 'If-Unmodified-Since: Thu, 01 Jan 1970 00:00:00 GMT'; do
+      check "$url avec $h : corps identique à +not-found.html" '^ok$' notfound -H "$h" "http://127.0.0.1:8080$url"
+    done
+    check "Cache-Control sur $url, conforme au Caddyfile (celui des pages)" '^conforme$' header "http://127.0.0.1:8080$url" Cache-Control @html
+  done
 
   title "Critère 2 — utilisateur deploy"
   check "utilisateur deploy, sans groupe secondaire" '^uid=[0-9]+\(deploy\) gid=[0-9]+\(deploy\) groups=[0-9]+\(deploy\)$' id deploy
