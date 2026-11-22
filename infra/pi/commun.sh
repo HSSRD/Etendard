@@ -4,18 +4,20 @@
 # Valeurs propres au serveur, hors du repo (public) : format dans serveur.conf.exemple.
 ETENDARD_CONF="${ETENDARD_CONF:-/etc/etendard/serveur.conf}"
 
-# Logiciels exposés : mises à jour automatiques (avec le noyau en cours) et isolation systemd.
-# Pour en ajouter un (cloudflared, ticket suivant) : son paquet dans PAQUETS_MAJ_AUTO, son unité dans
-# SERVICES_ISOLES et, dans install.sh, une ligne « isoler <unité> <dossiers où il écrit> ».
+# Logiciels exposés : mises à jour automatiques (avec le noyau en cours) et isolation systemd, appliquées
+# par install.sh, contrôlées par verify.sh. Pour en ajouter un (cloudflared, ticket suivant) : son paquet
+# dans PAQUETS_MAJ_AUTO, son unité et les dossiers où elle écrit dans SERVICES_ISOLES.
 PAQUETS_MAJ_AUTO=(caddy tailscale)
-SERVICES_ISOLES=(caddy.service)
+declare -A SERVICES_ISOLES=([caddy.service]="/var/lib/caddy /var/log/caddy")
+# Nécessaires à l'accès de Flo ou au déploiement, en plus des services isolés : jamais masqués.
+SERVICES_PROTEGES=(ssh.service sshd.service ssh.socket tailscaled.service etendard-pare-feu.service)
 
 # lire_conf : lit $ETENDARD_CONF dans PORTS (« port/proto »), SERVICES et DEPOTS_EXCLUS. Sur une erreur,
 # écrit la raison sur stderr, sans la valeur fautive (seulement son numéro de ligne), et renvoie 1.
 # Le fichier n'est jamais exécuté : seules les lignes « CLE=valeur » des trois clés sont acceptées.
 lire_conf() {
   PORTS=() SERVICES=() DEPOTS_EXCLUS=()
-  local f="$ETENDARD_CONF" line key value n=0 seen=' '
+  local f="$ETENDARD_CONF" line key value n=0 seen=' ' unite p
   if [ ! -f "$f" ]; then
     echo "fichier local $f absent : copie-y serveur.conf.exemple de ce dossier, puis remplis-le (README.md)" >&2
     return 1
@@ -44,11 +46,14 @@ lire_conf() {
         if ! [[ "$value" =~ ^[A-Za-z0-9][A-Za-z0-9@._:-]*$ ]]; then
           echo "$f, ligne $n : SERVICE attend un nom d'unité systemd" >&2; return 1
         fi
-        # Masquer l'un d'eux couperait l'accès de Flo, le déploiement ou le site.
-        case "${value%.service}" in
-          ssh | sshd | ssh.socket | tailscaled | caddy | etendard-pare-feu)
-            echo "$f, ligne $n : ce service est nécessaire à l'accès ou au site, il ne peut pas être désactivé" >&2; return 1 ;;
-        esac
+        # Masquer l'un d'eux couperait l'accès de Flo, le déploiement ou le site (sans suffixe, systemd lit .service).
+        unite="$value"
+        [[ "$unite" == *.* ]] || unite+=.service
+        for p in "${SERVICES_PROTEGES[@]}" "${!SERVICES_ISOLES[@]}"; do
+          if [ "$unite" = "$p" ]; then
+            echo "$f, ligne $n : ce service est nécessaire à l'accès ou au site, il ne peut pas être désactivé" >&2; return 1
+          fi
+        done
         SERVICES+=("$value") ;;
       DEPOT_EXCLU)
         # Ni guillemet, ni virgule, ni barre oblique inverse : la valeur entre dans un motif d'apt.
@@ -80,23 +85,38 @@ cle_admin_autorisee() {
   return 1
 }
 
-# origine_maj <paquet> : motif Unattended-Upgrade::Origins-Pattern du dépôt qui fournit la version candidate
-# du paquet. Échoue si le paquet est inconnu ou ne vient d'aucun dépôt. Python et python3-apt viennent avec
-# unattended-upgrades ; une virgule est échappée, un guillemet refusé (apt.conf n'a pas d'échappement).
-origine_maj() {
-  python3 - "$1" <<'PY'
+# origines_maj <paquet…> : pour chaque paquet, dans l'ordre, une ligne avec le motif
+# Unattended-Upgrade::Origins-Pattern du dépôt qui fournit sa version candidate, vide si le paquet est
+# inconnu ou ne vient d'aucun dépôt. Un seul cache apt pour tous (long à charger sur le Pi). Python et
+# python3-apt viennent avec unattended-upgrades ; une virgule est échappée, un guillemet donne une ligne
+# vide (apt.conf n'a pas d'échappement).
+origines_maj() {
+  python3 - "$@" <<'PY'
 import apt, sys
 cache = apt.Cache()
-pkg = cache[sys.argv[1]] if sys.argv[1] in cache else None
-origins = [o for o in (pkg.candidate.origins if pkg and pkg.candidate else []) if o.site]
-if not origins:
-    sys.exit(1)
-o = origins[0]
-fields = [(k, v) for k, v in (("origin", o.origin), ("codename", o.codename), ("label", o.label)) if v]
-if any('"' in v for _, v in fields):
-    sys.exit(1)
-print(",".join(k + "=" + v.replace(",", "\\,") for k, v in fields))
+for name in sys.argv[1:]:
+    pkg = cache[name] if name in cache else None
+    origins = [o for o in (pkg.candidate.origins if pkg and pkg.candidate else []) if o.site]
+    fields = [(k, v) for k, v in (("origin", origins[0].origin), ("codename", origins[0].codename),
+              ("label", origins[0].label)) if v] if origins else []
+    ok = fields and not any('"' in v for _, v in fields)
+    print(",".join(k + "=" + v.replace(",", "\\,") for k, v in fields) if ok else "")
 PY
+}
+
+# motif_exclu <motif> <dépôt…> : réussit si l'origine du motif (origin= ou o=) est l'un des dépôts.
+motif_exclu() {
+  local motif=",$1," d
+  shift
+  for d; do
+    [[ "$motif" == *",origin=$d,"* || "$motif" == *",o=$d,"* ]] && return 0
+  done
+  return 1
+}
+
+# ports_ssh : ports TCP où écoute sshd, un par ligne.
+ports_ssh() {
+  sshd -T 2>/dev/null | awk '$1 == "port" { print $2 }'
 }
 
 # paquet_noyau : paquet qui a installé le noyau en cours (son dépôt fournit aussi le firmware).

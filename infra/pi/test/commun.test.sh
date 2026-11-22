@@ -49,6 +49,7 @@ conf "service au nom invalide" 'ligne 1 : SERVICE attend' $'SERVICE=secret; rm -
 conf "service SSH refusé" 'nécessaire à l.accès' $'SERVICE=ssh.service\n'"$complet"
 conf "socket SSH refusé" 'nécessaire à l.accès' $'SERVICE=ssh.socket\n'"$complet"
 conf "service de Tailscale refusé" 'nécessaire à l.accès' $'SERVICE=tailscaled\n'"$complet"
+conf "service isolé (Caddy) refusé" 'nécessaire à l.accès' $'SERVICE=caddy\n'"$complet"
 conf "dépôt avec guillemet" 'ligne 1 : DEPOT_EXCLU attend' $'DEPOT_EXCLU=secret"\n'"$complet"
 conf "dépôt avec virgule" 'ligne 1 : DEPOT_EXCLU attend' $'DEPOT_EXCLU=secret,x\n'"$complet"
 conf "clé inconnue" 'ligne 1 : clé inconnue' $'SECRET=1\n'"$complet"

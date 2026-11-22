@@ -28,26 +28,20 @@ printf 'PORT=54321\nPORT=54322/udp\nSERVICE=service-temoin.service\nDEPOT_EXCLU=
 
 out="$(PATH="$WORK/bin:$PATH" ETENDARD_CONF="$WORK/serveur.conf" bash "$HERE/../verify.sh" pi 2>&1)"
 pass=0 fail=0
-if grep -q '^Bilan : ' <<<"$out" && grep -q 'critère 8' <<<"$out"; then
-  pass=$((pass + 1)); echo "ok   - verify.sh pi va jusqu'au bilan"
-else
-  fail=$((fail + 1)); echo "FAIL - verify.sh pi s'arrête avant le bilan : $out"
-fi
+ok() { pass=$((pass + 1)); echo "ok   - $1"; }
+ko() { fail=$((fail + 1)); echo "FAIL - $1"; }
+
+grep -q '^Bilan : ' <<<"$out" && grep -q 'critère 8' <<<"$out" \
+  && ok "verify.sh pi va jusqu'au bilan" || ko "verify.sh pi s'arrête avant le bilan : $out"
 for t in "${TEMOINS[@]}"; do
-  if grep -qF -- "$t" <<<"$out"; then
-    fail=$((fail + 1)); echo "FAIL - « $t » dans la sortie : $(grep -F -- "$t" <<<"$out" | head -3)"
-  else
-    pass=$((pass + 1)); echo "ok   - « $t » absent de la sortie"
-  fi
+  grep -qF -- "$t" <<<"$out" \
+    && ko "« $t » dans la sortie : $(grep -F -- "$t" <<<"$out" | head -3)" || ok "« $t » absent de la sortie"
 done
 # Aucune adresse IPv4 ni aucun « :port », quelle que soit leur valeur (3 chiffres au moins : l'heure de la
 # date, « 19:07+01:00 », en a deux).
 fuite='([0-9]{1,3}\.){3}[0-9]{1,3}|:[0-9]{3,5}\b'
-if grep -Eq "$fuite" <<<"$out"; then
-  fail=$((fail + 1)); echo "FAIL - adresse ou port dans la sortie : $(grep -E "$fuite" <<<"$out" | head -3)"
-else
-  pass=$((pass + 1)); echo "ok   - aucune adresse IPv4 ni aucun « :port »"
-fi
+grep -Eq "$fuite" <<<"$out" \
+  && ko "adresse ou port dans la sortie : $(grep -E "$fuite" <<<"$out" | head -3)" || ok "aucune adresse IPv4 ni aucun « :port »"
 
 echo
 echo "$pass réussis, $fail échoués"

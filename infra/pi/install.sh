@@ -16,6 +16,16 @@ step() { printf '\n==> %s\n' "$*"; }
 die() { echo "ERREUR : $*" >&2; exit 1; }
 warn() { echo "ATTENTION : $*" >&2; }
 
+# paquets <nom…> : installe ceux qui manquent, avec un seul « apt-get update » par exécution.
+apt_a_jour=0
+paquets() {
+  local manquants=() p
+  for p; do dpkg -s "$p" >/dev/null 2>&1 || manquants+=("$p"); done
+  [ "${#manquants[@]}" -gt 0 ] || return 0
+  [ "$apt_a_jour" = 1 ] || { apt-get update; apt_a_jour=1; }
+  DEBIAN_FRONTEND=noninteractive apt-get install -y "${manquants[@]}"
+}
+
 # --- Vérifications préalables (avant tout changement) -------------------------
 [ "$(id -u)" -eq 0 ] || die "à lancer en root (sudo bash install.sh <clé.pub>)"
 [ -n "$PUBKEY_FILE" ] && [ -f "$PUBKEY_FILE" ] || die "usage : sudo bash install.sh <clé publique ed25519>"
@@ -101,6 +111,7 @@ if ! dpkg -s caddy >/dev/null 2>&1; then
   echo 'deb [signed-by=/usr/share/keyrings/caddy-stable-archive-keyring.gpg] https://dl.cloudsmith.io/public/caddy/stable/deb/debian any-version main' \
     > /etc/apt/sources.list.d/caddy-stable.list
   apt-get update
+  apt_a_jour=1
   # --force-confold : garde notre Caddyfile au lieu de celui du paquet.
   DEBIAN_FRONTEND=noninteractive apt-get install -y \
     -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold caddy
@@ -144,14 +155,14 @@ isoler() {
 }
 
 step "Isolation systemd des services exposés"
-isoler caddy.service /var/lib/caddy /var/log/caddy
+for unit in "${!SERVICES_ISOLES[@]}"; do
+  # Sans guillemets : la valeur est une liste de dossiers séparés par des espaces.
+  isoler "$unit" ${SERVICES_ISOLES[$unit]}
+done
 
 # --- Mises à jour automatiques (#113, critère 6) -------------------------------
 step "Mises à jour automatiques : sécurité du système, noyau en cours, ${PAQUETS_MAJ_AUTO[*]}"
-if ! dpkg -s unattended-upgrades >/dev/null 2>&1; then
-  apt-get update
-  DEBIAN_FRONTEND=noninteractive apt-get install -y unattended-upgrades
-fi
+paquets unattended-upgrades
 noyau="$(paquet_noyau)"
 [ -n "$noyau" ] || die "paquet du noyau en cours introuvable : ses mises à jour ne peuvent pas être activées"
 # Les correctifs de sécurité du système viennent de la configuration du paquet (50unattended-upgrades) ;
@@ -164,15 +175,17 @@ maj=/etc/apt/apt.conf.d/52etendard-maj-auto
   echo '// Pas de redémarrage automatique : verify.sh pi signale celui qui est en attente.'
   echo 'Unattended-Upgrade::Automatic-Reboot "false";'
   echo 'Unattended-Upgrade::Origins-Pattern {'
-  for paquet in "$noyau" "${PAQUETS_MAJ_AUTO[@]}"; do
-    if ! motif="$(origine_maj "$paquet")"; then
-      warn "$paquet : absent ou sans dépôt, hors des mises à jour automatiques (relance install.sh une fois installé)"
-      continue
+  maj_paquets=("$noyau" "${PAQUETS_MAJ_AUTO[@]}")
+  mapfile -t motifs < <(origines_maj "${maj_paquets[@]}")
+  for i in "${!maj_paquets[@]}"; do
+    motif="${motifs[$i]:-}"
+    if [ -z "$motif" ]; then
+      warn "${maj_paquets[$i]} : absent ou sans dépôt, hors des mises à jour automatiques (relance install.sh une fois installé)"
+    elif motif_exclu "$motif" "${DEPOTS_EXCLUS[@]}"; then
+      warn "${maj_paquets[$i]} : dépôt exclu par le fichier local"
+    else
+      echo "  \"$motif\";"
     fi
-    for depot in "${DEPOTS_EXCLUS[@]}"; do
-      [[ ",$motif," == *",origin=$depot,"* ]] && { warn "$paquet : dépôt exclu par le fichier local"; continue 2; }
-    done
-    echo "  \"$motif\";"
   done
   echo '};'
 } > "$maj.new"
@@ -201,7 +214,7 @@ systemctl reload ssh   # les sessions ouvertes restent
 
 # --- Pare-feu d'entrée (#113, critère 5) ---------------------------------------
 step "Pare-feu d'entrée (table nftables inet etendard)"
-command -v nft >/dev/null || DEBIAN_FRONTEND=noninteractive apt-get install -y nftables
+paquets nftables
 # Réseau local : les préfixes directement joignables par l'interface de la route par défaut.
 lan_if="$(ip -o -4 route show default | awk '{ for (i = 1; i < NF; i++) if ($i == "dev") { print $(i + 1); exit } }')"
 [ -n "$lan_if" ] || die "aucune route par défaut : réseau local introuvable, pare-feu non appliqué"
@@ -212,7 +225,7 @@ lan6+=(fe80::/10)
 echo "Réseau local détecté sur $lan_if : ${lan4[*]} ${lan6[*]}"
 
 tcp=() udp=()
-mapfile -t tcp < <(sshd -T | awk '$1 == "port" { print $2 }')
+mapfile -t tcp < <(ports_ssh)
 [ "${#tcp[@]}" -gt 0 ] || die "port SSH introuvable (sshd -T) : pare-feu non appliqué"
 for p in "${PORTS[@]}"; do
   if [ "${p#*/}" = udp ]; then udp+=("${p%/*}"); else tcp+=("${p%/*}"); fi

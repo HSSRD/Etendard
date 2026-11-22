@@ -28,14 +28,17 @@ probe() {
   out="$("$@" 2>&1)"
   [ "$show" = 1 ] && [ -n "$out" ] && sed 's/^/  /' <<<"$out"
   grep -Eq -- "$pattern" <<<"$out" && found=attendu
-  if [ "$found" = "$want" ]; then
-    pass=$((pass + 1)); echo "  ✅ $desc"
-  elif [ "$show" = 1 ]; then
-    fail=$((fail + 1)); echo "  ❌ $desc (motif $want : /$pattern/)"
-  else
-    fail=$((fail + 1)); echo "  ❌ $desc"
-  fi
+  [ "$found" = "$want" ]
+  verdict $? "$desc" "$([ "$show" = 1 ] && echo " (motif $want : /$pattern/)")"
   if [ "$show" = 1 ]; then echo; fi
+}
+# verdict <code : 0 réussi> <description> [précision affichée en cas d'échec] : compte et affiche.
+verdict() {
+  if [ "$1" -eq 0 ]; then
+    pass=$((pass + 1)); echo "  ✅ $2"
+  else
+    fail=$((fail + 1)); echo "  ❌ $2${3:-}"
+  fi
 }
 check() { probe attendu "$@"; }
 refute() { probe interdit "$@"; }
@@ -60,6 +63,17 @@ header() {
 }
 
 title() { printf '\n### %s\n\n' "$*"; }
+
+# verifier_port <libellé> <port/proto> (#113) : autorisé depuis le tailnet et le réseau local dans la chaîne
+# d'entrée, et sans redirection (NAT) qui la contournerait. Le libellé remplace le numéro dans la sortie.
+verifier_port() {
+  # nft affiche « dport 22 » pour un seul port, « dport { 22, 9000 } » pour plusieurs.
+  local dport="${2#*/} dport (${2%/*}|\{ ([^}]*, )?${2%/*}(, [^}]*)? \}) accept"
+  check "port $1 autorisé depuis le tailnet" "iifname \"tailscale0\" $dport" nft list chain inet etendard entree
+  check "port $1 autorisé depuis le réseau local" "ip saddr .* $dport" nft list chain inet etendard entree
+  ! port_contourne "$2"
+  verdict $? "port $1 filtré par la chaîne d'entrée (aucune redirection)"
+}
 
 mode_pi() {
   [ "$(id -u)" -eq 0 ] || { echo "à lancer en root : sudo bash verify.sh pi" >&2; exit 1; }
@@ -180,57 +194,45 @@ mode_pi() {
   check "pare-feu chargé au démarrage" '^enabled$' systemctl is-enabled etendard-pare-feu
   check "pare-feu actif" '^active$' systemctl is-active etendard-pare-feu
   check "entrée refusée par défaut" 'hook input .*policy drop;' nft list chain inet etendard entree
-  # Ports TCP de sshd et du fichier local : autorisés dans la chaîne, sans redirection qui la contournerait.
-  local ports=() n=0
-  mapfile -t ports < <(sshd -T 2>/dev/null | awk '$1 == "port" { print $2 "/tcp" }')
-  [ "${#ports[@]}" -gt 0 ] || { fail=$((fail + 1)); echo "  ❌ port SSH introuvable (sshd -T)"; }
-  local dport
-  for p in "${ports[@]}" "${PORTS[@]}"; do
-    n=$((n + 1))
-    [ "$n" -le "${#ports[@]}" ] && i="SSH n°$n" || i="n°$((n - ${#ports[@]})) du fichier local"
-    # nft affiche « dport 22 » pour un seul port, « dport { 22, 9000 } » pour plusieurs.
-    dport="${p#*/} dport (${p%/*}|\{ ([^}]*, )?${p%/*}(, [^}]*)? \}) accept"
-    check "port $i autorisé depuis le tailnet" "iifname \"tailscale0\" $dport" nft list chain inet etendard entree
-    check "port $i autorisé depuis le réseau local" "ip saddr .* $dport" nft list chain inet etendard entree
-    if port_contourne "$p"; then
-      fail=$((fail + 1)); echo "  ❌ port $i redirigé (NAT) avant la chaîne d'entrée : non filtré"
-    else
-      pass=$((pass + 1)); echo "  ✅ port $i filtré par la chaîne d'entrée (aucune redirection)"
-    fi
-  done
+  # Ports de sshd et du fichier local : autorisés dans la chaîne, sans redirection qui la contournerait.
+  local ports=()
+  mapfile -t ports < <(ports_ssh)
+  [ "${#ports[@]}" -gt 0 ]
+  verdict $? "port SSH lu dans sshd -T"
+  for i in "${!ports[@]}"; do verifier_port "SSH n°$((i + 1))" "${ports[$i]}/tcp"; done
+  for i in "${!PORTS[@]}"; do verifier_port "n°$((i + 1)) du fichier local" "${PORTS[$i]}"; done
 
   title "Ticket #113, critère 6 — mises à jour automatiques"
   check "unattended-upgrades installé" '^install ok installed$' dpkg-query -W -f='${Status}\n' unattended-upgrades
   check "lancées chaque jour" '"1";$' apt-config dump APT::Periodic::Unattended-Upgrade
   check "minuteries d'apt actives" '^active.active$' sh -c 'systemctl is-active apt-daily.timer apt-daily-upgrade.timer | paste -sd .'
   check "pas de redémarrage automatique" '"false";$' apt-config dump Unattended-Upgrade::Automatic-Reboot
-  local motifs motif paquet nom etiquette
+  local motifs motif exclu maj_paquets etiquettes motifs_paquets=() en_vigueur=()
   motifs="$(apt-config dump Unattended-Upgrade::Origins-Pattern)"
   check "correctifs de sécurité du système" '[Ss]ecurity' echo "$motifs"
-  for paquet in noyau "${PAQUETS_MAJ_AUTO[@]}"; do
-    nom="$paquet" etiquette="de $paquet"
-    [ "$paquet" = noyau ] && nom="$(paquet_noyau)" etiquette="du noyau en cours"
-    if motif="$(origine_maj "$nom")" && grep -qF "\"$motif\";" <<<"$motifs"; then
-      pass=$((pass + 1)); echo "  ✅ dépôt $etiquette inclus"
-    else
-      fail=$((fail + 1)); echo "  ❌ dépôt $etiquette absent des mises à jour automatiques"
-    fi
+  maj_paquets=("$(paquet_noyau)" "${PAQUETS_MAJ_AUTO[@]}")
+  etiquettes=("noyau en cours" "${PAQUETS_MAJ_AUTO[@]}")
+  mapfile -t motifs_paquets < <(origines_maj "${maj_paquets[@]}")
+  for i in "${!maj_paquets[@]}"; do
+    motif="${motifs_paquets[$i]:-}"
+    [ -n "$motif" ] && grep -qF "\"$motif\";" <<<"$motifs"
+    verdict $? "dépôt de ${etiquettes[$i]} inclus"
   done
-  # Guillemets changés en virgules : chaque champ d'un motif est alors encadré par deux virgules.
-  motifs="$(tr '"' , <<<"$motifs")"
+  # Même règle qu'install.sh (motif_exclu), appliquée à chaque motif en vigueur.
+  mapfile -t en_vigueur < <(grep -oE '"[^"]+"' <<<"$motifs" | tr -d '"')
   for i in "${!DEPOTS_EXCLUS[@]}"; do
-    if grep -qF -e ",origin=${DEPOTS_EXCLUS[$i]}," -e ",o=${DEPOTS_EXCLUS[$i]}," <<<"$motifs"; then
-      fail=$((fail + 1)); echo "  ❌ dépôt exclu n°$((i + 1)) encore mis à jour"
-    else
-      pass=$((pass + 1)); echo "  ✅ dépôt exclu n°$((i + 1)) hors des mises à jour automatiques"
-    fi
+    exclu=0
+    for motif in "${en_vigueur[@]}"; do
+      motif_exclu "$motif" "${DEPOTS_EXCLUS[$i]}" && exclu=1
+    done
+    verdict "$exclu" "dépôt exclu n°$((i + 1)) hors des mises à jour automatiques"
   done
   # Signalé sans échec : redémarrer est le choix de Flo (pas de redémarrage automatique).
   [ -e /run/reboot-required ] && echo "  ⚠️ redémarrage en attente, pour appliquer une mise à jour"
 
   title "Ticket #113, critère 7 — isolation des services exposés"
   local unit pid
-  for unit in "${SERVICES_ISOLES[@]}"; do
+  for unit in "${!SERVICES_ISOLES[@]}"; do
     for p in NoNewPrivileges=yes ProtectSystem=strict ProtectHome=yes PrivateDevices=yes 'ReadWritePaths=/' 'RestrictAddressFamilies=AF_'; do
       check "$unit : ${p%%=*}" "^$p" systemctl show -p "${p%%=*}" "$unit"
     done
