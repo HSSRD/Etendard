@@ -94,8 +94,9 @@ Utilisateurs gardent la lecture au premier niveau, et plus bas celle héritée d
 le script signale les sous-dossiers à règle explicite sans les corriger (« à fermer à la main ») : un logiciel peut
 en dépendre, comme `C:\Program Files\GOG Galaxy\Games` pour installer des jeux sans administrateur. Ferme ceux dont
 tu n'as pas besoin (`icacls <dossier> /remove:g *S-1-5-32-545 *S-1-5-11 *S-1-1-0`) ; un dossier laissé ouvert reste
-un risque, noté dans ADR 0008. Le parcours prend quelques minutes. Relance-le après avoir créé un dossier à la racine
-d'un disque ou installé un logiciel.
+un risque, noté dans ADR 0008. **Ne ferme jamais ceux de `ProgramData\Microsoft`** (`Crypto\RSA\MachineKeys`, `WER`…) :
+Windows les ouvre à tous exprès. Le parcours prend de quelques minutes à une demi-heure selon les disques, sans rien
+afficher avant la fin. Relance-le après avoir créé un dossier à la racine d'un disque ou installé un logiciel.
 
 ```powershell
 # C:\ProgramData\Git\config serait lue comme configuration système par le git de Flo : le dossier est créé fermé.
@@ -111,7 +112,8 @@ icacls C:\04-Projets   # attendu : floxf, SYSTEM, Administrateurs, rien d'autre
 ```
 
 Si un logiciel ne se met plus à jour, c'est qu'il passait par ces droits : relance sa mise à jour en administrateur.
-Le script de l'étape 10 refait l'audit depuis le compte agent : il ne doit plus lister aucun dossier.
+Le script de l'étape 10 refait l'audit depuis le compte agent : il ne doit plus lister aucun dossier à corriger
+(ÉCHEC). Les dossiers « à fermer à la main » y restent en ALERTE, sans faire échouer la vérification.
 
 ## 5. Préparer le dossier du jeton **(admin)**
 
@@ -298,7 +300,10 @@ orca worktree create --environment etendard-agent --repo path:C:/Users/etendard-
   --prompt "Lance git fetch origin && git reset --hard origin/main, puis bash infra/agents/verifier-isolation.sh en arrière-plan (il dure plus que le délai par défaut d'une commande) en attendant sa fin, et poste sa sortie complète en commentaire du ticket #70."
 ```
 
-Le script prend quelques minutes (audit des dossiers de l'étape 4) et doit finir par « Isolation vérifiée. ».
+Le script prend une dizaine de minutes (audit des dossiers de l'étape 4, puis CI de la PR de test `infra/pi/`)
+et doit finir par « Isolation vérifiée. ». La PR de test attend sa CI : sans elle, « Bloque push main » refuserait
+déjà le merge et masquerait le ruleset. Le script ne tente le merge que si GitHub le bloque, CI verte ; il ferme
+ensuite la PR. Une PR de test restée ouverte (script interrompu) se ferme sans merger.
 Le commentaire posté par `hssrd-bot` prouve à lui seul que les PR et commentaires des agents sont au nom du bot.
 
 ## Révoquer
