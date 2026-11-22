@@ -33,10 +33,6 @@ export default {
       source: { path: 'README.md', sha, date: '2026-11-22' },
       blocks: [
         {
-          type: 'paragraph',
-          text: 'Sept phases, chacune avec un objectif et, dès qu’il est défini, un critère de sortie. Le code de l’équipe ne pilote le vrai drone qu’en phase 3, une fois qu’il vole déjà en manuel.',
-        },
-        {
           type: 'table',
           caption: 'Phases du projet Dragon',
           columns: ['Phase', 'Objectif', 'Critère de sortie', 'Statut'],
