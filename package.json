@@ -15,7 +15,9 @@
   },
   "knip": {
     "ignoreDependencies": [
-      "@react-native-masked-view/masked-view"
+      "@react-native-masked-view/masked-view",
+      "expo-glass-effect",
+      "expo-status-bar"
     ]
   },
   "packageManager": "pnpm@12.21.0",
@@ -42,8 +44,10 @@
     "@react-native-masked-view/masked-view": "0.3.2",
     "expo": "~58.0.26",
     "expo-constants": "~58.0.16",
+    "expo-glass-effect": "~58.0.5",
     "expo-linking": "~58.0.17",
     "expo-router": "~58.0.32",
+    "expo-status-bar": "~58.0.5",
     "expo-system-ui": "~58.0.7",
     "expo-video": "~58.0.14",
     "react": "19.3.0",
