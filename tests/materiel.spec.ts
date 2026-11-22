@@ -3,8 +3,12 @@ import materiel, {
   compatibilite as matrix,
   fiches,
 } from '../src/content/projets/dragon/materiel';
-import { formatPrice, pagePath } from '../src/lib/project-pages';
-import type { ProjectPage, Table } from '../src/lib/validate-project-pages';
+import { formatPrice, pagePath, statusLabels } from '../src/lib/project-pages';
+import type {
+  Cell,
+  ProjectPage,
+  Table,
+} from '../src/lib/validate-project-pages';
 import {
   appearances,
   dataRows,
@@ -17,6 +21,13 @@ import {
 // Matériel du projet Dragon (ADR 0016, #99) : une section par fiche d'achat, puis la matrice.
 const content: ProjectPage = materiel;
 const url = pagePath(content.project, content.slug);
+
+/** Texte affiché d'une cellule (DataTable) : le texte, le prix daté ou le libellé du statut. */
+const text = (cell: Cell | undefined) => {
+  if (typeof cell !== 'object') return cell ?? '';
+  if (cell.price) return formatPrice(cell.price);
+  return cell.status ? statusLabels[cell.status] : '';
+};
 
 test.describe('sans JavaScript', () => {
   test.use({ javaScriptEnabled: false });
@@ -66,15 +77,16 @@ test.describe('sans JavaScript', () => {
         .flat()
         .flatMap((cell) => (typeof cell === 'object' && cell.price) || []);
       expect(prices.map(({ date }) => date)).toContain('2026-11-20');
-      await expect(dataRows(section, choices.caption)).toContainText(
-        prices.map(formatPrice),
-      );
-      // Chaque alternative a sa raison.
-      const rows = dataRows(section, alternatives.caption);
-      await expect(rows).not.toHaveCount(0);
-      for (const row of await rows.all()) {
-        await expect(row.getByRole('cell')).toHaveCount(2);
-        await expect(row.getByRole('cell').last()).not.toBeEmpty();
+      expect(alternatives.rows.length).toBeGreaterThan(0);
+      // Choix, raison et prix ; alternative et raison : chaque cellule, ligne par ligne.
+      for (const { caption, rows, columns } of [choices, alternatives]) {
+        const shown = dataRows(section, caption);
+        await expect(shown).toHaveCount(rows.length);
+        for (const column of columns.keys()) {
+          await expect(shown).toContainText(
+            rows.map((row) => text(row[column])),
+          );
+        }
       }
       await expect(section.getByTestId('source')).toContainText(
         `${source.path} au commit ${source.sha.slice(0, 7)}, relevé le ${source.date}`,
@@ -120,9 +132,11 @@ test.describe('sans JavaScript', () => {
       .locator('a[href]')
       .evaluateAll((links) => links.map((link) => link.getAttribute('href')));
     expect(hrefs.length).toBeGreaterThan(0);
+    const origin = new URL(page.url()).origin;
     for (const href of hrefs) {
-      if (!href || /^[/#]/.test(href)) continue;
-      expect(href).toMatch(
+      const link = new URL(href ?? '', page.url());
+      if (link.origin === origin) continue;
+      expect(link.href).toMatch(
         /^https:\/\/github\.com\/HSSRD\/(?:Dragon|Etendard)(?:\/|$)/,
       );
     }
@@ -132,7 +146,6 @@ test.describe('sans JavaScript', () => {
       .evaluateAll((images) =>
         images.map((image) => (image as HTMLImageElement).src),
       );
-    const origin = new URL(page.url()).origin;
     for (const source of sources) expect(new URL(source).origin).toBe(origin);
   });
 });

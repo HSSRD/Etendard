@@ -147,13 +147,8 @@ export const fiches: Section[] = [
     ],
     choices: [
       [
-        'Les 4 moteurs 2216 KV920 du kit',
-        'Inclus et assortis au cadre et aux ESC. Fiche du fabricant vérifiée : 1 332 g de poussée à plein gaz, soit un rapport poussée/poids de 3,1 à 3,4 en phase 1.',
-        'Inclus dans le kit',
-      ],
-      [
-        'Un moteur de rechange, recommandé sans être obligatoire',
-        'Il évite d’attendre deux à trois semaines après un crash : un moteur abîmé est la casse la plus fréquente après les hélices.',
+        'Les 4 moteurs 2216 KV920 du kit, et un moteur de rechange en option',
+        'Inclus et assortis au cadre et aux ESC. Fiche du fabricant vérifiée : 1 332 g de poussée à plein gaz, soit un rapport poussée/poids de 3,1 à 3,4 en phase 1. Le rechange, recommandé sans être obligatoire, évite d’attendre deux à trois semaines après un crash. Le budget va de rien, sans rechange, au prix d’un moteur.',
         price(0, 30),
       ],
     ],
@@ -275,7 +270,7 @@ export const fiches: Section[] = [
       ],
     ],
     notes: [
-      'Point de vigilance : à plein gaz, les 4 moteurs tirent environ 65 A, alors que les fils fournis avec le PM02 tiennent 30 A en continu et 60 A en pointe. En pratique, le plein gaz ne dure que quelques secondes. Parade : limiter les gaz maximum, par exemple à 85 %, ou refaire les fils en 10 AWG. En phase 1, les fils d’origine restent, et leur température est contrôlée après les vols les plus durs.',
+      'Point de vigilance : à plein gaz, les 4 moteurs tirent environ 65 A, alors que les fils fournis avec le PM02 tiennent 30 A en continu et 60 A en pointe. En pratique, le plein gaz ne dure que quelques secondes. Parade : limiter les gaz maximum, par exemple à 85 %, ou refaire les fils en 10 AWG et passer la prise en XT90, plus lourde. En phase 1, les fils d’origine restent, et leur température est contrôlée après les vols les plus durs.',
     ],
   }),
   fiche({
