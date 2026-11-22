@@ -7,5 +7,8 @@ export default {
   title: 'Dragon',
   status: 'en-cours',
   repo: 'https://github.com/HSSRD/Dragon',
-  pages: [{ slug: '', label: 'Présentation' }],
+  pages: [
+    { slug: '', label: 'Présentation' },
+    { slug: 'materiel', label: 'Matériel' },
+  ],
 } satisfies ProjectMeta;

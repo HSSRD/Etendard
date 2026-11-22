@@ -14,7 +14,7 @@ const headingLevels = (page: Page, selector: string) =>
       headings.map((heading) => Number(heading.tagName.slice(1))),
     );
 
-test('Projets, puis Hussard, puis Overwatch et Sentry, titres h1 → h2 → h3', async ({
+test('Projets, puis Hussard, Overwatch et Sentry, puis Dragon, titres h1 → h2 → h3', async ({
   page,
 }) => {
   await page.goto('/styleguide/projects-section');
@@ -27,11 +27,12 @@ test('Projets, puis Hussard, puis Overwatch et Sentry, titres h1 → h2 → h3',
     'Hussard',
     'Overwatch',
     'Sentry',
+    'Dragon',
   ]);
   await expect(
     section.getByTestId('project-units').locator('> article'),
   ).toHaveCount(2);
-  expect(await headingLevels(page, 'body')).toEqual([1, 2, 3, 3, 3]);
+  expect(await headingLevels(page, 'body')).toEqual([1, 2, 3, 3, 3, 3]);
 });
 
 test('la one page insère la section dans #projets', async ({ page }) => {
@@ -39,7 +40,7 @@ test('la one page insère la section dans #projets', async ({ page }) => {
   await expect(
     page.locator('#projets > [data-testid="projects-section"]'),
   ).toHaveCount(1);
-  expect(await headingLevels(page, '#projets')).toEqual([2, 3, 3, 3]);
+  expect(await headingLevels(page, '#projets')).toEqual([2, 3, 3, 3, 3]);
 });
 
 test('aucune adresse, aucun port ni lien vers les repos privés', async ({
@@ -48,7 +49,9 @@ test('aucune adresse, aucun port ni lien vers les repos privés', async ({
   await page.goto('/styleguide/projects-section');
   const section = page.getByTestId('projects-section');
 
-  await expect(section.locator('a')).toHaveCount(0);
+  // Seul lien : la page du projet Dragon, sur le site (ADR 0016).
+  await expect(section.locator('a')).toHaveCount(1);
+  await expect(section.locator('a')).toHaveAttribute('href', '/projets/dragon');
   // Le HTML, pas seulement le texte : une image ou un commentaire ne doit rien divulguer.
   expect(await section.innerHTML()).not.toMatch(
     /https?:|www\.|github|\.local\b|\.ts\.net|\d+\.\d+\.\d+\.\d+|\.lan\b|:\d{2,5}|\bport\s*[:=]?\s*\d/i,

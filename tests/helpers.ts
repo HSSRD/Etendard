@@ -77,8 +77,23 @@ export const tabTo = async (page: Page, target: Locator, maxPresses = 10) => {
   await expect(target).toBeFocused();
 };
 
-/** Apparences d'une page du styleguide : thème clair, sombre, puis couleurs forcées (ADR 0016). */
-const appearances = [
+/** Section d'une page de projet, nommée par son titre. */
+export const region = (page: Page, name: string) =>
+  page.getByRole('region', { name, exact: true });
+
+/** Lignes de données d'un tableau nommé (hors en-tête), cherché dans `scope`, en liste comme en tableau. */
+export const dataRows = (
+  page: Page,
+  name: string,
+  scope: Page | Locator = page,
+) =>
+  scope
+    .getByRole('table', { name, exact: true })
+    .getByRole('row')
+    .filter({ has: page.getByRole('cell') });
+
+/** Apparences d'une page : thème clair, sombre, puis couleurs forcées (ADR 0016). */
+export const appearances = [
   { name: 'light', colorScheme: 'light', forcedColors: 'none' },
   { name: 'dark', colorScheme: 'dark', forcedColors: 'none' },
   { name: 'forced-colors', colorScheme: 'light', forcedColors: 'active' },
