@@ -38,4 +38,6 @@ const useStyles = themedStyles((colors) => ({
   'a-venir': { borderColor: colors.textMuted, color: colors.textMuted },
   'en-cours': { borderColor: colors.accent },
   termine: { borderColor: colors.text },
+  propose: { borderColor: colors.textMuted },
+  accepte: { borderColor: colors.text },
 }));

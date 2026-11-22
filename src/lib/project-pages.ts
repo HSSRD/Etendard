@@ -6,6 +6,9 @@ export const statusLabels = {
   'a-venir': 'À venir',
   'en-cours': 'En cours',
   termine: 'Terminé',
+  // Statuts d'une décision (ADR) : quand elle est validée, seul ce champ change dans le contenu.
+  propose: 'Proposé (à valider)',
+  accepte: 'Accepté',
 } as const;
 
 export type Status = keyof typeof statusLabels;

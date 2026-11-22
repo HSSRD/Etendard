@@ -11,6 +11,8 @@ test('chaque statut a son libellé', async ({ page }) => {
     'À venir',
     'En cours',
     'Terminé',
+    'Proposé (à valider)',
+    'Accepté',
   ]);
 });
 
