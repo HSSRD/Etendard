@@ -94,6 +94,8 @@ test.describe('sans JavaScript', () => {
     const [rules, safety] = await method.getByRole('list').all();
     if (!rules || !safety) throw new Error('deux listes attendues');
 
+    await expect(rules.getByRole('listitem')).toHaveCount(5);
+    await expect(safety.getByRole('listitem')).toHaveCount(6);
     await expect(rules.getByRole('listitem')).toContainText([
       'sans trace écrite',
       'challengé',

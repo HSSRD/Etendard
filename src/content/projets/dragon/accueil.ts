@@ -63,7 +63,7 @@ export default {
             ],
             [
               '4. Capteurs',
-              'Caméra, télémètre, flux optique.',
+              'Caméra, télémètre, flux optique, entre autres.',
               'Le code de l’équipe exploite le flux vidéo et les données des capteurs.',
               { status: 'a-venir' },
             ],
