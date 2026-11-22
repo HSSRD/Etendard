@@ -23,6 +23,15 @@ const euros = (amount: number) => String(amount).replace('.', ',');
 export const formatPrice = ({ min, max, date }: Price) =>
   `${euros(min)} à ${euros(max)}\u00a0€, relevé le ${date}`;
 
+/** Texte affiché d'une cellule de tableau : le texte, le prix daté ou le libellé du statut. */
+export const cellText = (
+  cell: string | { status?: Status | undefined; price?: Price | undefined },
+) => {
+  if (typeof cell === 'string') return cell;
+  if (cell.price) return formatPrice(cell.price);
+  return cell.status ? statusLabels[cell.status] : '';
+};
+
 /** Fichiers du repo source qui contiennent des données jamais publiées : jamais liés (barre finale comprise). */
 const unlinkable = [
   /(^|\/)bom\.md\/?$/,

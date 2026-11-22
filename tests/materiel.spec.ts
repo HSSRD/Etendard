@@ -1,14 +1,10 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import materiel, {
   compatibilite as matrix,
   fiches,
 } from '../src/content/projets/dragon/materiel';
-import { formatPrice, pagePath, statusLabels } from '../src/lib/project-pages';
-import type {
-  Cell,
-  ProjectPage,
-  Table,
-} from '../src/lib/validate-project-pages';
+import { cellText, pagePath } from '../src/lib/project-pages';
+import type { ProjectPage, Table } from '../src/lib/validate-project-pages';
 import {
   appearances,
   dataRows,
@@ -22,11 +18,15 @@ import {
 const content: ProjectPage = materiel;
 const url = pagePath(content.project, content.slug);
 
-/** Texte affiché d'une cellule (DataTable) : le texte, le prix daté ou le libellé du statut. */
-const text = (cell: Cell | undefined) => {
-  if (typeof cell !== 'object') return cell ?? '';
-  if (cell.price) return formatPrice(cell.price);
-  return cell.status ? statusLabels[cell.status] : '';
+/** Le tableau `table` de `scope` affiche toutes ses lignes, chaque cellule à sa place. */
+const expectTable = async (scope: Page | Locator, table: Table) => {
+  const shown = dataRows(scope, table.caption);
+  await expect(shown).toHaveCount(table.rows.length);
+  for (const column of table.columns.keys()) {
+    await expect(shown).toContainText(
+      table.rows.map((row) => cellText(row[column] ?? '')),
+    );
+  }
 };
 
 test.describe('sans JavaScript', () => {
@@ -78,16 +78,9 @@ test.describe('sans JavaScript', () => {
         .flatMap((cell) => (typeof cell === 'object' && cell.price) || []);
       expect(prices.map(({ date }) => date)).toContain('2026-11-20');
       expect(alternatives.rows.length).toBeGreaterThan(0);
-      // Choix, raison et prix ; alternative et raison : chaque cellule, ligne par ligne.
-      for (const { caption, rows, columns } of [choices, alternatives]) {
-        const shown = dataRows(section, caption);
-        await expect(shown).toHaveCount(rows.length);
-        for (const column of columns.keys()) {
-          await expect(shown).toContainText(
-            rows.map((row) => text(row[column])),
-          );
-        }
-      }
+      // Choix, raison et prix ; alternative et raison.
+      await expectTable(section, choices);
+      await expectTable(section, alternatives);
       await expect(section.getByTestId('source')).toContainText(
         `${source.path} au commit ${source.sha.slice(0, 7)}, relevé le ${source.date}`,
       );
@@ -99,13 +92,8 @@ test.describe('sans JavaScript', () => {
   }) => {
     await page.goto(url);
 
-    const rows = dataRows(page, matrix.caption);
-    await expect(rows).toHaveCount(9);
-    for (const column of [0, 1]) {
-      await expect(rows).toContainText(
-        matrix.rows.map((row) => String(row[column])),
-      );
-    }
+    expect(matrix.rows).toHaveLength(9);
+    await expectTable(page, matrix);
   });
 
   test('la section Contrôleur de vol explique le choix du Pixhawk 6C et l’option disparue', async ({
@@ -120,7 +108,6 @@ test.describe('sans JavaScript', () => {
     );
     await expect(section).toContainText('L’option économique');
     await expect(section).toContainText('la carte est arrêtée');
-    // Son prix relevé : vérifié avec ceux des autres fiches.
   });
 
   test('aucun lien vers une boutique ni image tierce', async ({ page }) => {
