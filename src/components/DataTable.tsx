@@ -4,7 +4,7 @@
 // conteneur a la place de toutes ses colonnes (requête de conteneur, sans largeur de fenêtre).
 import { useId } from 'react';
 import { Text, View } from 'react-native';
-import { formatPrice } from '@/lib/project-pages';
+import { cellText } from '@/lib/project-pages';
 import type { Cell, Table } from '@/lib/validate-project-pages';
 import { themedStyles } from '@/theme/theme';
 import { borderWidth, fontWeight, layout, space } from '@/theme/tokens';
@@ -13,12 +13,9 @@ import StatusBadge from './StatusBadge';
 
 function CellValue({ cell }: { cell: Cell }) {
   const typography = useTypography();
-  if (typeof cell === 'string')
-    return <Text style={typography.body}>{cell}</Text>;
-  if (cell.status) return <StatusBadge status={cell.status} />;
-  return (
-    <Text style={typography.body}>{cell.price && formatPrice(cell.price)}</Text>
-  );
+  if (typeof cell !== 'string' && cell.status)
+    return <StatusBadge status={cell.status} />;
+  return <Text style={typography.body}>{cellText(cell)}</Text>;
 }
 
 export default function DataTable({ table }: { table: Table }) {

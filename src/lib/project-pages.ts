@@ -20,8 +20,17 @@ export interface Price {
 const euros = (amount: number) => String(amount).replace('.', ',');
 
 /** « 5 à 10 €, relevé le 2026-11-20 » : un prix n'est jamais affiché sans sa date. */
-export const formatPrice = ({ min, max, date }: Price) =>
+const formatPrice = ({ min, max, date }: Price) =>
   `${euros(min)} à ${euros(max)}\u00a0€, relevé le ${date}`;
+
+/** Texte affiché d'une cellule de tableau : le texte, le prix daté ou le libellé du statut. */
+export const cellText = (
+  cell: string | { status?: Status | undefined; price?: Price | undefined },
+) => {
+  if (typeof cell === 'string') return cell;
+  if (cell.status) return statusLabels[cell.status];
+  return cell.price ? formatPrice(cell.price) : '';
+};
 
 /** Fichiers du repo source qui contiennent des données jamais publiées : jamais liés (barre finale comprise). */
 const unlinkable = [
