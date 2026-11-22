@@ -18,6 +18,11 @@ Lis `docs/adr/` avant toute modification structurelle. Ne contredis jamais un AD
 - `pnpm exec playwright test src/components/X.spec.ts` : boucle courte sur un composant.
 - `pnpm captures:maj [fichiers]` : régénère les captures de référence dans Docker.
 - `pnpm captures:ci <id du run>` : installe les captures produites par un run `ci.yml` en échec (sans Docker).
+- `pnpm dragon:ecart` : compare le SHA relevé de chaque source de `src/content/projets/` à la dernière version du
+  fichier dans le repo du projet (réseau : hors de `pnpm verify`). Lance-le avant de mettre à jour une page de projet ;
+  le workflow `dragon-ecart.yml` le lance chaque lundi et ouvre un ticket en cas d'écart. Pour chaque section listée :
+  relis la source au dernier commit, mets à jour le contenu (ADR 0016, « Jamais publié »), puis son SHA et sa date de relevé.
+  Code 2 : contrôle impossible (repo injoignable, SHA inconnu), rien n'est vérifié.
 
 ## Définition de terminé
 

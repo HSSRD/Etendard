@@ -1,5 +1,7 @@
 // Contenu des pages de projet (ADR 0016) : chaque dossier de src/content/projets/ avec sa fiche
-// (projet.ts) et ses pages (les autres fichiers .ts), lus par check-content.ts et Vitest.
+// (projet.ts) et ses pages (les autres fichiers .ts), lus par check-content.ts, Vitest, Playwright
+// et dragon-ecart.ts. Ce dernier tourne sans dépendances installées (dragon-ecart.yml) : ce fichier
+// et le contenu n'importent à l'exécution que des modules de Node.
 import { readdirSync } from 'node:fs';
 
 const root = new URL('../src/content/projets/', import.meta.url);
