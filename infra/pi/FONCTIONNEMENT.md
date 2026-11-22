@@ -106,7 +106,9 @@ Expo exporte la route `projets/dragon/materiel` en `projets/dragon/materiel.html
 
 #### La page 404 (#114)
 
-Expo exporte `src/app/+not-found.tsx` en `+not-found.html`. Pour une adresse sans fichier, `file_server` lève une erreur 404 ; `handle_errors 404` sert alors cette page à la place d'un corps vide, **avec le statut 404** : ni redirection vers l'accueil, ni 200 qui ferait indexer une adresse fausse. `expo serve`, donc Playwright, fait de même.
+Expo exporte `src/app/+not-found.tsx` en `+not-found.html`. Pour une adresse sans fichier, `file_server` lève une erreur 404 ; `handle_errors 404` sert alors cette page à la place d'un corps vide, **avec le statut 404** : ni redirection vers l'accueil, ni 200 qui ferait indexer une adresse fausse.
+
+**La page charge le JavaScript du site.** Expo Router y affiche la route qui correspond à l'adresse s'il en connaît une, toujours sous le statut 404 : `/projets/dragon/materiel/` (barre oblique finale, que `try_files` ne sert pas) montre la page Matériel, et `/styleguide` le styleguide tant que ses routes restent dans le JavaScript de production (#85).
 
 **Ses en-têtes :**
 
@@ -114,11 +116,11 @@ Expo exporte `src/app/+not-found.tsx` en `+not-found.html`. Pour une adresse san
 - `Cache-Control: no-cache`, comme les pages HTML, est posé dans `handle_errors` : `@html` a vu l'adresse demandée (`/absente`), pas `+not-found.html`. Une page 404 corrigée par un déploiement n'est donc pas réutilisée.
 - Le cache d'un an de `/_expo/static/` ne s'applique pas : il ne vise que les 2xx et 304.
 
-**`request_header` retire `If-None-Match`, `If-Modified-Since` et `Range` de la requête.** Dans `handle_errors`, `file_server` garde le statut 404 mais traite encore ces en-têtes : la revalidation d'une 404 déjà vue (touche F5, ou Cloudflare à cause de `no-cache`) répondrait une 404 vide, une plage une 404 tronquée. Sans eux, la page part entière.
+**`request_header` retire de la requête `If-None-Match`, `If-Modified-Since`, `Range`, `If-Match` et `If-Unmodified-Since`.** Dans `handle_errors`, `file_server` garde le statut 404 mais traite encore ces en-têtes : la revalidation d'une 404 déjà vue (touche F5, ou Cloudflare à cause de `no-cache`) répondrait une 404 vide, une plage une 404 tronquée, une précondition non remplie (412) une 404 vide. Sans eux, la page part entière.
 
 Une autre erreur (405 d'un `POST`, par exemple) garde son corps vide.
 
-`verify.sh pi` demande une adresse sans fichier à la racine, dans un dossier du site et sous `/_expo/static/` : 404, `Content-Type: text/html`, corps identique à `+not-found.html`, y compris avec chacun de ces trois en-têtes, en-têtes de sécurité et `Cache-Control` conformes. Il lui faut une vraie version dans `current` : celle de `verify.sh ssh` n'a pas de `+not-found.html`.
+`verify.sh pi` demande une adresse sans fichier à la racine, dans un dossier du site et sous `/_expo/static/` : 404, `Content-Type: text/html`, corps identique à `+not-found.html`, y compris avec chacun de ces cinq en-têtes, en-têtes de sécurité et `Cache-Control` conformes. Il lui faut une vraie version dans `current` : celle de `verify.sh ssh` n'a pas de `+not-found.html`.
 
 #### Le journal d'accès
 
