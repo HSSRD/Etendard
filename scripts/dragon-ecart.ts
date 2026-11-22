@@ -5,6 +5,10 @@
 // Sortie : 0 à jour, 1 sections à relire, 2 contrôle impossible.
 // Le rapport ne cite que des chemins et des SHA, jamais le contenu du repo source : ses fichiers
 // contiennent aussi des données jamais publiées.
+import type {
+  ProjectMeta,
+  ProjectPage,
+} from '../src/lib/validate-project-pages.ts';
 import { loadProjectContents } from './project-content.ts';
 
 interface Source {
@@ -34,13 +38,9 @@ const projectsOf = (
   contents: Awaited<ReturnType<typeof loadProjectContents>>,
 ): Project[] =>
   contents.map(({ meta, pages }) => ({
-    repo: (meta.data as { repo: string }).repo,
+    repo: (meta.data as ProjectMeta).repo,
     sources: pages.flatMap(({ file, data }) =>
-      (
-        data as {
-          sections: { id: string; source: { path: string; sha: string } }[];
-        }
-      ).sections.map(({ id, source }) => ({
+      (data as ProjectPage).sections.map(({ id, source }) => ({
         file,
         section: id,
         path: source.path,
@@ -54,38 +54,37 @@ const gaps = async ({ repo, sources }: Project, get: Get) => {
   const name = repo.replace('https://github.com/', '');
   const api = `/repos/${name}`;
   // Empreinte de chaque fichier à un commit : égale d'un commit à l'autre si le fichier n'a pas changé.
-  const trees = new Map<string, Promise<Map<string, string>>>();
-  const blobs = (ref: string) => {
-    const known = trees.get(ref);
-    if (known) return known;
-    const loaded = get(`${api}/git/trees/${ref}?recursive=1`).then((data) => {
-      const { truncated, tree } = data as Tree;
-      // Un arbre tronqué ferait passer un fichier absent pour supprimé.
-      if (truncated)
-        throw new Error(`arbre de ${repo} au commit ${ref} tronqué`);
-      return new Map(tree.map((entry) => [entry.path, entry.sha]));
-    });
-    trees.set(ref, loaded);
-    return loaded;
+  const blobs = async (ref: string) => {
+    const { truncated, tree } = (await get(
+      `${api}/git/trees/${ref}?recursive=1`,
+    )) as Tree;
+    // Un arbre tronqué ferait passer un fichier absent pour supprimé.
+    if (truncated) throw new Error(`arbre de ${repo} au commit ${ref} tronqué`);
+    return new Map(tree.map((entry) => [entry.path, entry.sha]));
   };
-  const latest = await blobs('HEAD');
-  const lines: string[] = [];
-  for (const { file, section, path, sha } of sources) {
-    const read = (await blobs(sha)).get(path);
-    const now = latest.get(path);
-    if (read !== undefined && read === now) continue;
-    const query = new URLSearchParams({ path, per_page: '1' });
-    const [last] = (await get(`${api}/commits?${query}`)) as { sha: string }[];
-    const change =
-      read === undefined
-        ? `absent du commit relevé \`${sha}\``
-        : `relevé au commit \`${sha}\`, ${now === undefined ? 'supprimé' : 'modifié'} depuis`;
-    // Entre accents graves : GitHub ne fait pas d'un SHA un lien vers son diff, qui montrerait le contenu.
-    lines.push(
-      `- ${file}, section « ${section} » : \`${path}\` de ${name}, ${change} (dernier commit : \`${last?.sha ?? 'aucun'}\`).`,
-    );
-  }
-  return lines;
+  const shas = [...new Set(sources.map(({ sha }) => sha))];
+  const [latest, ...trees] = await Promise.all(['HEAD', ...shas].map(blobs));
+  const atRead = new Map(shas.map((sha, index) => [sha, trees[index]]));
+  const lines = await Promise.all(
+    sources.map(async ({ file, section, path, sha }) => {
+      const read = atRead.get(sha)?.get(path);
+      const now = latest?.get(path);
+      if (read !== undefined && read === now) return [];
+      const query = new URLSearchParams({ path, per_page: '1' });
+      const [last] = (await get(`${api}/commits?${query}`)) as {
+        sha: string;
+      }[];
+      const change =
+        read === undefined
+          ? `absent du commit relevé \`${sha}\``
+          : `relevé au commit \`${sha}\`, ${now === undefined ? 'supprimé' : 'modifié'} depuis`;
+      // Entre accents graves : GitHub ne fait pas d'un SHA un lien vers son diff, qui montrerait le contenu.
+      return [
+        `- ${file}, section « ${section} » : \`${path}\` de ${name}, ${change} (dernier commit : \`${last?.sha ?? 'aucun'}\`).`,
+      ];
+    }),
+  );
+  return lines.flat();
 };
 
 /** Rapport du contrôle et code de sortie. */
