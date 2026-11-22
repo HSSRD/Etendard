@@ -8,7 +8,7 @@ ETENDARD_CONF="${ETENDARD_CONF:-/etc/etendard/serveur.conf}"
 # par install.sh, contrôlées par verify.sh. Pour en ajouter un : son paquet dans PAQUETS_MAJ_AUTO, son unité
 # et les dossiers où elle écrit dans SERVICES_ISOLES (le tunnel n'écrit nulle part, #125).
 PAQUETS_MAJ_AUTO=(caddy tailscale cloudflared)
-declare -A SERVICES_ISOLES=([caddy.service]="/var/lib/caddy /var/log/caddy" [cloudflared.service]="")
+declare -A SERVICES_ISOLES=([caddy.service]="/var/lib/caddy /var/log/caddy" [etendard-tunnel.service]="")
 # Nécessaires à l'accès de Flo ou au déploiement, en plus des services isolés : jamais masqués.
 SERVICES_PROTEGES=(ssh.service sshd.service ssh.socket tailscaled.service etendard-pare-feu.service)
 
@@ -72,7 +72,7 @@ lire_conf() {
 }
 
 # Jeton du tunnel Cloudflare (#125), seul secret du tunnel, à côté du fichier local et comme lui hors du
-# repo. cloudflared.service le reprend (LoadCredential=) : systemd le lit en root et le passe au service.
+# repo. etendard-tunnel.service le reprend (LoadCredential=) : systemd le lit en root et le passe au service.
 JETON_TUNNEL="${JETON_TUNNEL:-/etc/etendard/tunnel.jeton}"
 
 # Clé de signature du dépôt apt de Cloudflare (cloudflare-public-v2.gpg, « CloudFlare Software Packaging
@@ -110,10 +110,10 @@ controler_jeton() {
   fi
 }
 
-# lire_jeton : le jeton, sans lignes vides ni fin de ligne Windows, comme le lit cloudflared (qui retire les
-# blancs autour). À garder dans une variable : jamais affiché, jamais dans une ligne de commande.
+# lire_jeton : le jeton sans les blancs autour (espaces, fins de ligne Windows, lignes vides), comme le lit
+# cloudflared. À garder dans une variable : jamais affiché, jamais dans une ligne de commande.
 lire_jeton() {
-  tr -d '\r' < "$JETON_TUNNEL" | grep .
+  sed 's/^[[:space:]]*//; s/[[:space:]]*$//' "$JETON_TUNNEL" | grep .
 }
 
 # cle_admin_autorisee <compte> <dossier personnel> : réussit si sshd accepterait au moins une clé publique

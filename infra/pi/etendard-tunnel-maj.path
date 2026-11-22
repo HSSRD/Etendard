@@ -1,0 +1,12 @@
+# Relance le tunnel quand une mise à jour remplace cloudflared (ticket #125), installé par install.sh dans
+# /etc/systemd/system/. Le paquet ne fournit pas de service, donc ne relance rien : sans cela, le processus
+# garderait l'ancien binaire, avec sa faille, jusqu'au prochain redémarrage.
+[Unit]
+Description=Relance du tunnel d'Étendard après une mise à jour de cloudflared
+
+[Path]
+PathChanged=/usr/bin/cloudflared
+Unit=etendard-tunnel-maj.service
+
+[Install]
+WantedBy=multi-user.target

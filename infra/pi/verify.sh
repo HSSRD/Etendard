@@ -262,7 +262,7 @@ mode_pi() {
   [ -e /run/reboot-required ] && echo "  ⚠️ redémarrage en attente, pour appliquer une mise à jour"
 
   title "Ticket #113, critère 7 — isolation des services exposés"
-  local unit pid
+  local unit pid f
   for unit in "${!SERVICES_ISOLES[@]}"; do
     # ReadWritePaths= : exactement les dossiers de SERVICES_ISOLES (aucun pour le tunnel).
     for p in NoNewPrivileges=yes ProtectSystem=strict ProtectHome=yes PrivateDevices=yes "ReadWritePaths=${SERVICES_ISOLES[$unit]}\$" 'RestrictAddressFamilies=AF_'; do
@@ -287,10 +287,15 @@ mode_pi() {
   check "clé du dépôt de Cloudflare : empreinte attendue" "^$EMPREINTE_CLOUDFLARE\$" \
     empreinte_cle /usr/share/keyrings/cloudflare-public-v2.gpg
   check "cloudflared installé" '^cloudflared version ' cloudflared --version
-  check "service identique à ce dossier" '^ok$' sh -c "cmp /etc/systemd/system/cloudflared.service '$HERE/cloudflared.service' && echo ok"
-  check "démarre au boot" '^enabled$' systemctl is-enabled cloudflared
-  check "actif" '^active$' systemctl is-active cloudflared
-  pid="$(systemctl show -p MainPID --value cloudflared)"
+  for f in etendard-tunnel.service etendard-tunnel-maj.service etendard-tunnel-maj.path; do
+    check "$f identique à ce dossier" '^ok$' sh -c "cmp /etc/systemd/system/$f '$HERE/$f' && echo ok"
+  done
+  check "démarre au boot" '^enabled$' systemctl is-enabled etendard-tunnel
+  check "actif" '^active$' systemctl is-active etendard-tunnel
+  check "relance après une mise à jour de cloudflared active" '^active$' systemctl is-active etendard-tunnel-maj.path
+  pid="$(systemctl show -p MainPID --value etendard-tunnel)"
+  # Un binaire remplacé sans relance reste en mémoire, marqué « (deleted) » : la mise à jour n'est pas appliquée.
+  check "processus sur le cloudflared installé" '^/usr/bin/cloudflared$' readlink "/proc/$pid/exe"
   check "processus sous un utilisateur sans privilèges" '^Uid:([[:space:]]+[1-9][0-9]*){4}$' grep '^Uid:' "/proc/$pid/status"
   # Le jeton passe à grep par un descripteur (printf est interne à bash) : jamais dans une ligne de commande.
   local jeton

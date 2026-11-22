@@ -261,19 +261,22 @@ visiteur ── HTTPS ──▶ Cloudflare (<domaine>, certificat, « Always Use
 
 **Le jeton** est dans `/etc/etendard/tunnel.jeton`, à côté du fichier local, lisible par root seul. `install.sh` s'arrête avant tout changement s'il manque, s'il est lisible par un autre compte ou s'il contient autre chose que le jeton (`controler_jeton` de `commun.sh`), sans jamais l'afficher. Le service le reçoit par `LoadCredential=` : systemd le lit en root et le copie dans un dossier visible du seul service ; `cloudflared` le lit par `--token-file`. Il n'apparaît ni dans la ligne de commande (visible par `ps`), ni dans l'environnement du processus, ni dans le repo.
 
-**Le service** [`cloudflared.service`](cloudflared.service) est installé par `install.sh` dans `/etc/systemd/system/` (le paquet n'en fournit pas) :
+**Le service** [`etendard-tunnel.service`](etendard-tunnel.service) est installé par `install.sh` dans `/etc/systemd/system/` (le paquet n'en fournit pas). Son nom n'est pas `cloudflared.service`, celui que crée `cloudflared service install` : un autre tunnel du Pi n'est jamais remplacé.
 
 - `DynamicUser=yes` : un utilisateur sans privilèges, créé par systemd à chaque démarrage, sans dossier ni mot de passe. S'y ajoute la surcharge d'[`isolation.conf`](isolation.conf), comme pour Caddy, sans dossier d'écriture : `cloudflared` n'écrit rien (son journal va dans celui de systemd). `install.sh` affiche son score `systemd-analyze security` ;
 - `--protocol http2` : des connexions TCP sortantes. Avec QUIC (UDP), le choix par défaut, `cloudflared` ouvrirait un port UDP sur toutes les interfaces ; il n'écoute ainsi que sur la boucle locale ;
 - `--metrics 127.0.0.1:0` : son seul port d'écoute, sur la boucle locale, au numéro choisi par le système (aucun conflit avec un service existant) ;
-- `--no-autoupdate` : les mises à jour viennent d'apt, par `unattended-upgrades` ;
 - `Type=notify` : `systemctl start` ne réussit qu'une fois le tunnel connecté, ce qui fait échouer `install.sh` sur un jeton révoqué.
+
+**Démarré en dernier.** `install.sh` installe le service avec le reste, mais ne le démarre qu'après le pare-feu : s'il s'arrête en route, le site reste hors ligne plutôt que public sur un serveur à moitié durci (ADR 0017).
+
+**Mises à jour.** `cloudflared` installé par apt ne se met pas à jour lui-même : `unattended-upgrades` s'en charge. Le paquet ne fournissant pas de service, il ne relance rien : [`etendard-tunnel-maj.path`](etendard-tunnel-maj.path) surveille `/usr/bin/cloudflared` et relance le tunnel quand il change (`try-restart` : un tunnel coupé exprès le reste). `verify.sh pi` contrôle que le processus tourne bien sur le binaire installé.
 
 **Le paquet** vient du dépôt apt officiel de Cloudflare (`pkg.cloudflare.com`). `install.sh` n'ajoute sa clé de signature que si son empreinte est celle écrite dans `commun.sh` (`EMPREINTE_CLOUDFLARE`) : un serveur qui se ferait passer pour Cloudflare ne pourrait pas faire installer ses paquets. Si Cloudflare change de clé, `install.sh` s'arrête ; la nouvelle empreinte se relève sur sa page d'installation, se vérifie (`gpg --show-keys`) puis se reporte dans `commun.sh`.
 
 ### Réglages dans Cloudflare
 
-Faits par Flo dans le tableau de bord, sans jeton d'API sur le Pi. Les noms des menus changent parfois : le réglage, lui, reste.
+Faits par Flo dans le tableau de bord, sans jeton d'API sur le Pi, tous avant le premier démarrage du tunnel : le site est public dès qu'il démarre. Les noms des menus changent parfois : le réglage, lui, reste.
 
 - [ ] **Domaine ajouté** au compte Cloudflare, serveurs de noms remplacés chez le registraire par ceux de Cloudflare, domaine « Active ».
 - [ ] **Tunnel créé** : Zero Trust > Networks > Tunnels > Create a tunnel > Cloudflared, nom neutre. À l'étape d'installation, **ne lance pas la commande proposée** : copie seulement le jeton (la longue chaîne après `service install`) dans `/etc/etendard/tunnel.jeton` ([README](README.md#mettre-en-ligne-125)).
@@ -282,14 +285,15 @@ Faits par Flo dans le tableau de bord, sans jeton d'API sur le Pi. Les noms des 
 - [ ] **Rien qui injecte un script ou modifie le HTML** : la CSP (`script-src 'self'`) le bloquerait et `verify.sh public` échouerait.
   - [ ] Rocket Loader désactivé (Speed > Optimization) ;
   - [ ] Email Address Obfuscation désactivé (Scrape Shield, ou Security > Settings) ;
-  - [ ] Web Analytics : pas d'installation automatique sur ce domaine (Analytics & Logs > Web Analytics). Les statistiques sont un autre ticket (ADR 0002).
+  - [ ] Web Analytics : pas d'installation automatique sur ce domaine (Analytics & Logs > Web Analytics). Les statistiques sont un autre ticket (ADR 0002) ;
+  - [ ] Bot Fight Mode et ses « JavaScript detections » désactivés, mode « Under Attack » désactivé (Security > Bots, Security > Settings) : ils ajoutent un script aux pages, et leurs défis bloqueraient `curl`, donc le test de fumée lancé depuis GitHub.
 - [ ] **Aucune règle de cache qui ignore les en-têtes du site** (Caching > Cache Rules, « Cache Everything », « Edge TTL » forcé) : `version.txt` doit rester `no-store`, sinon le test de fumée lit un ancien SHA et revient en arrière à tort.
 
 HSTS s'active ensuite, une fois le site vérifié ([README](README.md#à-la-mise-en-ligne--hsts-chez-cloudflare), #41).
 
 ### Couper la mise en ligne
 
-`sudo systemctl disable --now cloudflared` arrête le tunnel et l'empêche de repartir au démarrage : Cloudflare répond par sa page d'erreur, Caddy, le déploiement et les services existants continuent. `sudo systemctl enable --now cloudflared` remet le site en ligne. Le [README](README.md#couper-et-relancer-la-mise-en-ligne) précise ce qui change pendant la coupure.
+`sudo systemctl disable --now etendard-tunnel` arrête le tunnel et l'empêche de repartir au démarrage : Cloudflare répond par sa page d'erreur, Caddy, le déploiement et les services existants continuent. `sudo systemctl enable --now etendard-tunnel` remet le site en ligne. Le [README](README.md#couper-et-relancer-la-mise-en-ligne) précise ce qui change pendant la coupure.
 
 ## Le workflow `deploy.yml` (#5)
 

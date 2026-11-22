@@ -23,7 +23,7 @@ echo "$TEMOIN"
 echo "$TEMOIN" >&2
 SH
 for c in apt-config caddy cloudflared cmp curl dpkg dpkg-query getent hostname id ip6tables-legacy-save ip6tables-nft-save iptables-legacy-save iptables-nft-save \
-  gpg nft python3 runuser ss sshd stat sudo systemctl uname; do
+  gpg nft python3 readlink runuser ss sshd stat sudo systemctl uname; do
   cp "$WORK/bin/temoin" "$WORK/bin/$c"
   chmod +x "$WORK/bin/$c"
 done

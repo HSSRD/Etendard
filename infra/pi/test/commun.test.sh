@@ -154,8 +154,8 @@ printf 'sudo cloudflared service install %s\n' "$JETON" > "$JETON_TUNNEL"
 jeton "commande entière copiée : arrêt" 'sans la commande' '0 600'
 printf '%s\n%s\n' "$JETON" "$JETON" > "$JETON_TUNNEL"
 jeton "deux lignes : arrêt" 'sur une ligne' '0 600'
-printf '\r\n%s\r\n\r\n' "$JETON" > "$JETON_TUNNEL"
-jeton "fins de ligne Windows et lignes vides tolérées" '' '0 600'
+printf '\r\n  %s \t\r\n\r\n' "$JETON" > "$JETON_TUNNEL"
+jeton "blancs autour, fins de ligne Windows et lignes vides tolérés (comme par cloudflared)" '' '0 600'
 : > "$JETON_TUNNEL"
 jeton "fichier vide : arrêt" 'sur une ligne' '0 600'
 

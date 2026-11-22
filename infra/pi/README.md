@@ -10,7 +10,8 @@ Ce qui est en place et pourquoi : [FONCTIONNEMENT.md](FONCTIONNEMENT.md). Ce REA
 | `commun.sh` | Fonctions de `install.sh` et `verify.sh` : lecture du fichier local et du jeton du tunnel, garde-fou SSH, dépôts des mises à jour, logiciels exposés |
 | `serveur.conf.exemple` | Format du fichier local `/etc/etendard/serveur.conf`, aux valeurs neutres |
 | `sshd-etendard.conf`, `isolation.conf`, `etendard-pare-feu.service` | SSH par clé uniquement, isolation systemd de Caddy et du tunnel, pare-feu d'entrée |
-| `cloudflared.service` | Service du tunnel : utilisateur sans privilèges, jeton passé par systemd, aucune écoute hors de la boucle locale |
+| `etendard-tunnel.service` | Service du tunnel : utilisateur sans privilèges, jeton passé par systemd, aucune écoute hors de la boucle locale |
+| `etendard-tunnel-maj.path`, `etendard-tunnel-maj.service` | Relance du tunnel quand une mise à jour remplace `cloudflared` |
 | `Caddyfile` | Caddy sur `127.0.0.1:8080` uniquement, racine `/srv/etendard/current`, pages sans extension, page 404, en-têtes de sécurité, cache de `/_expo/static/`, des pages HTML et de `version.txt`, journal d'accès |
 | `etendard-receive` | Seule commande de la clé de déploiement : réception (stdin), `rollback`, `restore <sha>`, `status` |
 | `verify.sh` | Preuves des critères 1 à 5 du ticket #4, des en-têtes et du journal (#25), du cache de `/_expo/static/` (#36), des pages HTML et de `version.txt` (#52), de HSTS sur le domaine public (#41), des pages sans extension (#106), de la page 404 (#114), du durcissement (#113), du tunnel et du site public (#125) |
@@ -95,29 +96,28 @@ sudo rm /etc/apt/apt.conf.d/52etendard-maj-auto           # mises à jour automa
 
 Ce qui est en place et pourquoi : [FONCTIONNEMENT.md](FONCTIONNEMENT.md#cloudflare-tunnel-125). `install.sh` installe le tunnel en même temps que le reste : il s'arrête avant tout changement tant que le jeton manque. Le durcissement (#113) se fait donc dans le même passage, avec les précautions de [Durcir le serveur](#durcir-le-serveur-113).
 
-1. **Dans Cloudflare**, suis la [liste des réglages](FONCTIONNEMENT.md#réglages-dans-cloudflare) jusqu'à la création du tunnel et de sa règle, sans lancer la commande d'installation proposée.
+1. **Dans Cloudflare**, fais toute la [liste des réglages](FONCTIONNEMENT.md#réglages-dans-cloudflare), sans lancer la commande d'installation proposée : le site sera public dès que le tunnel démarrera.
 2. **Le jeton**, sur le Pi : un fichier lisible par root seul, puis colle le jeton (seul, sans `sudo cloudflared service install`) dans l'éditeur. Il ne passe ainsi ni par l'historique du shell ni par une ligne de commande.
    ```bash
    sudo install -d -m 755 /etc/etendard
    sudo install -m 600 /dev/null /etc/etendard/tunnel.jeton
    sudo nano /etc/etendard/tunnel.jeton
    ```
-3. **Appliquer**, depuis ce dossier sur le Pi : `sudo bash install.sh <clé publique de déploiement>` (étapes de [Appliquer](#appliquer) si #113 n'est pas encore en place). Note le score `systemd-analyze security` de `cloudflared.service`, à coller dans le ticket.
-4. **Finir les réglages Cloudflare** de la liste (Always Use HTTPS, rien qui modifie le HTML, aucune règle de cache forcée).
-5. **Prouver** : sur le Pi, `sudo bash verify.sh pi` ; depuis le PC, dans le bash de Git, avec le nom qui sert le site seul (sans `https://` ni `/`, sous sa forme `xn--…` s'il a des accents) :
+3. **Appliquer**, depuis ce dossier sur le Pi : `sudo bash install.sh <clé publique de déploiement>` (étapes de [Appliquer](#appliquer) si #113 n'est pas encore en place). Le tunnel démarre en dernier, après le pare-feu. Note le score `systemd-analyze security` de `etendard-tunnel.service`, à coller dans le ticket.
+4. **Prouver** : sur le Pi, `sudo bash verify.sh pi` ; depuis le PC, dans le bash de Git, avec le nom qui sert le site seul (sans `https://` ni `/`, sous sa forme `xn--…` s'il a des accents) :
    ```bash
    bash infra/pi/verify.sh public <domaine>
    ```
    Les deux bilans doivent être sans ❌ ; leurs sorties se collent telles quelles dans le ticket (elles ne contiennent ni le domaine, ni adresse, ni jeton). En cas d'échec, `DETAIL=1` devant la commande affiche chaque requête et sa réponse (à ne pas coller).
-6. **Le test de fumée du déploiement** : crée la variable `SITE_URL` ([FONCTIONNEMENT.md](FONCTIONNEMENT.md#les-secrets-de-lenvironment-production)). Le déploiement suivant lit alors `version.txt` sur le domaine et revient en arrière s'il ne sert pas le nouveau SHA.
+5. **Le test de fumée du déploiement** : crée la variable `SITE_URL` ([FONCTIONNEMENT.md](FONCTIONNEMENT.md#les-secrets-de-lenvironment-production)). Le déploiement suivant lit alors `version.txt` sur le domaine et revient en arrière s'il ne sert pas le nouveau SHA.
 
-**Après un changement de jeton** (« Refresh token » dans Cloudflare) : remplace-le dans `/etc/etendard/tunnel.jeton` (`sudo nano`), puis `sudo systemctl restart cloudflared` ; le service ne le relit qu'à son démarrage.
+**Après un changement de jeton** (« Refresh token » dans Cloudflare) : remplace-le dans `/etc/etendard/tunnel.jeton` (`sudo nano`), puis `sudo systemctl restart etendard-tunnel` ; le service ne le relit qu'à son démarrage.
 
 ### Couper et relancer la mise en ligne
 
 ```bash
-sudo systemctl disable --now cloudflared   # site hors ligne, même après un redémarrage
-sudo systemctl enable --now cloudflared    # site de nouveau en ligne
+sudo systemctl disable --now etendard-tunnel   # site hors ligne, même après un redémarrage
+sudo systemctl enable --now etendard-tunnel    # site de nouveau en ligne
 ```
 
 Pendant la coupure, Cloudflare répond par sa page d'erreur ; Caddy, les services existants et le déploiement par le tailnet continuent. Mais chaque déploiement échouerait au test de fumée public, puis reviendrait en arrière : supprime la variable le temps de la coupure (`gh variable delete SITE_URL --env production -R HSSRD/Etendard`), et recrée-la à la relance. `verify.sh pi` signale le tunnel arrêté, et `install.sh` le relance : ne le relance pas pendant une coupure voulue.
@@ -127,8 +127,8 @@ Pendant la coupure, Cloudflare répond par sa page d'erreur ; Caddy, les service
 Pour retirer le tunnel du Pi (le site reste servi en local, comme avant #125) :
 
 ```bash
-sudo systemctl disable --now cloudflared
-sudo rm -r /etc/systemd/system/cloudflared.service /etc/systemd/system/cloudflared.service.d && sudo systemctl daemon-reload
+sudo systemctl disable --now etendard-tunnel etendard-tunnel-maj.path
+sudo rm -r /etc/systemd/system/etendard-tunnel.service /etc/systemd/system/etendard-tunnel.service.d /etc/systemd/system/etendard-tunnel-maj.* && sudo systemctl daemon-reload
 sudo apt-get purge -y cloudflared
 sudo rm /etc/apt/sources.list.d/cloudflared.list /usr/share/keyrings/cloudflare-public-v2.gpg /etc/etendard/tunnel.jeton
 gh variable delete SITE_URL --env production -R HSSRD/Etendard   # sur le PC
