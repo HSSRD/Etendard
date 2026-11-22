@@ -137,12 +137,14 @@ const useStyles = themedStyles((colors) => ({
     paddingLeft: space[4],
   },
   // Décalée à droite de la colonne des flèches : la flèche suivante ne semble pas en partir.
-  // Sans retour à la ligne : la flèche reste collée à son bloc, le libellé se replie.
+  // Le bloc passe sous la flèche quand la place manque, plutôt que de couper un mot.
   branch: {
     alignItems: 'center',
     columnGap: space[2],
     flexDirection: 'row',
+    flexWrap: 'wrap',
     marginLeft: space[7],
+    rowGap: space[1],
   },
   via: { flexShrink: 1 },
 }));

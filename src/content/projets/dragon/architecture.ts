@@ -94,7 +94,7 @@ export default {
       source: phase1,
       blocks: [
         paragraph(
-          'Le code de l’équipe n’arrive qu’en phase 3, mais chaque achat réserve dès la phase 1 la place, le poids, l’alimentation et les ports pour la suite.',
+          'L’ordinateur compagnon, qui portera le code de l’équipe, n’arrive qu’en phase 3, mais chaque achat réserve dès la phase 1 la place, le poids, l’alimentation et les ports pour la suite.',
         ),
         paragraph('Les liaisons du schéma, une par une :'),
         { type: 'list', items: liaisons },
