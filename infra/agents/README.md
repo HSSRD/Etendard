@@ -38,8 +38,14 @@ git fetch origin; git switch --detach origin/issue-70-identite-agents   # tête 
    - **Organization permissions** : aucune. « Where can this GitHub App be installed? » : Only on this account.
 2. Note le **Client ID** de la page de l'App.
 3. « Generate a private key » : le fichier `.pem` se télécharge (étape 2).
-4. « Install App » → HSSRD → **Only select repositories** → `Etendard`.
-   L'URL de la page obtenue se termine par l'**installation ID** (`.../installations/<nombre>`).
+4. « Install App » → HSSRD → **Only select repositories** → `Etendard` (pas « All repositories » : la clé
+   donnerait accès à tous les repos de l'organisation).
+   L'URL de la page obtenue se termine par l'**installation ID** (`.../installations/<nombre>`) ;
+   on la retrouve dans HSSRD → Settings → GitHub Apps → hssrd-bot → Configure.
+
+Une permission changée après l'installation n'y est appliquée qu'une fois acceptée : page de l'installation →
+bandeau de revue → « Accept new permissions ». Sinon le script de l'étape 6 échoue en 422 (« The level of access for
+permissions requested are not granted to this installation »).
 
 ## 2. Ranger la clé privée dans le profil de Flo
 
@@ -61,6 +67,13 @@ New-LocalUser -Name etendard-agent -Password $mdp -FullName "Agents Etendard" -D
 Add-LocalGroupMember -SID S-1-5-32-545 -Member etendard-agent   # Utilisateurs, pas Administrateurs
 Get-LocalGroupMember -SID S-1-5-32-544                          # etendard-agent ne doit pas y figurer
 ```
+
+Garde le mot de passe dans ton gestionnaire : il sert aux étapes 7 (`runas`) et 8 (tâche planifiée).
+
+Donne ensuite au compte le droit « Ouvrir une session en tant que tâche », sans lequel la tâche de l'étape 8 ne
+démarre jamais (`LastTaskResult` 267011, sans erreur affichée) : `secpol.msc` → Stratégies locales → Attribution des
+droits utilisateur → **Ouvrir une session en tant que tâche** → Ajouter un utilisateur ou un groupe → `etendard-agent`.
+Ce droit ne donne aucun accès de plus : il permet seulement au compte de faire tourner une tâche sans session ouverte.
 
 ## 4. Fermer à ce compte les dossiers de Flo hors profil **(admin)**
 
@@ -124,29 +137,44 @@ $declencheurs = @(
   (New-ScheduledTaskTrigger -AtStartup),
   (New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 10))
 )
-$compte = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType S4U -RunLevel Limited
+$compte = New-ScheduledTaskPrincipal -UserId "$env:COMPUTERNAME\$env:USERNAME" -LogonType S4U -RunLevel Limited
 $reglages = New-ScheduledTaskSettingsSet -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Minutes 5)
 Register-ScheduledTask -TaskName "Etendard - jeton hssrd-bot" -Action $action -Trigger $declencheurs -Principal $compte -Settings $reglages
 Start-ScheduledTask "Etendard - jeton hssrd-bot"; Start-Sleep 10
-Get-ScheduledTaskInfo "Etendard - jeton hssrd-bot" | Select-Object LastRunTime, LastTaskResult   # 0 attendu
-Test-Path C:\EtendardAgent\gh\hosts.yml                                                         # True attendu
+Get-ScheduledTaskInfo "Etendard - jeton hssrd-bot" | Select-Object LastRunTime, LastTaskResult, NextRunTime   # 0, puis dans 10 min
+Test-Path C:\EtendardAgent\gh\hosts.yml                                                                      # True attendu
 ```
+
+Une erreur de `Register-ScheduledTask` se perd facilement dans un bloc collé d'un coup : si `Get-ScheduledTaskInfo`
+ne trouve pas la tâche, relance les commandes une à une. Si le jeton manque, lance le script à la main avec les mêmes
+arguments : il affiche l'erreur de GitHub (jamais le jeton). Une 422 vient des permissions de l'installation (étape 1).
 
 La tâche tourne sous le compte de Flo (S4U : sans fenêtre ni mot de passe enregistré), donc seule elle lit la clé.
 Un échec (réseau absent au démarrage) n'est pas relancé par Windows : la répétition toutes les 10 minutes le rattrape.
+PC éteint, le jeton expire au bout d'une heure ; il est réémis au démarrage, avant que les agents en aient besoin.
 
 ## 7. Outiller le compte `etendard-agent`
 
-Ouvre une session PowerShell sous ce compte (le premier lancement crée son profil). Elle partage le bureau
+Le compte agent ne lit pas les téléchargements de Flo : dans un PowerShell de Flo, dépose d'abord l'installeur
+d'Orca (releases GitHub de `stablyai/orca`, la source de ses mises à jour) dans un dossier lisible par tous.
+
+```powershell
+gh release download -R stablyai/orca --pattern orca-windows-setup.exe --dir C:\Users\Public\Downloads
+```
+
+Ouvre ensuite une session PowerShell sous ce compte (le premier lancement crée son profil). Elle partage le bureau
 de Flo (presse-papiers, fenêtres) : ne t'en sers que pour l'installation, jamais pour lancer un agent.
 
 ```powershell
 runas /user:etendard-agent powershell
 ```
 
-Dans cette fenêtre :
+**Ne lance la suite que dans cette fenêtre**, dont le titre indique `etendard-agent` (`whoami` le confirme) :
+lancées dans une session de Flo, ces commandes y mettent l'identité et le jeton du bot à la place des siens
+(réparation : retirer `GH_CONFIG_DIR` de ses variables, remettre son `user.name` et son `user.email`).
 
 ```powershell
+whoami                               # <PC>\etendard-agent
 [Environment]::SetEnvironmentVariable('GH_CONFIG_DIR', 'C:\EtendardAgent\gh', 'User')
 $env:GH_CONFIG_DIR = 'C:\EtendardAgent\gh'
 gh auth status                       # « Logged in to github.com account hssrd-bot[bot] »
@@ -154,21 +182,34 @@ gh auth setup-git                    # git s'authentifie avec le jeton de gh
 $id = gh api 'users/hssrd-bot%5Bbot%5D' -q .id
 git config --global user.name 'hssrd-bot[bot]'
 git config --global user.email "$id+hssrd-bot[bot]@users.noreply.github.com"
+git config --global user.email       # commence par un nombre : sinon le jeton manquait (étape 6)
+
+# Scripts PowerShell (npm.ps1, pnpm.ps1) autorisés pour ce compte seulement : un compte neuf les refuse.
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned -Force
 
 # Node 26 et pnpm (même version que le poste de Flo), Claude Code, Orca : installations propres au compte.
-winget install --id Schniz.fnm --scope user   # puis rouvrir la fenêtre
+# fnm depuis ses releases : winget n'a souvent pas de source utilisable sur un compte neuf (0x8a15000f).
+$fnm = "$env:LOCALAPPDATA\fnm"
+New-Item -ItemType Directory -Force $fnm | Out-Null
+Invoke-WebRequest https://github.com/Schniz/fnm/releases/latest/download/fnm-windows.zip -OutFile "$env:TEMP\fnm.zip" -UseBasicParsing
+Expand-Archive "$env:TEMP\fnm.zip" $fnm -Force; Remove-Item "$env:TEMP\fnm.zip"
+$env:Path = "$fnm;$env:Path"
 fnm install 26; fnm default 26
-# Node dans le PATH du compte (sans `fnm env`), pour cette fenêtre et pour les terminaux d'`orca serve`.
+# fnm et Node dans le PATH du compte (sans `fnm env`), pour cette fenêtre et pour les terminaux d'`orca serve`.
 $node = "$env:APPDATA\fnm\aliases\default"
-[Environment]::SetEnvironmentVariable('Path', "$node;" + [Environment]::GetEnvironmentVariable('Path', 'User'), 'User')
+[Environment]::SetEnvironmentVariable('Path', "$node;$fnm;" + [Environment]::GetEnvironmentVariable('Path', 'User'), 'User')
 $env:Path = "$node;$env:Path"
 npm install -g corepack; corepack enable   # Node 26 ne fournit plus corepack
-irm https://claude.ai/install.ps1 | iex       # puis `claude` une fois pour se connecter
-# Orca : lancer l'installeur Windows d'Orca dans cette session (installation par utilisateur).
+irm https://claude.ai/install.ps1 | iex
+claude                                     # sans option : connexion au compte Claude, puis /exit
+& C:\Users\Public\Downloads\orca-windows-setup.exe   # installation par utilisateur
+Test-Path "$env:LOCALAPPDATA\Programs\orca\resources\bin\orca.cmd"   # True attendu
 
 git clone https://github.com/HSSRD/Etendard.git $env:USERPROFILE\Etendard
 cd $env:USERPROFILE\Etendard; pnpm install; pnpm exec playwright install chromium
 ```
+
+Supprime ensuite l'installeur de `C:\Users\Public\Downloads`.
 
 Le compte n'a ni `gh` de Flo, ni clé SSH, ni Git Credential Manager connecté : le clone passe en HTTPS public,
 les push par le jeton de `hssrd-bot`.
@@ -189,19 +230,29 @@ Port fixe, le même dans la tâche planifiée ci-dessous : l'Orca de Flo occupe 
 orca environment add --name etendard-agent --pairing-code "<code affiché>"
 ```
 
-Arrête ensuite `orca serve` (Ctrl+C) et ferme la fenêtre `etendard-agent`. Le runtime des agents tourne désormais
-en tâche planifiée, dans une session sans bureau : un agent n'atteint ni le presse-papiers ni les fenêtres de Flo.
-**(admin)** :
+Arrête ensuite `orca serve` (Ctrl+C) et ferme la fenêtre `etendard-agent` : tant qu'il tourne, il répond à la place
+de la tâche et masque un échec de celle-ci. Le runtime des agents tourne désormais en tâche planifiée, dans une
+session sans bureau : un agent n'atteint ni le presse-papiers ni les fenêtres de Flo. Elle exige le droit « Ouvrir
+une session en tant que tâche » de l'étape 3. **(admin)** :
 
 ```powershell
-$agent = Get-Credential etendard-agent
-$action = New-ScheduledTaskAction -Execute 'C:\Users\etendard-agent\AppData\Local\Programs\orca\resources\bin\orca.cmd' -Argument 'serve --bind 127.0.0.1 --port 6769'
+$agent = Get-Credential "$env:COMPUTERNAME\etendard-agent"   # mot de passe de l'étape 3, vérifié seulement au lancement
+# Sortie du runtime dans un journal du compte agent, pour diagnostiquer un arrêt.
+$action = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument '/c ""C:\Users\etendard-agent\AppData\Local\Programs\orca\resources\bin\orca.cmd" serve --bind 127.0.0.1 --port 6769 > "C:\Users\etendard-agent\orca-serve.log" 2>&1"'
 # Sans limite de durée, priorité normale (7 par défaut ralentirait pnpm et Playwright) ; s'il s'arrête : Start-ScheduledTask.
 $reglages = New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -Priority 5
 Register-ScheduledTask -TaskName "Etendard - Orca des agents" -Action $action -Trigger (New-ScheduledTaskTrigger -AtStartup) `
   -User $agent.UserName -Password $agent.GetNetworkCredential().Password -Settings $reglages
-Start-ScheduledTask "Etendard - Orca des agents"
+Start-ScheduledTask "Etendard - Orca des agents"; Start-Sleep 20
+(Get-ScheduledTask "Etendard - Orca des agents").State             # Running attendu
+Get-NetTCPConnection -LocalPort 6769 -State Listen                 # une ligne sur 127.0.0.1 attendue
 ```
+
+Diagnostic si la tâche ne tourne pas :
+
+- `LastTaskResult` 267011 et `LastRunTime` en 1999 (`Get-ScheduledTaskInfo`) : jamais lancée, droit de l'étape 3 absent ;
+- erreur 0x8007052E à l'enregistrement : mot de passe incorrect (`Set-LocalUser etendard-agent -Password` pour le changer) ;
+- lancée puis arrêtée : `Get-Content C:\Users\etendard-agent\orca-serve.log -Tail 30` (masque un code `orca://pair` avant de le partager).
 
 Puis, dans un PowerShell de Flo :
 
@@ -210,14 +261,19 @@ orca status --environment etendard-agent --json   # runtime joignable : l'appair
 orca repo add --environment etendard-agent --path C:\Users\etendard-agent\Etendard --json
 ```
 
+Ce runtime sans fenêtre ne se met pas à jour seul : pour suivre l'Orca de Flo, relance l'installeur sous
+`etendard-agent` (`runas`), puis `Stop-ScheduledTask` et `Start-ScheduledTask "Etendard - Orca des agents"`.
+
 Les worktrees, terminaux et agents créés avec `--environment etendard-agent` tournent alors sous ce compte ;
 ils s'affichent dans l'Orca de Flo comme ceux de la machine.
 
 ## 9. Imposer la relecture de Flo sur les chemins de `.github/CODEOWNERS`
 
-Depuis le dépôt principal, sur la tête relue de la PR (étape 0) :
+Depuis le dépôt principal, sur la tête relue de la PR (étape 0), avec le `gh` de Flo : un terminal ouvert avant
+une erreur de l'étape 7 peut encore porter le jeton du bot, que GitHub refuse (403 « Resource not accessible by integration »).
 
 ```powershell
+gh auth status   # Logged in to github.com account <compte de Flo>
 gh api -X POST repos/HSSRD/Etendard/rulesets --input infra/agents/ruleset-relecture-flo.json
 ```
 
