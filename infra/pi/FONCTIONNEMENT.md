@@ -210,7 +210,7 @@ Caddy reçoit une surcharge systemd, `/etc/systemd/system/caddy.service.d/etenda
 La table nftables `inet etendard` refuse toute entrée, sauf :
 
 - le trafic local (`lo`) et les réponses aux connexions établies : une session SSH ouverte survit à l'application ;
-- en IPv6, la découverte des voisins et du routeur et les réponses DHCPv6, sans quoi le Pi perd son adresse ;
+- en IPv6, la découverte des voisins et du routeur et les réponses DHCPv6, sans quoi le Pi perd son adresse, et les requêtes MLD, sans quoi un commutateur qui filtre le multicast cesse de lui transmettre les voisins ;
 - SSH (port lu dans `sshd -T`) et les ports `PORT=` du fichier local, depuis l'interface Tailscale et depuis le réseau local : les préfixes directement joignables par l'interface de la route par défaut, détectés à chaque `install.sh`.
 
 Le Pi ne répond donc plus au ping. Après un changement de réseau local (box, plage d'adresses), relance `install.sh`.

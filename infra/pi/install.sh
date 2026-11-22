@@ -226,7 +226,7 @@ lan6+=(fe80::/10)
 [ "${#lan4[@]}" -gt 0 ] || die "aucun réseau IPv4 sur $lan_if : pare-feu non appliqué"
 echo "Réseau local détecté sur $lan_if : ${lan4[*]} ${lan6[*]}"
 
-tcp=() udp=()
+udp=()
 mapfile -t tcp < <(ports_ssh)
 [ "${#tcp[@]}" -gt 0 ] || die "port SSH introuvable (sshd -T) : pare-feu non appliqué"
 for p in "${PORTS[@]}"; do

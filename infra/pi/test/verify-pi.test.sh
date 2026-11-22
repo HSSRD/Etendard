@@ -19,8 +19,8 @@ cat > "$WORK/bin/temoin" <<'SH'
 [ "$(basename "$0") $*" = "id -u" ] && { echo 0; exit 0; }
 echo "$TEMOIN"
 SH
-for c in apt-config caddy cmp curl dpkg dpkg-query getent hostname id ip ip6tables-legacy-save ip6tables-save iptables-legacy-save iptables-save \
-  nft python3 runuser ss sshd stat sudo systemctl tailscale uname; do
+for c in apt-config caddy cmp curl dpkg dpkg-query getent hostname id ip6tables-legacy-save ip6tables-save iptables-legacy-save iptables-save \
+  nft python3 runuser ss sshd stat sudo systemctl uname; do
   cp "$WORK/bin/temoin" "$WORK/bin/$c"
   chmod +x "$WORK/bin/$c"
 done
