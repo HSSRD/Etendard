@@ -1,6 +1,6 @@
 #!/bin/bash
 # Produit les preuves des critères 1 à 5 du ticket #4, à coller en commentaire, du critère 4 du ticket #25,
-# du critère 2 du ticket #36, du critère 3 du ticket #52, des critères 1 et 2 du ticket #41 et du ticket #106.
+# du critère 2 du ticket #36, du critère 3 du ticket #52, des critères 1 et 2 du ticket #41, du ticket #106 et des critères 1 et 2 du ticket #114.
 #   sudo bash verify.sh pi      sur le Pi, après install.sh (critères 1, 2, 3 et verrou ; en-têtes, journal, cache)
 #   HOST=… FLO=… bash verify.sh ssh   sur le PC, avec la clé privée (critères 1, 4 et 5)
 #   bash verify.sh hsts <domaine>   depuis n'importe quel poste, une fois le site en ligne (HSTS de Cloudflare)
@@ -70,10 +70,12 @@ mode_pi() {
 
   title "Ticket #25 — en-têtes de sécurité et journal d'accès"
   check "Caddyfile installé, identique à celui de ce dossier" '^ok$' sh -c "cmp /etc/caddy/Caddyfile '$HERE/Caddyfile' && echo ok"
-  # Une page servie et une erreur 404 : les en-têtes doivent être sur chaque réponse.
+  # Une page servie et des erreurs 404 (la page 404 du site, #114) : les en-têtes doivent être sur chaque réponse.
   # Chemin propre à ce passage : sa ligne dans le journal ne peut venir que de lui.
   local url name absent="/absente-verify-sh-$(date +%s)"
-  for url in http://127.0.0.1:8080/ "http://127.0.0.1:8080$absent"; do
+  # À la racine, dans un dossier du site, sous /_expo/static/ (cache d'un an) : trois routes de Caddy.
+  local missing=("$absent" "/projets$absent" "/_expo/static$absent.js")
+  for url in http://127.0.0.1:8080/ "${missing[@]/#/http://127.0.0.1:8080}"; do
     for name in Content-Security-Policy X-Content-Type-Options Referrer-Policy Permissions-Policy; do
       check "$name sur $url, conforme au Caddyfile" '^conforme$' header "$url" "$name"
     done
@@ -122,6 +124,16 @@ mode_pi() {
   else
     fail=$((fail + 1)); echo "  ❌ le site servi n'a pas de page hors index.html ou de sous-dossier avec index.html"; echo
   fi
+
+  title "Ticket #114 — page 404 du site"
+  # La page +not-found.html d'Expo, avec le statut 404, revalidée comme les pages HTML.
+  for url in "${missing[@]}"; do
+    check "$url répond 404" '^HTTP/1.1 404' curl -sSI "http://127.0.0.1:8080$url"
+    check "Content-Type text/html sur $url" '^Content-Type: text/html' served "http://127.0.0.1:8080$url" Content-Type
+    check "corps de $url identique à +not-found.html" '^ok$' \
+      sh -c "curl -s 'http://127.0.0.1:8080$url' | cmp -s - /srv/etendard/current/+not-found.html && echo ok"
+    check "Cache-Control sur $url, conforme au Caddyfile (celui des pages)" '^conforme$' header "http://127.0.0.1:8080$url" Cache-Control @html
+  done
 
   title "Critère 2 — utilisateur deploy"
   check "utilisateur deploy, sans groupe secondaire" '^uid=[0-9]+\(deploy\) gid=[0-9]+\(deploy\) groups=[0-9]+\(deploy\)$' id deploy

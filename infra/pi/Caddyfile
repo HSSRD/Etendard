@@ -45,6 +45,15 @@ http://:8080 {
 		Cache-Control "no-store"
 	}
 
+	# Adresse sans fichier : la page 404 d'Expo, avec le statut 404 (#114). Les en-têtes de sécurité,
+	# posés avant l'erreur, restent sur la réponse ; pas le cache d'un an (réservé aux 2xx et 304).
+	handle_errors 404 {
+		rewrite * /+not-found.html
+		# Revalidée comme les pages HTML : @html a vu le chemin demandé, pas cette page.
+		header Cache-Control "no-cache"
+		file_server
+	}
+
 	# Journal d'accès JSON, 5 fichiers de 10 Mio au plus (le courant compris), anciens compressés.
 	log {
 		output file /var/log/caddy/etendard-access.log {
