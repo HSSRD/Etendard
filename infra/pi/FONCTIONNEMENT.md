@@ -114,9 +114,11 @@ Expo exporte `src/app/+not-found.tsx` en `+not-found.html`. Pour une adresse san
 - `Cache-Control: no-cache`, comme les pages HTML, est posé dans `handle_errors` : `@html` a vu l'adresse demandée (`/absente`), pas `+not-found.html`. Une page 404 corrigée par un déploiement n'est donc pas réutilisée.
 - Le cache d'un an de `/_expo/static/` ne s'applique pas : il ne vise que les 2xx et 304.
 
+**`request_header` retire `If-None-Match`, `If-Modified-Since` et `Range` de la requête.** Dans `handle_errors`, `file_server` garde le statut 404 mais traite encore ces en-têtes : la revalidation d'une 404 déjà vue (touche F5, ou Cloudflare à cause de `no-cache`) répondrait une 404 vide, une plage une 404 tronquée. Sans eux, la page part entière.
+
 Une autre erreur (405 d'un `POST`, par exemple) garde son corps vide.
 
-`verify.sh pi` demande une adresse sans fichier à la racine, dans un dossier du site et sous `/_expo/static/` : 404, `Content-Type: text/html`, corps identique à `+not-found.html`, en-têtes de sécurité et `Cache-Control` conformes.
+`verify.sh pi` demande une adresse sans fichier à la racine, dans un dossier du site et sous `/_expo/static/` : 404, `Content-Type: text/html`, corps identique à `+not-found.html`, y compris avec chacun de ces trois en-têtes, en-têtes de sécurité et `Cache-Control` conformes. Il lui faut une vraie version dans `current` : celle de `verify.sh ssh` n'a pas de `+not-found.html`.
 
 #### Le journal d'accès
 

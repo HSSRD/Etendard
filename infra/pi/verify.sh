@@ -1,7 +1,8 @@
 #!/bin/bash
 # Produit les preuves des critères 1 à 5 du ticket #4, à coller en commentaire, du critère 4 du ticket #25,
-# du critère 2 du ticket #36, du critère 3 du ticket #52, des critères 1 et 2 du ticket #41, du ticket #106 et des critères 1 et 2 du ticket #114.
-#   sudo bash verify.sh pi      sur le Pi, après install.sh (critères 1, 2, 3 et verrou ; en-têtes, journal, cache)
+# du critère 2 du ticket #36, du critère 3 du ticket #52, des critères 1 et 2 du ticket #41, du ticket #106
+# et des critères 1 et 2 du ticket #114.
+#   sudo bash verify.sh pi      sur le Pi, après install.sh (critères 1, 2, 3 et verrou ; en-têtes, journal, cache, page 404)
 #   HOST=… FLO=… bash verify.sh ssh   sur le PC, avec la clé privée (critères 1, 4 et 5)
 #   bash verify.sh hsts <domaine>   depuis n'importe quel poste, une fois le site en ligne (HSTS de Cloudflare)
 # Variables du mode ssh : KEY (clé privée, défaut ~/.ssh/github-deploy), HOST (nom du Pi dans le tailnet),
@@ -126,11 +127,18 @@ mode_pi() {
   fi
 
   title "Ticket #114 — page 404 du site"
+  local h modified
   for url in "${missing[@]}"; do
     check "$url répond 404" '^HTTP/1.1 404' curl -sSI "$url"
     check "Content-Type text/html sur $url" '^Content-Type: text/html' served "$url" Content-Type
     check "corps de $url identique à +not-found.html" '^ok$' \
       sh -c "curl -s '$url' | cmp -s - /srv/etendard/current/+not-found.html && echo ok"
+    # Une revalidation ou une plage reçoit aussi la page entière, pas une 404 vide ou tronquée.
+    etag="$(served "$url" ETag)"; modified="$(served "$url" Last-Modified)"
+    for h in "If-None-Match: ${etag#*: }" "If-Modified-Since: ${modified#*: }" "Range: bytes=0-9"; do
+      check "$url avec $h : corps identique à +not-found.html" '^ok$' \
+        sh -c "curl -s -H '$h' '$url' | cmp -s - /srv/etendard/current/+not-found.html && echo ok"
+    done
     check "Cache-Control sur $url, conforme au Caddyfile (celui des pages)" '^conforme$' header "$url" Cache-Control @html
   done
 

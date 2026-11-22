@@ -49,6 +49,10 @@ http://:8080 {
 	# posés avant l'erreur, restent sur la réponse ; pas le cache d'un an (réservé aux 2xx et 304).
 	handle_errors 404 {
 		rewrite * /+not-found.html
+		# Sinon une revalidation (304) ou une plage (206) deviendrait une 404 vide ou tronquée.
+		request_header -If-None-Match
+		request_header -If-Modified-Since
+		request_header -Range
 		# Revalidée comme les pages HTML : @html a vu le chemin demandé, pas cette page.
 		header Cache-Control "no-cache"
 		file_server
