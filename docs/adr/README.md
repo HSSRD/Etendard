@@ -25,3 +25,4 @@ Avant toute modification structurelle, lire les ADR acceptés et ne jamais les c
 | 0013 | [Gérer les dépendances avec pnpm et Renovate, avec merge automatique des mineures](0013-gerer-les-dependances-avec-pnpm-et-renovate.md) | Proposé, adapté par 0015 |
 | 0014 | [Modéliser le contenu en collections Astro validées par Zod](0014-modeliser-le-contenu-en-collections-astro.md) | Remplacé par 0015 |
 | 0015 | [Construire le site et les apps avec Expo et React Native](0015-construire-le-site-et-les-apps-avec-expo.md) | Accepté |
+| 0016 | [Publier des pages de projet en copie rédigée et datée de leurs sources](0016-publier-des-pages-de-projet-en-copie-redigee-et-datee.md) | Proposé |

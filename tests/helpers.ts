@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 /** Thèmes à émuler (`colorScheme`) : chaque page est testée dans les deux (ticket #10). */
 export const schemes = ['light', 'dark'] as const;
@@ -75,4 +75,27 @@ export const tabTo = async (page: Page, target: Locator, maxPresses = 10) => {
     await page.keyboard.press('Tab');
   }
   await expect(target).toBeFocused();
+};
+
+/** Apparences d'une page du styleguide : thème clair, sombre, puis couleurs forcées (ADR 0016). */
+const appearances = [
+  { name: 'light', colorScheme: 'light', forcedColors: 'none' },
+  { name: 'dark', colorScheme: 'dark', forcedColors: 'none' },
+  { name: 'forced-colors', colorScheme: 'light', forcedColors: 'active' },
+] as const;
+
+/** Pour chaque apparence : zéro violation axe et une capture de la page entière (`<name>-<apparence>.png`). */
+export const testAppearances = (url: string, name: string) => {
+  for (const { name: appearance, ...media } of appearances) {
+    test(`${name}, ${appearance} : accessibilité et capture`, async ({
+      page,
+    }) => {
+      await page.emulateMedia(media);
+      await page.goto(url);
+      await expectNoAxeViolations(page);
+      await expect(page).toHaveScreenshot(`${name}-${appearance}.png`, {
+        fullPage: true,
+      });
+    });
+  }
 };
