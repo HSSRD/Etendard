@@ -14,6 +14,7 @@ test('chaque carte montre le titre, le résumé et le corps de sa fiche', async 
     'Hussard',
     'Overwatch',
     'Sentry',
+    'Dragon',
     'Démonstration',
   ]);
   // Résumé puis au moins un paragraphe du corps, chacun non vide.
@@ -37,7 +38,10 @@ test('seule une fiche qui déclare sa page porte un lien vers elle', async ({
       name: 'Voir la page du projet Démonstration',
     }),
   ).toHaveAttribute('href', '/projets/demo');
-  await expect(articles.getByRole('link')).toHaveCount(1);
+  await expect(
+    articles.getByRole('link', { name: 'Voir la page du projet Dragon' }),
+  ).toHaveAttribute('href', '/projets/dragon');
+  await expect(articles.getByRole('link')).toHaveCount(2);
 });
 
 test('la présentation (intro) n’a pas de cadre, les cartes en ont un', async ({
@@ -50,6 +54,10 @@ test('la présentation (intro) n’a pas de cadre, les cartes en ont un', async 
   await expect(articles.first()).toHaveCSS('box-shadow', 'none');
   await expect(articles.nth(1)).toHaveCSS('border-top-style', 'solid');
   await expect(articles.nth(1)).not.toHaveCSS('border-top-width', '0px');
+  // Un projet sans sous-unité (Dragon) a une carte, pas une présentation.
+  const dragon = articles.filter({ hasText: 'Dragon' }).first();
+  await expect(dragon).toHaveCSS('border-top-style', 'solid');
+  await expect(dragon).not.toHaveCSS('border-top-width', '0px');
 });
 
 testAppearances('/styleguide/project-card', 'project-card');
