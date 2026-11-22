@@ -20,8 +20,10 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 source "$HERE/commun.sh"
 pass=0 fail=0
 show=1   # 0 (modes pi et public) : seulement la description et le verdict, sans commande ni sortie
-# En-têtes de sécurité du bloc « header { » du Caddyfile, contrôlés en local (mode pi) et en public.
-EN_TETES_SECURITE=(Content-Security-Policy X-Content-Type-Options Referrer-Policy Permissions-Policy)
+# En-têtes de sécurité, lus dans le bloc « header { » du Caddyfile de ce dossier : un en-tête ajouté y est
+# contrôlé en local (mode pi) et en public sans autre modification.
+mapfile -t EN_TETES_SECURITE < <(awk '{ l = $0; sub(/^[[:space:]]+/, "", l) } l == "header {" { b = 1; next }
+  b && l == "}" { b = 0 } b && match(l, /^[A-Za-z-]+ "/) { print substr(l, 1, RLENGTH - 2) }' "$HERE/Caddyfile")
 
 # probe <attendu|interdit> <description> <motif grep -E> <commande...> :
 # affiche la commande, sa sortie et le verdict.
