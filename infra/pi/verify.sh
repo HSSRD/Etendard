@@ -273,8 +273,9 @@ mode_pi() {
     # Le processus en cours, pas seulement l'unité : prouve qu'il a redémarré avec son isolation.
     pid="$(systemctl show -p MainPID --value "$unit")"
     check "$unit : processus en cours isolé" '^NoNewPrivs:[[:space:]]+1$' grep NoNewPrivs "/proc/$pid/status"
-    # Un binaire remplacé par une mise à jour sans relance reste en mémoire, marqué « (deleted) ».
-    refute "$unit : processus sur le binaire installé (mise à jour appliquée)" '[(]deleted[)]$' readlink "/proc/$pid/exe"
+    # Un binaire remplacé par une mise à jour sans relance reste en mémoire, marqué « (deleted) » ; sans
+    # processus, rien à lire.
+    check "$unit : processus sur le binaire installé (mise à jour appliquée)" '^/[^[:space:]]+$' readlink "/proc/$pid/exe"
   done
 
   title "Ticket #113, critère 8 — services désactivés"
@@ -305,10 +306,11 @@ mode_pi() {
   [ -n "$jeton" ] && [ -r "/proc/$pid/cmdline" ] && [ -r "/proc/$pid/environ" ] \
     && ! grep -qaFf <(printf '%s\n' "$jeton") "/proc/$pid/cmdline" "/proc/$pid/environ"
   verdict $? "jeton absent de la ligne de commande (ps) et de l'environnement du service"
-  # ss lit le processus de chaque port : la première ligne prouve qu'il le voit, la seconde qu'aucun autre port.
-  check "métriques de cloudflared sur la boucle locale" '127\.0\.0\.1:[0-9]+ .*"cloudflared"' ss -Hltnp
-  refute "cloudflared n'écoute sur aucune autre interface" '"cloudflared"' \
-    sh -c "ss -Hltnup | grep -Ev '[[:space:]](127\.0\.0\.1|\[::1\]):[0-9]+[[:space:]]'"
+  # ss lit le processus de chaque port, filtré sur celui du tunnel (un autre cloudflared du Pi ne compte pas) :
+  # la première ligne prouve qu'il le voit, la seconde qu'aucun autre port.
+  check "métriques de cloudflared sur la boucle locale" '127\.0\.0\.1:[0-9]+ ' sh -c "ss -Hltnp | grep -F 'pid=$pid,'"
+  refute "cloudflared n'écoute sur aucune autre interface" '.' \
+    sh -c "ss -Hltnup | grep -F 'pid=$pid,' | grep -Ev '[[:space:]](127\.0\.0\.1|\[::1\]):[0-9]+[[:space:]]'"
 }
 
 # Site public, à travers Cloudflare (#125), depuis n'importe quel poste. Sortie sans le domaine : chemins
@@ -349,10 +351,12 @@ mode_public() {
   title "Ticket #125 — version.txt jamais servi depuis le cache de Cloudflare"
   check "/version.txt répond 200" '^HTTP/[0-9.]+ 200([[:space:]]|$)' curl -sSI "$base/version.txt"
   check "Cache-Control sur /version.txt, conforme au Caddyfile" '^conforme$' header "$base/version.txt" Cache-Control /version.txt
-  # Deux lectures : la première mettrait le fichier en cache, la seconde l'y lirait.
+  # Lu par GET, comme le test de fumée. Deux lectures : la première mettrait le fichier en cache, la seconde
+  # l'y lirait.
+  cache_cloudflare() { curl -sS -D - -o /dev/null "$1" | tr -d '\r' | grep -i '^cf-cache-status:' | sed 's/^[^:]*:/cf-cache-status:/'; }
   for i in 1 2; do
     refute "/version.txt hors du cache de Cloudflare (lecture $i)" '^cf-cache-status: (HIT|STALE|UPDATING|REVALIDATED)' \
-      served "$base/version.txt" cf-cache-status
+      cache_cloudflare "$base/version.txt"
   done
 }
 

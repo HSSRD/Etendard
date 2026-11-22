@@ -52,7 +52,7 @@ lire_conf() {
         # Masquer l'un d'eux couperait l'accès de Flo, le déploiement ou le site (sans suffixe, systemd lit .service).
         unite="$value"
         [[ "$unite" == *.* ]] || unite+=.service
-        for p in "${SERVICES_PROTEGES[@]}" "${!SERVICES_ISOLES[@]}"; do
+        for p in "${SERVICES_PROTEGES[@]}" "${!SERVICES_ISOLES[@]}" "${UNITES_TUNNEL[@]}"; do
           if [ "$unite" = "$p" ]; then
             echo "$f, ligne $n : ce service est nécessaire à l'accès ou au site, il ne peut pas être désactivé" >&2; return 1
           fi

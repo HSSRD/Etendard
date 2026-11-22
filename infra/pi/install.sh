@@ -137,10 +137,12 @@ systemctl is-active caddy
 
 # --- Cloudflare Tunnel (#125) --------------------------------------------------
 step "Paquet cloudflared (dépôt apt officiel de Cloudflare, clé vérifiée par son empreinte)"
-# Selon le dépôt, pas le paquet : un cloudflared installé d'ailleurs reçoit ainsi aussi les mises à jour.
-if [ ! -f /etc/apt/sources.list.d/cloudflared.list ]; then
+# Selon le dépôt, pas le paquet : un cloudflared installé d'ailleurs reçoit ainsi aussi les mises à jour. Une
+# autre clé ou une autre ligne (anciennes instructions de Cloudflare) est remplacée.
+cle=/usr/share/keyrings/cloudflare-public-v2.gpg
+depot="deb [signed-by=$cle] https://pkg.cloudflare.com/cloudflared any main"
+if [ "$(empreinte_cle "$cle")" != "$EMPREINTE_CLOUDFLARE" ] || [ "$(cat /etc/apt/sources.list.d/cloudflared.list 2>/dev/null)" != "$depot" ]; then
   paquets curl gpg
-  cle=/usr/share/keyrings/cloudflare-public-v2.gpg
   curl -fsSL https://pkg.cloudflare.com/cloudflare-public-v2.gpg -o "$cle.new"
   if [ "$(empreinte_cle "$cle.new")" != "$EMPREINTE_CLOUDFLARE" ]; then
     rm -f "$cle.new"
@@ -148,21 +150,25 @@ if [ ! -f /etc/apt/sources.list.d/cloudflared.list ]; then
   fi
   chmod 644 "$cle.new"
   mv -f "$cle.new" "$cle"
-  echo "deb [signed-by=$cle] https://pkg.cloudflare.com/cloudflared any main" > /etc/apt/sources.list.d/cloudflared.list
-  apt_a_jour=0   # nouveau dépôt : paquets relance « apt-get update »
+  echo "$depot" > /etc/apt/sources.list.d/cloudflared.list
+  # Relu même si cloudflared est déjà installé : sans lui, les mises à jour automatiques ignoreraient ce dépôt.
+  apt-get update
+  apt_a_jour=1
 fi
 paquets cloudflared
 cloudflared --version
 
 step "Service du tunnel (démarré en dernier, une fois le serveur durci)"
-tunnel_changed=0
+unites_changees=0 tunnel_changed=0
 for f in "${UNITES_TUNNEL[@]}"; do
   if ! cmp -s "$HERE/$f" "/etc/systemd/system/$f"; then
     install -o root -g root -m 644 "$HERE/$f" "/etc/systemd/system/$f"
-    tunnel_changed=1
+    unites_changees=1
+    # Seul un changement du service lui-même demande de relancer le tunnel (coupure du site).
+    [ "$f" != etendard-tunnel.service ] || tunnel_changed=1
   fi
 done
-[ "$tunnel_changed" = 0 ] || systemctl daemon-reload
+[ "$unites_changees" = 0 ] || systemctl daemon-reload
 
 # --- Isolation des services exposés (#113, critère 7) -------------------------
 # score <unité> : niveau d'exposition de systemd-analyze security (0 : isolé, 10 : aucune isolation).

@@ -15,7 +15,7 @@ awk '{ l = $0; sub(/^[[:space:]]+/, "", l) } l == "header {" { b = 1; next } b &
   "$HERE/../Caddyfile" > "$WORK/securite"
 [ "$(grep -c . "$WORK/securite")" -eq 4 ] || { echo "FAIL - en-têtes du Caddyfile illisibles"; exit 1; }
 
-# Faux curl : -sSI donne le statut et les en-têtes, sinon le corps. Réglages : STUB_SCRIPT (balise ajoutée aux
+# Faux curl : -sSI ou -D donne le statut et les en-têtes, sinon le corps. Réglages : STUB_SCRIPT (balise ajoutée aux
 # pages, comme une injection de Cloudflare), STUB_CSP (CSP servie), STUB_STATUS_404 (statut d'une page
 # absente), STUB_CORPS_404 (son corps), STUB_CACHE (cf-cache-status de version.txt).
 mkdir "$WORK/bin"
@@ -24,7 +24,7 @@ cat > "$WORK/bin/curl" <<'SH'
 head=0
 for a; do
   case "$a" in
-    -sSI) head=1 ;;
+    -sSI | -D) head=1 ;;   # -D - : en-têtes d'une requête GET
     https://*) url="$a"; echo "$a" >> "$STUB_LOG" ;;
   esac
 done
