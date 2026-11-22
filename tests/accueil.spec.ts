@@ -44,9 +44,29 @@ test.describe('sans JavaScript', () => {
       'Hussard',
       'Overwatch',
       'Sentry',
+      'Dragon',
     ]);
     await expect(page.getByRole('contentinfo')).toContainText('HSSRD');
   });
+});
+
+test('la carte Dragon mène à la page du projet', async ({ page }) => {
+  await page.goto('/');
+  const card = page
+    .locator('#projets')
+    .getByRole('article')
+    .filter({ has: page.getByRole('heading', { name: 'Dragon' }) });
+  await expect(card.getByRole('paragraph').first()).toHaveText(
+    /^Un quadricoptère .+\.$/,
+  );
+  const link = card.getByRole('link', {
+    name: 'Voir la page du projet Dragon',
+  });
+  await expect(link).toHaveAttribute('href', '/projets/dragon');
+  await link.click();
+  // Le serveur de test redirige un dossier vers sa barre finale.
+  await expect(page).toHaveURL(/\/projets\/dragon\/?$/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Dragon');
 });
 
 test('le lien d’évitement apparaît au clavier et mène au contenu', async ({
