@@ -68,17 +68,17 @@ Aucun n’est dans `bundledNativeModules.json`. `playwright-core` et `@expo/log-
 ## Modules natifs exclus de l’autolinking
 
 `expo.autolinking.exclude` de `package.json` retire de l’autolinking (iOS et Android) ces modules natifs qu’aucun
-`package.json` du repo ne déclare : pnpm les installe comme pairs optionnels (`auto-install-peers`), et
+`package.json` du repo ne déclare : pnpm les installe comme pairs (`auto-install-peers`), et
 `expo-modules-autolinking react-native-config` les liait dans les apps, hors des versions du SDK (#89). Aucune source de
 ces paquets n’est dans les bundles iOS et Android (**bundle**) : un module lié mais jamais appelé alourdit les apps.
 `pnpm build:natif` ne verrait pas un appel ajouté plus tard : le code qui en importe un le déclare avec
-`pnpm expo install` et le retire de la liste.
+`pnpm expo install` et le retire de la liste (`scripts/dependances.test.ts` refuse un module déclaré et exclu).
 
-| Module                         | Version installée (SDK) | Pourquoi pnpm l’installe                                                                                                                                                                  |
-| ------------------------------ | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `react-native-gesture-handler` | 3.5.0 (`~3.3.0`)        | pair optionnel d’`expo-router`                                                                                                                                                            |
-| `react-native-reanimated`      | 4.7.1 (`4.7.1`)         | pair optionnel d’`expo-router`                                                                                                                                                            |
-| `react-native-worklets`        | 0.13.1 (`0.13.0`)       | pair de `react-native-reanimated`, pair optionnel d’`expo-router` et d’`expo-modules-core`, dont l’intégration native est facultative (Android : `findProject(":react-native-worklets")`) |
+| Module                         | Pourquoi pnpm l’installe                                                                                                                                                |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `react-native-gesture-handler` | pair de `react-native-drawer-layout`, dépendance d’`expo-router` (navigateur Drawer, absent du bundle)                                                                  |
+| `react-native-reanimated`      | pair de `react-native-drawer-layout`, dépendance d’`expo-router` (navigateur Drawer, absent du bundle)                                                                  |
+| `react-native-worklets`        | pair de `react-native-reanimated` ; pair optionnel d’`expo-modules-core`, dont l’intégration native est facultative (Android : `findProject(":react-native-worklets")`) |
 
 ## Configuration à la racine
 
