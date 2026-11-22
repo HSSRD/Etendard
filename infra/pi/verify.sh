@@ -78,6 +78,8 @@ mode_pi() {
   export LC_ALL=C   # messages système en anglais, pour les motifs attendus
   lire_conf || exit 1
   show="${DETAIL:-0}"
+  # Sortie à coller dans un ticket : les erreurs hors de probe (curl, apt…) peuvent citer une adresse ou un port.
+  [ "$show" = 1 ] || exec 2>/dev/null
   echo "verify.sh pi — $(date -Is)"
 
   title "Critère 1 — Caddy"
@@ -111,7 +113,7 @@ mode_pi() {
   title "Tickets #36 et #76 — cache d'un an des fichiers de /_expo/static/"
   # Un fichier réel du site servi : son nom porte l'empreinte de son contenu.
   local asset
-  asset="$(find /srv/etendard/current/_expo/static -type f -printf '%P\n' -quit 2>/dev/null)"
+  asset="$(find /srv/etendard/current/_expo/static -type f -printf '%P\n' -quit)"
   check "Cache-Control sur /_expo/static/$asset, conforme au Caddyfile" '^conforme$' header "http://127.0.0.1:8080/_expo/static/$asset" Cache-Control '/_expo/static/*'
   # Ni sur un nom fixe, ni sur une 404 de /_expo/static/.
   for url in / /version.txt "/_expo/static$absent"; do
@@ -137,8 +139,8 @@ mode_pi() {
   # current est un lien symbolique : la barre oblique finale fait entrer find dedans.
   # Les noms viennent des fichiers de deploy : jamais dans une chaîne passée à un shell (verify.sh tourne en root).
   local page dir
-  page="$(find /srv/etendard/current/ -name '*.html' ! -name index.html -printf '/%P\n' -quit 2>/dev/null)"
-  dir="$(find /srv/etendard/current/ -mindepth 2 -name index.html -printf '/%P\n' -quit 2>/dev/null)"
+  page="$(find /srv/etendard/current/ -name '*.html' ! -name index.html -printf '/%P\n' -quit)"
+  dir="$(find /srv/etendard/current/ -mindepth 2 -name index.html -printf '/%P\n' -quit)"
   if [ -n "$page" ] && [ -n "$dir" ]; then
     for url in "${page%.html}" "${dir%/index.html}"; do
       check "$url répond 200" '^HTTP/1.1 200' curl -sSI "http://127.0.0.1:8080$url"

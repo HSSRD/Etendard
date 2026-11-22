@@ -9,15 +9,18 @@ WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
 # Valeurs témoins : aucune ne doit apparaître dans la sortie.
-TEMOINS=(hote-temoin 192.0.2.77 2001:db8::77 54321 54322 service-temoin 'Depot Temoin')
-export TEMOIN="hote-temoin.tailnet-temoin.ts.net 192.0.2.77 [2001:db8::77]:54321 port 54322"
+TEMOINS=(hote-temoin 192.0.2.77 2001:db8::77 54321 54322 54323 service-temoin 'Depot Temoin')
+# Sur deux lignes : la seconde est le port de sshd (« port N » de sshd -T), pour que le contrôle des ports SSH tourne.
+export TEMOIN=$'hote-temoin.tailnet-temoin.ts.net 192.0.2.77 [2001:db8::77]:54321 port 54322\nport 54323'
 
-# Faux système : chaque commande lue par verify.sh pi affiche les témoins (sauf « id -u », qui répond root).
+# Faux système : chaque commande lue par verify.sh pi affiche les témoins, sur stdout et sur stderr (sauf
+# « id -u », qui répond root).
 mkdir "$WORK/bin"
 cat > "$WORK/bin/temoin" <<'SH'
 #!/bin/bash
 [ "$(basename "$0") $*" = "id -u" ] && { echo 0; exit 0; }
 echo "$TEMOIN"
+echo "$TEMOIN" >&2
 SH
 for c in apt-config caddy cmp curl dpkg dpkg-query getent hostname id ip6tables-legacy-save ip6tables-nft-save iptables-legacy-save iptables-nft-save \
   nft python3 runuser ss sshd stat sudo systemctl uname; do
@@ -26,7 +29,7 @@ for c in apt-config caddy cmp curl dpkg dpkg-query getent hostname id ip6tables-
 done
 printf 'PORT=54321\nPORT=54322/udp\nSERVICE=service-temoin.service\nDEPOT_EXCLU=Depot Temoin\n' > "$WORK/serveur.conf"
 
-out="$(PATH="$WORK/bin:$PATH" ETENDARD_CONF="$WORK/serveur.conf" bash "$HERE/../verify.sh" pi 2>&1)"
+out="$(PATH="$WORK/bin:$PATH" DETAIL= ETENDARD_CONF="$WORK/serveur.conf" bash "$HERE/../verify.sh" pi 2>&1)"
 pass=0 fail=0
 ok() { pass=$((pass + 1)); echo "ok   - $1"; }
 ko() { fail=$((fail + 1)); echo "FAIL - $1"; }

@@ -150,8 +150,13 @@ isoler() {
   fi
   mv -f "$d/etendard-isolation.conf.new" "$d/etendard-isolation.conf"
   systemctl daemon-reload
-  systemctl restart "$unit" \
-    || die "$unit ne démarre pas avec son isolation (journalctl -u $unit) ; retour arrière : README.md"
+  if ! systemctl restart "$unit"; then
+    # Comme pour sshd : la surcharge refusée est retirée, le service repart sans elle (le site reste servi).
+    rm -f "$d/etendard-isolation.conf"
+    systemctl daemon-reload
+    systemctl restart "$unit" || true
+    die "$unit ne démarre pas avec son isolation (journalctl -u $unit) : surcharge retirée, service relancé sans elle"
+  fi
   echo "$unit : score systemd-analyze security avant $avant, après $(score "$unit")"
 }
 

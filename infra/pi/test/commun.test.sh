@@ -98,7 +98,7 @@ FAUX_AKF='.ssh/authorized_keys' garde "clé hors des fichiers lus par sshd : arr
 
 # Redirection NAT : chaque outil de pare-feu est un faux ; seul celui nommé dans FAUX_NAT_OUTIL affiche FAUX_NAT,
 # les autres échouent comme un outil absent (127) : la détection ne doit dépendre que de ce qui est lu.
-for c in nft iptables-nft-save ip6tables-nft-save; do
+for c in nft iptables-nft-save ip6tables-nft-save iptables-legacy-save ip6tables-legacy-save; do
   printf '#!/bin/bash\n[ "${FAUX_NAT_OUTIL:-}" = %s ] || exit 127\necho "$FAUX_NAT"\n' "$c" > "$WORK/bin/$c"
   chmod +x "$WORK/bin/$c"
 done
