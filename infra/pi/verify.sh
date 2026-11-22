@@ -128,16 +128,16 @@ mode_pi() {
 
   title "Ticket #114 — page 404 du site"
   local h modified
+  # notfound [options curl…] <url> : « ok » si le corps servi est la page 404 du site servi.
+  notfound() { curl -s "$@" | cmp -s - /srv/etendard/current/+not-found.html && echo ok; }
   for url in "${missing[@]}"; do
     check "$url répond 404" '^HTTP/1.1 404' curl -sSI "$url"
     check "Content-Type text/html sur $url" '^Content-Type: text/html' served "$url" Content-Type
-    check "corps de $url identique à +not-found.html" '^ok$' \
-      sh -c "curl -s '$url' | cmp -s - /srv/etendard/current/+not-found.html && echo ok"
+    check "corps de $url identique à +not-found.html" '^ok$' notfound "$url"
     # Une revalidation ou une plage reçoit aussi la page entière, pas une 404 vide ou tronquée.
     etag="$(served "$url" ETag)"; modified="$(served "$url" Last-Modified)"
     for h in "If-None-Match: ${etag#*: }" "If-Modified-Since: ${modified#*: }" "Range: bytes=0-9"; do
-      check "$url avec $h : corps identique à +not-found.html" '^ok$' \
-        sh -c "curl -s -H '$h' '$url' | cmp -s - /srv/etendard/current/+not-found.html && echo ok"
+      check "$url avec $h : corps identique à +not-found.html" '^ok$' notfound -H "$h" "$url"
     done
     check "Cache-Control sur $url, conforme au Caddyfile (celui des pages)" '^conforme$' header "$url" Cache-Control @html
   done
