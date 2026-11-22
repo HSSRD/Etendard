@@ -65,14 +65,12 @@ header() {
 title() { printf '\n### %s\n\n' "$*"; }
 
 # verifier_port <libellé> <port/proto> (#113) : autorisé depuis le tailnet et le réseau local dans la chaîne
-# d'entrée, et sans redirection (NAT) qui la contournerait. Le libellé remplace le numéro dans la sortie.
+# d'entrée. Le libellé remplace le numéro dans la sortie.
 verifier_port() {
   # nft affiche « dport 22 » pour un seul port, « dport { 22, 9000 } » pour plusieurs.
   local dport="${2#*/} dport (${2%/*}|\{ ([^}]*, )?${2%/*}(, [^}]*)? \}) accept"
   check "port $1 autorisé depuis le tailnet" "iifname \"tailscale0\" $dport" nft list chain inet etendard entree
   check "port $1 autorisé depuis le réseau local" "ip saddr .* $dport" nft list chain inet etendard entree
-  ! port_contourne "$2"
-  verdict $? "port $1 filtré par la chaîne d'entrée (aucune redirection)"
 }
 
 mode_pi() {
@@ -180,7 +178,8 @@ mode_pi() {
   title "Ticket #113 — services existants (fichier local)"
   for i in "${!PORTS[@]}"; do
     p="${PORTS[$i]}"
-    check "port n°$((i + 1)) toujours servi" . ss -Hln --"${p#*/}" "( sport = :${p%/*} )"
+    # Le port lui-même, pas toute sortie : un message d'erreur de ss ne vaut pas un port servi.
+    check "port n°$((i + 1)) toujours servi" ":${p%/*}[[:space:]]" ss -Hln --"${p#*/}" "( sport = :${p%/*} )"
   done
 
   title "Ticket #113, critère 4 — SSH par clé uniquement"
@@ -194,7 +193,9 @@ mode_pi() {
   check "pare-feu chargé au démarrage" '^enabled$' systemctl is-enabled etendard-pare-feu
   check "pare-feu actif" '^active$' systemctl is-active etendard-pare-feu
   check "entrée refusée par défaut" 'hook input .*policy drop;' nft list chain inet etendard entree
-  # Ports de sshd et du fichier local : autorisés dans la chaîne, sans redirection qui la contournerait.
+  ! redirection_nat
+  verdict $? "aucun port redirigé (NAT) avant la chaîne d'entrée, qui échapperait au pare-feu"
+  # Ports de sshd et du fichier local : autorisés dans la chaîne.
   local ports=()
   mapfile -t ports < <(ports_ssh)
   [ "${#ports[@]}" -gt 0 ]

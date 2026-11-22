@@ -215,7 +215,7 @@ La table nftables `inet etendard` refuse toute entrée, sauf :
 
 Le Pi ne répond donc plus au ping. Après un changement de réseau local (box, plage d'adresses), relance `install.sh`.
 
-**Pourquoi une table à part, chargée par son propre service** (`etendard-pare-feu.service`, avant le réseau). Tailscale, comme tout logiciel qui gère des conteneurs, réécrit ses propres règles et en accepte certaines. Dans nftables, un paquet doit passer **chaque** chaîne accrochée à l'entrée : le refus de cette table l'emporte sur l'acceptation d'une autre, et ces réécritures ne la touchent pas. Le service `nftables` du système commence au contraire par vider toutes les règles : il effacerait celles de Tailscale. Un port redirigé (NAT) avant la chaîne d'entrée, comme celui d'un conteneur publié, ne la traverserait pas : `install.sh` s'arrête s'il en trouve un parmi les ports autorisés, et `verify.sh pi` le contrôle aussi.
+**Pourquoi une table à part, chargée par son propre service** (`etendard-pare-feu.service`, avant le réseau). Tailscale, comme tout logiciel qui gère des conteneurs, réécrit ses propres règles et en accepte certaines. Dans nftables, un paquet doit passer **chaque** chaîne accrochée à l'entrée : le refus de cette table l'emporte sur l'acceptation d'une autre, et ces réécritures ne la touchent pas. Le service `nftables` du système commence au contraire par vider toutes les règles : il effacerait celles de Tailscale. Un port redirigé (NAT) avant la chaîne d'entrée, comme celui d'un conteneur publié, ne la traverserait pas : `install.sh` s'arrête s'il en trouve un, quel que soit le port, et `verify.sh pi` le contrôle aussi.
 
 ### SSH par clé uniquement
 

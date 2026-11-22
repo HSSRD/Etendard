@@ -119,15 +119,16 @@ ports_ssh() {
   sshd -T 2>/dev/null | awk '$1 == "port" { print $2 }'
 }
 
-# paquet_noyau : paquet qui a installé le noyau en cours (son dépôt fournit aussi le firmware).
+# paquet_noyau : paquet qui a installé le noyau en cours (son dépôt fournit aussi le firmware). Garde
+# « :arch » (noyau d'une autre architecture que le système) : sans lui, apt ne trouve pas le paquet.
 paquet_noyau() {
-  dpkg -S "/boot/vmlinuz-$(uname -r)" 2>/dev/null | cut -d: -f1
+  dpkg -S "/boot/vmlinuz-$(uname -r)" 2>/dev/null | sed 's/: .*//'
 }
 
-# port_contourne <port/proto> : réussit si une règle de NAT redirige ce port avant la chaîne d'entrée
-# (port publié d'un conteneur, par exemple) : le pare-feu ne filtrerait pas ce trafic.
-port_contourne() {
-  local p="${1%/*}"
-  { nft list ruleset; iptables-legacy-save -t nat; ip6tables-legacy-save -t nat; } 2>/dev/null \
-    | grep -i dnat | grep -Eq -- "dport ($p([^0-9]|\$)|\{[^}]*[{ ,]$p[ ,}])"
+# redirection_nat : réussit si une règle de NAT redirige un port avant la chaîne d'entrée (port publié
+# d'un conteneur, par exemple) : ce trafic échapperait au pare-feu, quel que soit le port. Chaque outil
+# est lu : une règle posée par iptables ne se voit pas avec nft si son paquet n'est pas installé.
+redirection_nat() {
+  { nft list ruleset; iptables-save -t nat; ip6tables-save -t nat; iptables-legacy-save -t nat; ip6tables-legacy-save -t nat; } 2>/dev/null \
+    | grep -Eiq '(^|[^a-z])dnat([^a-z]|$)'
 }

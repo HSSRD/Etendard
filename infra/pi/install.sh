@@ -20,7 +20,10 @@ warn() { echo "ATTENTION : $*" >&2; }
 apt_a_jour=0
 paquets() {
   local manquants=() p
-  for p; do dpkg -s "$p" >/dev/null 2>&1 || manquants+=("$p"); done
+  # Le statut, pas « dpkg -s » : il réussit aussi pour un paquet retiré dont la configuration reste.
+  for p; do
+    [ "$(dpkg-query -W -f='${Status}' "$p" 2>/dev/null)" = 'install ok installed' ] || manquants+=("$p")
+  done
   [ "${#manquants[@]}" -gt 0 ] || return 0
   [ "$apt_a_jour" = 1 ] || { apt-get update; apt_a_jour=1; }
   DEBIAN_FRONTEND=noninteractive apt-get install -y "${manquants[@]}"
@@ -44,10 +47,8 @@ cle_admin_autorisee "$admin" "$(getent passwd "$admin" | cut -d: -f6)" \
   || die "aucune clé SSH autorisée pour $admin : ajoute la tienne (ssh-copy-id) et vérifie qu'elle ouvre une session avant de couper les mots de passe ; rien n'a été modifié"
 
 # Un port redirigé avant la chaîne d'entrée échapperait au pare-feu : mieux vaut le dire que le croire filtré.
-for i in "${!PORTS[@]}"; do
-  ! port_contourne "${PORTS[$i]}" \
-    || die "le port n°$((i + 1)) du fichier local est redirigé (NAT) avant la chaîne d'entrée : le pare-feu ne le filtrerait pas ; rien n'a été modifié"
-done
+! redirection_nat \
+  || die "un port est redirigé (NAT) avant la chaîne d'entrée : le pare-feu ne le filtrerait pas (README.md) ; rien n'a été modifié"
 
 if ss -Hltnp 'sport = :8080' | grep -v '"caddy"' | grep -q .; then
   die "le port 8080 est déjà pris par un autre programme : $(ss -Hltnp 'sport = :8080')"
@@ -163,7 +164,7 @@ done
 # --- Mises à jour automatiques (#113, critère 6) -------------------------------
 step "Mises à jour automatiques : sécurité du système, noyau en cours, ${PAQUETS_MAJ_AUTO[*]}"
 paquets unattended-upgrades
-noyau="$(paquet_noyau)"
+noyau="$(paquet_noyau)" || true   # sans « || true », set -e sortirait ici sans le message ci-dessous
 [ -n "$noyau" ] || die "paquet du noyau en cours introuvable : ses mises à jour ne peuvent pas être activées"
 # Les correctifs de sécurité du système viennent de la configuration du paquet (50unattended-upgrades) ;
 # ce fichier, lu après elle, y ajoute les dépôts du noyau et des logiciels exposés.
@@ -218,8 +219,9 @@ paquets nftables
 # Réseau local : les préfixes directement joignables par l'interface de la route par défaut.
 lan_if="$(ip -o -4 route show default | awk '{ for (i = 1; i < NF; i++) if ($i == "dev") { print $(i + 1); exit } }')"
 [ -n "$lan_if" ] || die "aucune route par défaut : réseau local introuvable, pare-feu non appliqué"
-mapfile -t lan4 < <(ip -o -4 route show dev "$lan_if" scope link | awk '$1 ~ /\// && !/ via / { print $1 }')
-mapfile -t lan6 < <(ip -o -6 route show dev "$lan_if" | awk '$1 ~ /\// && $1 !~ /^fe80:/ && !/ via / { print $1 }')
+# Sans doublon (un même préfixe a une route par métrique) : nft peut refuser un élément répété.
+mapfile -t lan4 < <(ip -o -4 route show dev "$lan_if" scope link | awk '$1 ~ /\// && !/ via / { print $1 }' | sort -u)
+mapfile -t lan6 < <(ip -o -6 route show dev "$lan_if" | awk '$1 ~ /\// && $1 !~ /^fe80:/ && !/ via / { print $1 }' | sort -u)
 lan6+=(fe80::/10)
 [ "${#lan4[@]}" -gt 0 ] || die "aucun réseau IPv4 sur $lan_if : pare-feu non appliqué"
 echo "Réseau local détecté sur $lan_if : ${lan4[*]} ${lan6[*]}"
@@ -255,8 +257,9 @@ install -d -m 755 /etc/etendard
   echo '		type filter hook input priority filter; policy drop;'
   echo '		iif lo accept'
   echo '		ct state established,related accept'
-  echo '		# IPv6 : voisins, routeur et réponses DHCPv6, sans quoi le Pi perd son adresse IPv6.'
-  echo '		icmpv6 type { nd-neighbor-solicit, nd-neighbor-advert, nd-router-advert } accept'
+  echo '		# IPv6 : voisins, routeur et réponses DHCPv6, sans quoi le Pi perd son adresse IPv6 ; requêtes MLD,'
+  echo '		# sans quoi un commutateur qui filtre le multicast cesse de lui transmettre les voisins (RFC 4890).'
+  echo '		icmpv6 type { nd-neighbor-solicit, nd-neighbor-advert, nd-router-advert, mld-listener-query } accept'
   echo '		ip6 saddr fe80::/10 udp sport 547 udp dport 546 accept'
   autoriser tcp "${tcp[@]}"
   autoriser udp "${udp[@]}"

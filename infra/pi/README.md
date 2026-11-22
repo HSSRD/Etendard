@@ -46,7 +46,7 @@ Ce qui est en place et pourquoi : [FONCTIONNEMENT.md](FONCTIONNEMENT.md). Ce REA
 
 ## Durcir le serveur (#113)
 
-Ce qui est appliqué et pourquoi : [FONCTIONNEMENT.md](FONCTIONNEMENT.md#le-durcissement-du-serveur-113). `install.sh` change SSH et le pare-feu en dernier, et s'arrête avant tout changement si le fichier local est absent ou invalide, si ton compte n'a aucune clé SSH autorisée, ou si un port à autoriser échappe au pare-feu.
+Ce qui est appliqué et pourquoi : [FONCTIONNEMENT.md](FONCTIONNEMENT.md#le-durcissement-du-serveur-113). `install.sh` change SSH et le pare-feu en dernier, et s'arrête avant tout changement si le fichier local est absent ou invalide, si ton compte n'a aucune clé SSH autorisée, ou si un port est redirigé avant le pare-feu.
 
 ### Avant d'appliquer
 
@@ -61,7 +61,8 @@ Ce qui est appliqué et pourquoi : [FONCTIONNEMENT.md](FONCTIONNEMENT.md#le-durc
    - `PORT=` : un port par service existant qui doit rester joignable du réseau local et du tailnet (SSH est ajouté seul). `sudo ss -Hltnup` liste les ports ouverts et leurs programmes.
    - `SERVICE=` : une unité systemd par service inutile (`systemctl list-unit-files --state=enabled` ; ajoute aussi son `.socket` s'il en a un).
    - `DEPOT_EXCLU=` : l'origine d'un dépôt à ne jamais mettre à jour seul (champ `o=` de `apt-cache policy`).
-4. **Un accès de secours** : un clavier et un écran branchables sur le Pi, ou un lecteur de carte pour son support (voir « Retour arrière »).
+4. **Aucun port redirigé** : `sudo nft list ruleset | grep -i dnat` et `sudo iptables-save -t nat | grep -i dnat` n'affichent rien. Un conteneur qui publie un port en pose un : ce port ne passerait pas par le pare-feu, et `install.sh` s'arrête. N'applique pas dans ce cas : signale-le dans le ticket, la façon de filtrer ce port est à décider (le service existant ne change pas dans ce ticket).
+5. **Un accès de secours** : un clavier et un écran branchables sur le Pi, ou un lecteur de carte pour son support (voir « Retour arrière »).
 
 ### Appliquer
 
