@@ -79,14 +79,13 @@ test.describe('sans JavaScript', () => {
       await expect(
         shown.getByRole('paragraph').filter({ hasText: /^Conditions? / }),
       ).toHaveCount(1);
-      const [why, conditions] = lists(vague);
       const items = shown.getByRole('list');
       await expect(items).toHaveCount(2);
-      for (const [index, expected] of [why, conditions].entries()) {
+      for (const [index, expected] of lists(vague).entries()) {
         const shownItems = items.nth(index).getByRole('listitem');
-        await expect(shownItems).toHaveCount(expected?.length ?? 0);
+        await expect(shownItems).toHaveCount(expected.length);
         // toContainText : chaque élément est précédé de sa puce.
-        await expect(shownItems).toContainText(expected ?? []);
+        await expect(shownItems).toContainText(expected);
       }
     }
   });
