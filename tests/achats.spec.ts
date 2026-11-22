@@ -94,11 +94,12 @@ test.describe('sans JavaScript', () => {
     page,
   }) => {
     await page.goto(url);
+    const shown = region(page, 'Principes de l’ordre d’achat');
 
-    await expect(region(page, 'Principes de l’ordre d’achat')).toContainText(
+    await expect(shown).toContainText(
       'La radio avant le drone : elle sert de manette pour le simulateur',
     );
-    await expect(region(page, 'Principes de l’ordre d’achat')).toContainText(
+    await expect(shown).toContainText(
       'Les batteries LiPo le plus tard possible',
     );
   });
