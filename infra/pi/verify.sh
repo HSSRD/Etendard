@@ -1,7 +1,11 @@
 #!/bin/bash
 # Produit les preuves des critères 1 à 5 du ticket #4, à coller en commentaire, du critère 4 du ticket #25,
-# du critère 2 du ticket #36, du critère 3 du ticket #52, des critères 1 et 2 du ticket #41 et du ticket #106.
-#   sudo bash verify.sh pi      sur le Pi, après install.sh (critères 1, 2, 3 et verrou ; en-têtes, journal, cache)
+# du critère 2 du ticket #36, du critère 3 du ticket #52, des critères 1 et 2 du ticket #41, du ticket #106
+# et des critères 4 à 8 du ticket #113.
+#   sudo bash verify.sh pi      sur le Pi, après install.sh (critères 1, 2, 3 et verrou ; en-têtes, journal, cache ;
+#                               durcissement). Sortie sans adresse, nom de machine, port ni liste de logiciels :
+#                               elle se colle telle quelle dans un ticket. « sudo DETAIL=1 bash verify.sh pi »
+#                               affiche aussi chaque commande et sa sortie, pour chercher une panne (à ne pas coller).
 #   HOST=… FLO=… bash verify.sh ssh   sur le PC, avec la clé privée (critères 1, 4 et 5)
 #   bash verify.sh hsts <domaine>   depuis n'importe quel poste, une fois le site en ligne (HSTS de Cloudflare)
 # Variables du mode ssh : KEY (clé privée, défaut ~/.ssh/github-deploy), HOST (nom du Pi dans le tailnet),
@@ -11,23 +15,27 @@
 set -uo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
+source "$HERE/commun.sh"
 pass=0 fail=0
+show=1   # 0 (mode pi) : seulement la description et le verdict, sans commande ni sortie
 
 # probe <attendu|interdit> <description> <motif grep -E> <commande...> :
 # affiche la commande, sa sortie et le verdict.
 probe() {
   local want="$1" desc="$2" pattern="$3"; shift 3
   local out found=interdit
-  echo "\$ $*"
+  [ "$show" = 1 ] && echo "\$ $*"
   out="$("$@" 2>&1)"
-  [ -n "$out" ] && sed 's/^/  /' <<<"$out"
+  [ "$show" = 1 ] && [ -n "$out" ] && sed 's/^/  /' <<<"$out"
   grep -Eq -- "$pattern" <<<"$out" && found=attendu
   if [ "$found" = "$want" ]; then
     pass=$((pass + 1)); echo "  ✅ $desc"
-  else
+  elif [ "$show" = 1 ]; then
     fail=$((fail + 1)); echo "  ❌ $desc (motif $want : /$pattern/)"
+  else
+    fail=$((fail + 1)); echo "  ❌ $desc"
   fi
-  echo
+  if [ "$show" = 1 ]; then echo; fi
 }
 check() { probe attendu "$@"; }
 refute() { probe interdit "$@"; }
@@ -56,13 +64,15 @@ title() { printf '\n### %s\n\n' "$*"; }
 mode_pi() {
   [ "$(id -u)" -eq 0 ] || { echo "à lancer en root : sudo bash verify.sh pi" >&2; exit 1; }
   export LC_ALL=C   # messages système en anglais, pour les motifs attendus
-  echo "Hôte : $(hostname) — $(date -Is)"
+  lire_conf || exit 1
+  show="${DETAIL:-0}"
+  echo "verify.sh pi — $(date -Is)"
 
   title "Critère 1 — Caddy"
   check "Caddy installé" '^v2\.' caddy version
   check "démarre au boot" '^enabled$' systemctl is-enabled caddy
   check "actif" '^active$' systemctl is-active caddy
-  check "écoute sur 127.0.0.1:8080" '127\.0\.0\.1:8080' ss -Hltnp 'sport = :8080'
+  check "écoute sur la boucle locale seulement" '127\.0\.0\.1:8080' ss -Hltnp 'sport = :8080'
   refute "aucune autre écoute de Caddy" '"caddy"' sh -c "ss -Hltnup | grep -v '127.0.0.1:8080 '"
   check "racine /srv/etendard/current" 'root \* /srv/etendard/current' grep -n root /etc/caddy/Caddyfile
   check "sert le site en local" '^HTTP/1.1 (200|404)' curl -sSI http://127.0.0.1:8080/
@@ -73,9 +83,9 @@ mode_pi() {
   # Une page servie et une erreur 404 : les en-têtes doivent être sur chaque réponse.
   # Chemin propre à ce passage : sa ligne dans le journal ne peut venir que de lui.
   local url name absent="/absente-verify-sh-$(date +%s)"
-  for url in http://127.0.0.1:8080/ "http://127.0.0.1:8080$absent"; do
+  for url in / "$absent"; do
     for name in Content-Security-Policy X-Content-Type-Options Referrer-Policy Permissions-Policy; do
-      check "$name sur $url, conforme au Caddyfile" '^conforme$' header "$url" "$name"
+      check "$name sur $url, conforme au Caddyfile" '^conforme$' header "http://127.0.0.1:8080$url" "$name"
     done
   done
   local log=/var/log/caddy/etendard-access.log
@@ -86,7 +96,7 @@ mode_pi() {
   title "Tickets #36 et #76 — cache d'un an des fichiers de /_expo/static/"
   # Un fichier réel du site servi : son nom porte l'empreinte de son contenu.
   local asset
-  asset="$(find /srv/etendard/current/_expo/static -type f -printf '%P\n' -quit)"
+  asset="$(find /srv/etendard/current/_expo/static -type f -printf '%P\n' -quit 2>/dev/null)"
   check "Cache-Control sur /_expo/static/$asset, conforme au Caddyfile" '^conforme$' header "http://127.0.0.1:8080/_expo/static/$asset" Cache-Control '/_expo/static/*'
   # Ni sur un nom fixe, ni sur une 404 de /_expo/static/.
   for url in / /version.txt "/_expo/static$absent"; do
@@ -112,8 +122,8 @@ mode_pi() {
   # current est un lien symbolique : la barre oblique finale fait entrer find dedans.
   # Les noms viennent des fichiers de deploy : jamais dans une chaîne passée à un shell (verify.sh tourne en root).
   local page dir
-  page="$(find /srv/etendard/current/ -name '*.html' ! -name index.html -printf '/%P\n' -quit)"
-  dir="$(find /srv/etendard/current/ -mindepth 2 -name index.html -printf '/%P\n' -quit)"
+  page="$(find /srv/etendard/current/ -name '*.html' ! -name index.html -printf '/%P\n' -quit 2>/dev/null)"
+  dir="$(find /srv/etendard/current/ -mindepth 2 -name index.html -printf '/%P\n' -quit 2>/dev/null)"
   if [ -n "$page" ] && [ -n "$dir" ]; then
     for url in "${page%.html}" "${dir%/index.html}"; do
       check "$url répond 200" '^HTTP/1.1 200' curl -sSI "http://127.0.0.1:8080$url"
@@ -138,20 +148,103 @@ mode_pi() {
   check "dossiers du site à deploy" 'deploy deploy' ls -ld /srv/etendard /srv/etendard/releases
   check "versions et lien current" 'releases' sh -c 'ls -l /srv/etendard /srv/etendard/releases'
   # Verrou réel (le bash de Git n'a pas flock) : on le prend 5 s au nom de deploy.
-  runuser -u deploy -- flock /srv/etendard/.lock sleep 5 &
+  runuser -u deploy -- flock /srv/etendard/.lock sleep 5 >/dev/null 2>&1 &
   sleep 1
   check "verrou flock : 2e opération refusée pendant un déploiement" 'autre déploiement' \
     runuser -u deploy -- env SSH_ORIGINAL_COMMAND=rollback /usr/local/bin/etendard-receive
   wait
   # restore d'une version absente : prouve l'attente du verrou sans rien basculer.
-  runuser -u deploy -- flock /srv/etendard/.lock sleep 3 &
+  runuser -u deploy -- flock /srv/etendard/.lock sleep 3 >/dev/null 2>&1 &
   sleep 1
   check "restore attend la fin d'un déploiement en cours" 'version 0000000 absente' \
     runuser -u deploy -- env SSH_ORIGINAL_COMMAND="restore 0000000" /usr/local/bin/etendard-receive
   wait
 
-  title "Sentry intact (lecture seule)"
-  check "ports 5000 et 8000 toujours servis" ':(5000|8000) ' ss -Hltn '( sport = :5000 or sport = :8000 )'
+  # Ticket #113 : chaque port, service ou dépôt du fichier local est désigné par son numéro, jamais par
+  # sa valeur (sortie à coller dans un ticket, sans valeur du serveur).
+  local i p
+  title "Ticket #113 — services existants (fichier local)"
+  for i in "${!PORTS[@]}"; do
+    p="${PORTS[$i]}"
+    check "port n°$((i + 1)) toujours servi" . ss -Hln --"${p#*/}" "( sport = :${p%/*} )"
+  done
+
+  title "Ticket #113, critère 4 — SSH par clé uniquement"
+  check "configuration installée, identique à ce dossier" '^ok$' sh -c "cmp /etc/ssh/sshd_config.d/00-etendard.conf '$HERE/sshd-etendard.conf' && echo ok"
+  check "mots de passe refusés" '^passwordauthentication no$' sshd -T
+  check "clavier interactif refusé" '^kbdinteractiveauthentication no$' sshd -T
+  check "connexion root refusée" '^permitrootlogin no$' sshd -T
+
+  title "Ticket #113, critère 5 — pare-feu d'entrée"
+  check "service du pare-feu identique à ce dossier" '^ok$' sh -c "cmp /etc/systemd/system/etendard-pare-feu.service '$HERE/etendard-pare-feu.service' && echo ok"
+  check "pare-feu chargé au démarrage" '^enabled$' systemctl is-enabled etendard-pare-feu
+  check "pare-feu actif" '^active$' systemctl is-active etendard-pare-feu
+  check "entrée refusée par défaut" 'hook input .*policy drop;' nft list chain inet etendard entree
+  # Ports TCP de sshd et du fichier local : autorisés dans la chaîne, sans redirection qui la contournerait.
+  local ports=() n=0
+  mapfile -t ports < <(sshd -T 2>/dev/null | awk '$1 == "port" { print $2 "/tcp" }')
+  [ "${#ports[@]}" -gt 0 ] || { fail=$((fail + 1)); echo "  ❌ port SSH introuvable (sshd -T)"; }
+  local dport
+  for p in "${ports[@]}" "${PORTS[@]}"; do
+    n=$((n + 1))
+    [ "$n" -le "${#ports[@]}" ] && i="SSH n°$n" || i="n°$((n - ${#ports[@]})) du fichier local"
+    # nft affiche « dport 22 » pour un seul port, « dport { 22, 9000 } » pour plusieurs.
+    dport="${p#*/} dport (${p%/*}|\{ ([^}]*, )?${p%/*}(, [^}]*)? \}) accept"
+    check "port $i autorisé depuis le tailnet" "iifname \"tailscale0\" $dport" nft list chain inet etendard entree
+    check "port $i autorisé depuis le réseau local" "ip saddr .* $dport" nft list chain inet etendard entree
+    if port_contourne "$p"; then
+      fail=$((fail + 1)); echo "  ❌ port $i redirigé (NAT) avant la chaîne d'entrée : non filtré"
+    else
+      pass=$((pass + 1)); echo "  ✅ port $i filtré par la chaîne d'entrée (aucune redirection)"
+    fi
+  done
+
+  title "Ticket #113, critère 6 — mises à jour automatiques"
+  check "unattended-upgrades installé" '^install ok installed$' dpkg-query -W -f='${Status}\n' unattended-upgrades
+  check "lancées chaque jour" '"1";$' apt-config dump APT::Periodic::Unattended-Upgrade
+  check "minuteries d'apt actives" '^active.active$' sh -c 'systemctl is-active apt-daily.timer apt-daily-upgrade.timer | paste -sd .'
+  check "pas de redémarrage automatique" '"false";$' apt-config dump Unattended-Upgrade::Automatic-Reboot
+  local motifs motif paquet nom etiquette
+  motifs="$(apt-config dump Unattended-Upgrade::Origins-Pattern)"
+  check "correctifs de sécurité du système" '[Ss]ecurity' echo "$motifs"
+  for paquet in noyau "${PAQUETS_MAJ_AUTO[@]}"; do
+    nom="$paquet" etiquette="de $paquet"
+    [ "$paquet" = noyau ] && nom="$(paquet_noyau)" etiquette="du noyau en cours"
+    if motif="$(origine_maj "$nom")" && grep -qF "\"$motif\";" <<<"$motifs"; then
+      pass=$((pass + 1)); echo "  ✅ dépôt $etiquette inclus"
+    else
+      fail=$((fail + 1)); echo "  ❌ dépôt $etiquette absent des mises à jour automatiques"
+    fi
+  done
+  # Guillemets changés en virgules : chaque champ d'un motif est alors encadré par deux virgules.
+  motifs="$(tr '"' , <<<"$motifs")"
+  for i in "${!DEPOTS_EXCLUS[@]}"; do
+    if grep -qF -e ",origin=${DEPOTS_EXCLUS[$i]}," -e ",o=${DEPOTS_EXCLUS[$i]}," <<<"$motifs"; then
+      fail=$((fail + 1)); echo "  ❌ dépôt exclu n°$((i + 1)) encore mis à jour"
+    else
+      pass=$((pass + 1)); echo "  ✅ dépôt exclu n°$((i + 1)) hors des mises à jour automatiques"
+    fi
+  done
+  # Signalé sans échec : redémarrer est le choix de Flo (pas de redémarrage automatique).
+  [ -e /run/reboot-required ] && echo "  ⚠️ redémarrage en attente, pour appliquer une mise à jour"
+
+  title "Ticket #113, critère 7 — isolation des services exposés"
+  local unit pid
+  for unit in "${SERVICES_ISOLES[@]}"; do
+    for p in NoNewPrivileges=yes ProtectSystem=strict ProtectHome=yes PrivateDevices=yes 'ReadWritePaths=/' 'RestrictAddressFamilies=AF_'; do
+      check "$unit : ${p%%=*}" "^$p" systemctl show -p "${p%%=*}" "$unit"
+    done
+    # Le processus en cours, pas seulement l'unité : prouve qu'il a redémarré avec son isolation.
+    pid="$(systemctl show -p MainPID --value "$unit")"
+    check "$unit : processus en cours isolé" '^NoNewPrivs:[[:space:]]+1$' grep NoNewPrivs "/proc/$pid/status"
+  done
+
+  title "Ticket #113, critère 8 — services désactivés"
+  check "démarrage sans environnement graphique" '^multi-user\.target$' systemctl get-default
+  for i in "${!SERVICES[@]}"; do
+    check "service n°$((i + 1)) masqué" '^masked' systemctl is-enabled "${SERVICES[$i]}"
+    refute "service n°$((i + 1)) arrêté" '^active' systemctl is-active "${SERVICES[$i]}"
+  done
 }
 
 mode_ssh() {

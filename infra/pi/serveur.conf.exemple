@@ -1,0 +1,15 @@
+# Valeurs propres au serveur (ticket #113, ADR 0017). Exemple aux valeurs neutres : le vrai fichier est
+# /etc/etendard/serveur.conf, sur le Pi seulement, jamais dans le repo (public). Format : une ligne
+# CLE=valeur par valeur, une clé répétée pour plusieurs valeurs ; « CLE= » seul s'il n'y en a aucune.
+# Chaque clé doit apparaître au moins une fois. Lignes vides et commentaires (#) ignorés.
+
+# Port d'un service existant à laisser joignable depuis le réseau local et le tailnet, en plus de SSH.
+# TCP par défaut ; « /udp » pour un port UDP. Exemple : PORT=9000 puis PORT=9001/udp.
+PORT=
+
+# Unité systemd à désactiver (masquée et arrêtée). Exemple : SERVICE=exemple.service
+SERVICE=
+
+# Origine d'un dépôt à exclure des mises à jour automatiques (champ o= de « apt-cache policy »).
+# Exemple : DEPOT_EXCLU=Exemple
+DEPOT_EXCLU=

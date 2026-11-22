@@ -1,0 +1,22 @@
+# Pare-feu d'entrée (ticket #113, ADR 0017), installé par install.sh dans /etc/systemd/system/.
+# Chargé avant le réseau, comme nftables.service, mais sans son « flush ruleset » : les tables des autres
+# services (Tailscale…) restent. Sa table à elle survit à leurs réécritures, et son refus l'emporte sur
+# leurs acceptations (nftables : un paquet doit passer chaque chaîne du même point d'accroche).
+[Unit]
+Description=Pare-feu d'entrée d'Étendard (table nftables inet etendard)
+DefaultDependencies=no
+Wants=network-pre.target
+Before=network-pre.target shutdown.target
+Conflicts=shutdown.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/nft -f /etc/etendard/pare-feu.nft
+# Le fichier remplace la table en une transaction : aucun instant sans pare-feu.
+ExecReload=/usr/sbin/nft -f /etc/etendard/pare-feu.nft
+# Arrêter le service retire la table : c'est le retour arrière (README.md).
+ExecStop=/usr/sbin/nft delete table inet etendard
+
+[Install]
+WantedBy=sysinit.target
