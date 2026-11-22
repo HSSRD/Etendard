@@ -216,6 +216,11 @@ mode_pi() {
   mapfile -t motifs_paquets < <(origines_maj "${maj_paquets[@]}")
   for i in "${!maj_paquets[@]}"; do
     motif="${motifs_paquets[$i]:-}"
+    # Exclu par le fichier local : install.sh l'a écarté, le contrôle « dépôt exclu » ci-dessous le prouve.
+    if [ -n "$motif" ] && motif_exclu "$motif" "${DEPOTS_EXCLUS[@]}"; then
+      echo "  ⚠️ dépôt de ${etiquettes[$i]} exclu par le fichier local"
+      continue
+    fi
     [ -n "$motif" ] && grep -qF "\"$motif\";" <<<"$motifs"
     verdict $? "dépôt de ${etiquettes[$i]} inclus"
   done

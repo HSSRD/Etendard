@@ -56,8 +56,9 @@ lire_conf() {
         done
         SERVICES+=("$value") ;;
       DEPOT_EXCLU)
-        # Ni guillemet, ni virgule, ni barre oblique inverse : la valeur entre dans un motif d'apt.
-        if ! [[ "$value" =~ ^[A-Za-z0-9][A-Za-z0-9\ ._/:+-]*$ ]]; then
+        # Ni guillemet, ni virgule, ni barre oblique inverse : la valeur entre dans un motif d'apt. Ni espace
+        # au bout : le motif ne correspondrait à aucune origine, et le dépôt resterait mis à jour.
+        if ! [[ "$value" =~ ^[A-Za-z0-9]([A-Za-z0-9\ ._/:+-]*[A-Za-z0-9._/:+-])?$ ]]; then
           echo "$f, ligne $n : DEPOT_EXCLU attend l'origine d'un dépôt (champ o= de « apt-cache policy »)" >&2; return 1
         fi
         DEPOTS_EXCLUS+=("$value") ;;
@@ -127,8 +128,18 @@ paquet_noyau() {
 
 # redirection_nat : réussit si une règle de NAT redirige un port avant la chaîne d'entrée (port publié
 # d'un conteneur, par exemple) : ce trafic échapperait au pare-feu, quel que soit le port. Chaque outil
-# est lu : une règle posée par iptables ne se voit pas avec nft si son paquet n'est pas installé.
+# est lu : une règle posée par iptables ne se voit pas avec nft si son paquet n'est pas installé. Les
+# outils « legacy » seulement si leur table existe : les lancer la créerait (vérification en lecture seule).
 redirection_nat() {
-  { nft list ruleset; iptables-save -t nat; ip6tables-save -t nat; iptables-legacy-save -t nat; ip6tables-legacy-save -t nat; } 2>/dev/null \
-    | grep -Eiq '(^|[^a-z])dnat([^a-z]|$)'
+  local regles
+  # Sortie capturée avant grep : dans un tube sous pipefail, un outil absent ou coupé par « grep -q »
+  # ferait échouer le tube même quand grep trouve.
+  regles="$({
+    nft list ruleset
+    iptables-nft-save -t nat
+    ip6tables-nft-save -t nat
+    if grep -qx nat /proc/net/ip_tables_names; then iptables-legacy-save -t nat; fi
+    if grep -qx nat /proc/net/ip6_tables_names; then ip6tables-legacy-save -t nat; fi
+  } 2>/dev/null)"
+  grep -Eiq '(^|[^a-z])dnat([^a-z]|$)' <<<"$regles"
 }

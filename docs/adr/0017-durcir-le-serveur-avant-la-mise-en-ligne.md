@@ -15,7 +15,7 @@ Le repo est public : il décrit l'état visé du serveur, jamais son état const
 
 État visé, appliqué par `infra/pi/install.sh` (idempotent, lancé par Flo en root) et contrôlé par `infra/pi/verify.sh pi` :
 
-- **Mises à jour automatiques** des correctifs de sécurité du système, du noyau en cours et de son firmware, et des logiciels exposés (Caddy, Tailscale ; `cloudflared` avec le tunnel). Pas de redémarrage automatique : `verify.sh pi` signale celui qui est en attente.
+- **Mises à jour automatiques** des correctifs de sécurité du système, du noyau en cours et de son firmware (tout le dépôt qui les fournit), et des logiciels exposés (Caddy, Tailscale ; `cloudflared` avec le tunnel). Pas de redémarrage automatique : `verify.sh pi` signale celui qui est en attente.
 - **Serveur web isolé** par une surcharge systemd, jamais par l'unité du paquet : aucun nouveau privilège, système en lecture seule sauf ses dossiers d'écriture, ni dossiers personnels ni périphériques, familles d'adresses et appels système restreints, aucune capacité root. Le tunnel recevra la même isolation.
 - **Pare-feu d'entrée** refusant tout par défaut : n'entrent que SSH et les ports des services existants, depuis le réseau local et le tailnet, plus le trafic local et les réponses aux connexions établies. Il vit dans sa propre table, chargée avant le réseau : les services qui réécrivent leurs règles ne l'effacent pas et ne peuvent pas l'outrepasser. Un port redirigé avant la chaîne d'entrée, qui échapperait au filtre, arrête l'installation.
 - **SSH par clé uniquement**, connexion root refusée. Le script s'arrête si aucune clé n'est autorisée pour le compte d'administration.

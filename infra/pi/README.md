@@ -81,7 +81,7 @@ sudo systemctl disable --now etendard-pare-feu          # retire le pare-feu
 sudo rm /etc/ssh/sshd_config.d/00-etendard.conf && sudo systemctl reload ssh   # mots de passe de nouveau acceptés
 sudo systemctl set-default graphical.target              # environnement graphique au prochain démarrage
 sudo systemctl unmask <service> && sudo systemctl enable --now <service>      # pour chaque SERVICE= du fichier local
-sudo rm -r /etc/systemd/system/caddy.service.d && sudo systemctl daemon-reload && sudo systemctl restart caddy   # isolation de Caddy
+sudo rm /etc/systemd/system/caddy.service.d/etendard-isolation.conf && sudo systemctl daemon-reload && sudo systemctl restart caddy   # isolation de Caddy
 sudo rm /etc/apt/apt.conf.d/52etendard-maj-auto           # mises à jour automatiques ajoutées
 ```
 

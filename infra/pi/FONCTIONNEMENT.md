@@ -193,7 +193,7 @@ Le repo est public : il ne contient ni les ports des services existants, ni leur
 
 ### Les mises à jour automatiques
 
-`unattended-upgrades` installe chaque jour les correctifs de sécurité du système (configuration du paquet) et, par `/etc/apt/apt.conf.d/52etendard-maj-auto`, ceux du dépôt du noyau en cours, qui fournit aussi son firmware, et des dépôts de Caddy et de Tailscale. Ces dépôts sont lus sur le Pi (`origines_maj` de `commun.sh`) : le repo ne nomme pas le système. Un dépôt listé en `DEPOT_EXCLU=` n'est pas ajouté.
+`unattended-upgrades` installe chaque jour les correctifs de sécurité du système (configuration du paquet) et, par `/etc/apt/apt.conf.d/52etendard-maj-auto`, ceux du dépôt du noyau en cours, qui fournit aussi son firmware (tout ce dépôt, avec ses autres paquets), et des dépôts de Caddy et de Tailscale. Ces dépôts sont lus sur le Pi (`origines_maj` de `commun.sh`) : le repo ne nomme pas le système. Un dépôt listé en `DEPOT_EXCLU=` n'est pas ajouté.
 
 **Pas de redémarrage automatique** : il couperait le site et les services existants à une heure non choisie. Un nouveau noyau ne sert qu'après un redémarrage : `verify.sh pi` affiche « ⚠️ redémarrage en attente » quand le système le demande.
 

@@ -52,6 +52,7 @@ conf "service de Tailscale refusé" 'nécessaire à l.accès' $'SERVICE=tailscal
 conf "service isolé (Caddy) refusé" 'nécessaire à l.accès' $'SERVICE=caddy\n'"$complet"
 conf "dépôt avec guillemet" 'ligne 1 : DEPOT_EXCLU attend' $'DEPOT_EXCLU=secret"\n'"$complet"
 conf "dépôt avec virgule" 'ligne 1 : DEPOT_EXCLU attend' $'DEPOT_EXCLU=secret,x\n'"$complet"
+conf "dépôt suivi d'une espace" 'ligne 1 : DEPOT_EXCLU attend' $'DEPOT_EXCLU=secret \n'"$complet"
 conf "clé inconnue" 'ligne 1 : clé inconnue' $'SECRET=1\n'"$complet"
 conf "ligne sans signe égal" 'ligne 1 : attendu CLE=valeur' $'secret\n'"$complet"
 conf "export shell refusé (le fichier n'est pas exécuté)" 'ligne 1 : attendu CLE=valeur' $'export PORT=secret\n'"$complet"
@@ -95,9 +96,10 @@ cp "$WORK/cle.pub" "$WORK/home/.ssh/cles_flo"
 FAUX_AKF='.ssh/authorized_keys %h/.ssh/cles_%u' garde "AuthorizedKeysFile avec %h et %u" 0
 FAUX_AKF='.ssh/authorized_keys' garde "clé hors des fichiers lus par sshd : arrêt" 1
 
-# Redirection NAT : chaque outil de pare-feu est un faux ; seul celui nommé dans FAUX_NAT_OUTIL affiche FAUX_NAT.
-for c in nft iptables-save ip6tables-save iptables-legacy-save ip6tables-legacy-save; do
-  printf '#!/bin/bash\n[ "${FAUX_NAT_OUTIL:-}" = %s ] && echo "$FAUX_NAT"\nexit 0\n' "$c" > "$WORK/bin/$c"
+# Redirection NAT : chaque outil de pare-feu est un faux ; seul celui nommé dans FAUX_NAT_OUTIL affiche FAUX_NAT,
+# les autres échouent comme un outil absent (127) : la détection ne doit dépendre que de ce qui est lu.
+for c in nft iptables-nft-save ip6tables-nft-save; do
+  printf '#!/bin/bash\n[ "${FAUX_NAT_OUTIL:-}" = %s ] || exit 127\necho "$FAUX_NAT"\n' "$c" > "$WORK/bin/$c"
   chmod +x "$WORK/bin/$c"
 done
 nat() { # <description> <attendu : 0 (redirection) ou 1> <outil> <règles>
@@ -108,8 +110,8 @@ nat() { # <description> <attendu : 0 (redirection) ou 1> <outil> <règles>
 nat "aucune règle : rien de redirigé" 1 nft ''
 nat "chaîne nat sans redirection (priorité dstnat)" 1 nft 'type nat hook prerouting priority dstnat; policy accept;'
 nat "port publié vu par nft" 0 nft 'tcp dport 9000 counter dnat to 172.17.0.2:9000'
-nat "port publié posé par iptables, nft absent" 0 iptables-save '-A DOCKER ! -i docker0 -p tcp -m tcp --dport 9000 -j DNAT --to-destination 172.17.0.2:9000'
-nat "port publié en IPv6 (iptables ancien)" 0 ip6tables-legacy-save '-A DOCKER -p tcp --dport 9000 -j DNAT --to-destination [fd00::2]:9000'
+nat "port publié posé par iptables, nft absent" 0 iptables-nft-save '-A DOCKER ! -i docker0 -p tcp -m tcp --dport 9000 -j DNAT --to-destination 172.17.0.2:9000'
+nat "port publié en IPv6, outil lu en dernier" 0 ip6tables-nft-save '-A DOCKER -p tcp --dport 9000 -j DNAT --to-destination [fd00::2]:9000'
 
 # Paquet du noyau : « :arch » gardé, car apt ne trouve pas sans lui un paquet d'une autre architecture.
 printf '#!/bin/bash\necho 6.1.0-temoin\n' > "$WORK/bin/uname"
