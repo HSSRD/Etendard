@@ -193,7 +193,7 @@ Le repo est public : il ne contient ni les ports des services existants, ni leur
 
 ### Les mises à jour automatiques
 
-`unattended-upgrades` installe chaque jour les correctifs de sécurité du système (configuration du paquet) et, par `/etc/apt/apt.conf.d/52etendard-maj-auto`, ceux du dépôt du noyau en cours, qui fournit aussi son firmware, et des dépôts de Caddy et de Tailscale. Ces dépôts sont lus sur le Pi (`origine_maj` de `commun.sh`) : le repo ne nomme pas le système. Un dépôt listé en `DEPOT_EXCLU=` n'est pas ajouté.
+`unattended-upgrades` installe chaque jour les correctifs de sécurité du système (configuration du paquet) et, par `/etc/apt/apt.conf.d/52etendard-maj-auto`, ceux du dépôt du noyau en cours, qui fournit aussi son firmware, et des dépôts de Caddy et de Tailscale. Ces dépôts sont lus sur le Pi (`origines_maj` de `commun.sh`) : le repo ne nomme pas le système. Un dépôt listé en `DEPOT_EXCLU=` n'est pas ajouté.
 
 **Pas de redémarrage automatique** : il couperait le site et les services existants à une heure non choisie. Un nouveau noyau ne sert qu'après un redémarrage : `verify.sh pi` affiche « ⚠️ redémarrage en attente » quand le système le demande.
 
@@ -203,7 +203,7 @@ Le repo est public : il ne contient ni les ports des services existants, ni leur
 
 Caddy reçoit une surcharge systemd, `/etc/systemd/system/caddy.service.d/etendard-isolation.conf` : le contenu d'[`isolation.conf`](isolation.conf), plus `ReadWritePaths=` avec ses seuls dossiers d'écriture (`/var/lib/caddy`, `/var/log/caddy`). L'unité du paquet n'est jamais modifiée : une mise à jour la remplacerait. Une faille de Caddy ne donnerait ni nouveau privilège, ni écriture ailleurs, ni accès aux dossiers personnels, aux périphériques, au noyau ou à une capacité root. `install.sh` affiche le score `systemd-analyze security` avant et après (0 : isolé, 10 : aucune isolation). `verify.sh pi` lit la configuration chargée et l'état du processus en cours, ce qui prouve qu'il a redémarré avec elle.
 
-**Pour isoler un autre service** : son unité dans `SERVICES_ISOLES` de `commun.sh`, et une ligne `isoler <unité> <dossiers où il écrit>` dans `install.sh`.
+**Pour isoler un autre service** : son unité et les dossiers où il écrit dans `SERVICES_ISOLES` de `commun.sh`.
 
 ### Le pare-feu d'entrée
 
