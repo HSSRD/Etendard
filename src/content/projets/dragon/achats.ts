@@ -196,12 +196,15 @@ export const vagues: Section[] = [
           ],
         ],
       },
+      {
+        type: 'paragraph',
+        text: 'Si le vendeur n’a qu’une partie du stock, ne pas mélanger les vendeurs pour gagner quelques jours : deux ports, et un risque de versions différentes. Attendre jusqu’à trois semaines, puis passer chez le fabricant après avoir vérifié le total TTC du panier, TVA, port et douane compris.',
+      },
     ],
     why: [
       'C’est le plus gros engagement, environ 55 % du budget : il ne part qu’après la vague 1, qui a validé la motivation, l’entraînement et le stock.',
       'Grouper évite trois ports et trois délais.',
       'Surtout, une incompatibilité de connecteur entre le contrôleur, le module d’alimentation et le GPS se découvre d’un coup et se règle en un seul échange.',
-      'Si le vendeur n’a qu’une partie du stock, ne pas mélanger les vendeurs pour gagner quelques jours : deux ports, et un risque de versions différentes. Attendre jusqu’à trois semaines, puis passer chez le fabricant après avoir vérifié le total TTC du panier, TVA, port et douane compris.',
     ],
     next: 'Conditions de passage à la vague 3 :',
     conditions: [
@@ -345,7 +348,10 @@ export default {
           type: 'table',
           caption: 'Budget de la phase 1',
           columns: ['Poste', 'Montant'],
-          rows: [['Plafond de la phase 1', budget(1200)]],
+          rows: [
+            ['Plafond de la phase 1', budget(1200)],
+            ['Seuil des leviers d’économie, en fin de vague 2', budget(260)],
+          ],
         },
         {
           type: 'table',
@@ -376,7 +382,7 @@ export default {
         },
         {
           type: 'paragraph',
-          text: 'Le point de contrôle est la fin de la vague 2. Si le reste ne couvre plus les vagues 3 et 4, appliquer avant la vague 3 les leviers d’économie :',
+          text: 'Le point de contrôle est la fin de la vague 2. Si le reste passe sous le seuil, appliquer avant la vague 3 les leviers d’économie :',
         },
         {
           type: 'list',

@@ -90,6 +90,30 @@ test.describe('sans JavaScript', () => {
     }
   });
 
+  test('chaque paragraphe et chaque élément de liste du contenu est affiché dans sa section', async ({
+    page,
+  }) => {
+    await page.goto(url);
+
+    for (const { title, blocks } of content.sections) {
+      const shown = region(page, title);
+      for (const block of blocks) {
+        if (block.type === 'paragraph') {
+          await expect(
+            shown.getByRole('paragraph').filter({ hasText: block.text }),
+          ).toHaveCount(1);
+        }
+        if (block.type === 'list') {
+          for (const item of block.items) {
+            await expect(
+              shown.getByRole('listitem').filter({ hasText: item }),
+            ).toHaveCount(1);
+          }
+        }
+      }
+    }
+  });
+
   test('les principes expliquent la radio avant le drone et les batteries le plus tard possible', async ({
     page,
   }) => {
@@ -114,7 +138,7 @@ test.describe('sans JavaScript', () => {
     const [ceiling, cumulative] = tables(budget);
     if (!ceiling || !cumulative) throw new Error('budget : tableaux');
     await expectTable(page, ceiling, shown);
-    await expect(shown).toContainText('1\u202f200 €, prévu le 2026-11-20');
+    await expect(shown).toContainText('1\u202f200\u00a0€, prévu le 2026-11-20');
     await expectTable(page, cumulative, shown);
     // La date de la prévision ouvre les paragraphes de la section.
     await expect(shown.getByRole('paragraph').first()).toHaveText(
