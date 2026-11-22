@@ -102,7 +102,7 @@ Expo exporte la route `projets/dragon/materiel` en `projets/dragon/materiel.html
 
 **`try_files` et le matcher `@html` sont dans un même `route`.** Hors d'un `route`, Caddy range lui-même ses directives et passe `header` avant `try_files` : `@html` verrait le chemin demandé, sans `.html`, et ces pages perdraient `Cache-Control: no-cache`. Dans `route`, les directives s'appliquent dans l'ordre écrit : `@html` voit le chemin réécrit.
 
-`verify.sh pi` demande, sans extension, une page réelle du site autre qu'un `index.html`, puis un sous-dossier sans barre oblique finale : 200 et `Cache-Control` conforme.
+`verify.sh pi` demande, sans extension, la première page HTML du site servi autre qu'un `index.html` (tant qu'aucune sous-page n'existe : `+not-found.html`), puis un sous-dossier sans barre oblique finale : 200 et `Cache-Control` conforme. Il lui faut une vraie version dans `current`, pas la version de test de `verify.sh ssh`.
 
 #### Le journal d'accès
 

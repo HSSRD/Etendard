@@ -109,15 +109,19 @@ mode_pi() {
   title "Ticket #106 — pages sans extension"
   # Une page réelle du site demandée sans « .html », et l'index d'un sous-dossier sans barre oblique finale :
   # 200 sans redirection, revalidées comme les autres pages.
+  # current est un lien symbolique : la barre oblique finale fait entrer find dedans.
+  # Les noms viennent des fichiers de deploy : jamais dans une chaîne passée à un shell (verify.sh tourne en root).
   local page dir
-  page="$(find /srv/etendard/current -name '*.html' ! -name index.html -printf '/%P\n' -quit)"
-  dir="$(find /srv/etendard/current -mindepth 2 -name index.html -printf '/%P\n' -quit)"
-  check "le site contient une page hors index.html et un sous-dossier avec index.html" '^ok$' \
-    sh -c "[ -n '$page' ] && [ -n '$dir' ] && echo ok"
-  for url in "${page%.html}" "${dir%/index.html}"; do
-    check "$url répond 200" '^HTTP/1.1 200' curl -sSI "http://127.0.0.1:8080$url"
-    check "Cache-Control sur $url, conforme au Caddyfile" '^conforme$' header "http://127.0.0.1:8080$url" Cache-Control @html
-  done
+  page="$(find /srv/etendard/current/ -name '*.html' ! -name index.html -printf '/%P\n' -quit)"
+  dir="$(find /srv/etendard/current/ -mindepth 2 -name index.html -printf '/%P\n' -quit)"
+  if [ -n "$page" ] && [ -n "$dir" ]; then
+    for url in "${page%.html}" "${dir%/index.html}"; do
+      check "$url répond 200" '^HTTP/1.1 200' curl -sSI "http://127.0.0.1:8080$url"
+      check "Cache-Control sur $url, conforme au Caddyfile" '^conforme$' header "http://127.0.0.1:8080$url" Cache-Control @html
+    done
+  else
+    fail=$((fail + 1)); echo "  ❌ le site servi n'a pas de page hors index.html ou de sous-dossier avec index.html"; echo
+  fi
 
   title "Critère 2 — utilisateur deploy"
   check "utilisateur deploy, sans groupe secondaire" '^uid=[0-9]+\(deploy\) gid=[0-9]+\(deploy\) groups=[0-9]+\(deploy\)$' id deploy
