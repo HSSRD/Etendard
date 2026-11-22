@@ -49,7 +49,7 @@ test.describe('sans JavaScript', () => {
     expect(adrs.map(({ id }) => id)).toEqual(['adr-001', 'adr-002', 'adr-003']);
     await page.goto(url);
 
-    for (const { title, status, blocks } of adrs) {
+    for (const { title, status, source, blocks } of adrs) {
       const section = region(page, title);
       // Le badge vient du seul champ `status` (critère 3).
       await expect(section.getByTestId('status-badge')).toHaveText(
@@ -64,6 +64,9 @@ test.describe('sans JavaScript', () => {
       if (!options || !risks) throw new Error(`${title} : tableaux`);
       await expectTable(page, options, section);
       await expectTable(page, risks, section);
+      await expect(section.getByTestId('source')).toContainText(
+        `${source.path} au commit ${source.sha.slice(0, 7)}, relevé le ${source.date}`,
+      );
     }
     // Seul le badge dit le statut : aucun texte n'écrit « accepté ».
     const texts = await page

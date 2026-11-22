@@ -115,7 +115,7 @@ export const adrs: AdrSection[] = [
       ],
       [
         'Un firmware maison demande des mois de travail, et un drone de 2 kg aux hélices de 10 pouces est le pire banc d’essai pour un code de stabilisation encore bogué.',
-        'Faire la phase 6 sur un petit drone dédié (Crazyflie, ESP-Drone), pas sur Dragon, sauf si un banc de test sécurisé devient disponible : drone attaché sur un cardan.',
+        'La revue du 2026-11-20 propose de faire la phase 6 sur un petit drone dédié (Crazyflie, ESP-Drone), pas sur Dragon, sauf si un banc de test sécurisé devient disponible : drone attaché sur un cardan.',
       ],
     ],
     notes: [
@@ -162,7 +162,7 @@ export const adrs: AdrSection[] = [
         'Maintenu : le maintien de position par GPS et un objectif non acrobatique le rendent pilotable. Conditions : 5 heures de simulateur, premiers vols sur un terrain dégagé, jamais à moins de 15 m de soi pendant les essais.',
       ],
       [
-        'Casse en apprentissage, alors que les bras, raccords et plaques de rechange étaient en rupture au 2026-11-20.',
+        'Casse en apprentissage, alors que les bras, raccords et plaques de rechange étaient en rupture chez Holybro au 2026-11-20.',
         'Prévoir des hélices et un ou deux bras de rechange, à prendre dès leur retour en stock.',
       ],
     ],
@@ -235,7 +235,7 @@ export const erreurs: Table = {
     ],
     [
       'Acheter le cadre, les moteurs et les ESC séparément',
-      'Le kit ARF contient exactement ces pièces, pour moins cher.',
+      'Le kit ARF contient le cadre, les mêmes moteurs, des ESC de 20 A et les hélices, pour moins cher.',
       'Voir l’ADR-003.',
     ],
     [
@@ -320,7 +320,7 @@ export const choix: Table = {
     [
       'Radio : Boxer ou Pocket ?',
       'Pas de voltige : il faut quatre interrupteurs (armement, modes de vol à trois positions, arrêt d’urgence, retour au point de départ). La Pocket en a moins ; combien exactement reste à confirmer.',
-      'La Boxer si le budget le permet, sinon la Pocket : ses manches sont petits, et une radio se garde dix ans pour tous les drones suivants. L’occasion est pertinente pour une radio, qui s’use peu, à condition qu’elle soit en ELRS 2,4 GHz.',
+      'La Boxer si le budget le permet, car les manches de la Pocket sont petits et une radio se garde dix ans pour tous les drones suivants ; sinon la Pocket. L’occasion est pertinente pour une radio, qui s’use peu, à condition qu’elle soit en ELRS 2,4 GHz.',
     ],
     [
       'Deux batteries suffisent-elles ?',
@@ -354,7 +354,7 @@ export default {
       source: source('phase-1-construction/challenge-2026-11-20.md'),
       blocks: [
         paragraph(
-          'Le 2026-11-20, une revue a attaqué la première version des fiches d’achat. Elle a vérifié ses affirmations sur les pages des fabricants, les guides de la DGAC et les documents de l’Arcep ; deux points restent à confirmer.',
+          'Le 2026-11-20, une revue a attaqué la première version des fiches d’achat. Elle a vérifié ses affirmations sur les pages des fabricants, les guides de la DGAC et les documents de l’Arcep ; deux des erreurs ci-dessous restent à confirmer.',
         ),
         erreurs,
       ],
