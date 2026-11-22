@@ -105,6 +105,32 @@ describe('pnpm dragon:ecart', () => {
     expect(report).toContain('a répondu 403');
   });
 
+  test('un contenu illisible rend le contrôle impossible, pas « à relire »', async () => {
+    const { code } = await checkSources(
+      Promise.reject(new Error('module introuvable')),
+      dragon({}, {}),
+    );
+    expect(code).toBe(2);
+  });
+
+  test('un fichier cité par plusieurs sections : son dernier commit demandé une fois', async () => {
+    const requests: string[] = [];
+    const get = dragon({ 'README.md': '1' }, { 'README.md': '2' });
+    const twice = project('README.md');
+    const [first] = twice.sources;
+    if (!first) throw new Error('source d’essai attendue');
+    twice.sources.push({ ...first, section: 'methode' });
+    const { code, report } = await checkSources([twice], (path) => {
+      requests.push(path);
+      return get(path);
+    });
+    expect(code).toBe(1);
+    expect(report).toContain('section « methode »');
+    expect(requests.filter((path) => path.includes('/commits?'))).toHaveLength(
+      1,
+    );
+  });
+
   test('un arbre tronqué rend le contrôle impossible', async () => {
     const { code } = await checkSources([project('README.md')], () =>
       Promise.resolve({ truncated: true, tree: [] }),

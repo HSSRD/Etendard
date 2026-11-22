@@ -65,22 +65,31 @@ const gaps = async ({ repo, sources }: Project, get: Get) => {
   const shas = [...new Set(sources.map(({ sha }) => sha))];
   const [latest, ...trees] = await Promise.all(['HEAD', ...shas].map(blobs));
   const atRead = new Map(shas.map((sha, index) => [sha, trees[index]]));
+  // Dernier commit de chaque fichier, demandé une fois même s'il est cité par plusieurs sections.
+  const commits = new Map<string, Promise<string | undefined>>();
+  const lastCommit = (path: string) => {
+    const query = new URLSearchParams({ path, per_page: '1' });
+    const known =
+      commits.get(path) ??
+      get(`${api}/commits?${query}`).then(
+        (data) => (data as { sha: string }[])[0]?.sha,
+      );
+    commits.set(path, known);
+    return known;
+  };
   const lines = await Promise.all(
     sources.map(async ({ file, section, path, sha }) => {
       const read = atRead.get(sha)?.get(path);
       const now = latest?.get(path);
       if (read !== undefined && read === now) return [];
-      const query = new URLSearchParams({ path, per_page: '1' });
-      const [last] = (await get(`${api}/commits?${query}`)) as {
-        sha: string;
-      }[];
+      const last = await lastCommit(path);
       const change =
         read === undefined
           ? `absent du commit relevé \`${sha}\``
           : `relevé au commit \`${sha}\`, ${now === undefined ? 'supprimé' : 'modifié'} depuis`;
       // Entre accents graves : GitHub ne fait pas d'un SHA un lien vers son diff, qui montrerait le contenu.
       return [
-        `- ${file}, section « ${section} » : \`${path}\` de ${name}, ${change} (dernier commit : \`${last?.sha ?? 'aucun'}\`).`,
+        `- ${file}, section « ${section} » : \`${path}\` de ${name}, ${change} (dernier commit : \`${last ?? 'aucun'}\`).`,
       ];
     }),
   );
@@ -88,8 +97,13 @@ const gaps = async ({ repo, sources }: Project, get: Get) => {
 };
 
 /** Rapport du contrôle et code de sortie. */
-export const checkSources = async (projects: Project[], get: Get) => {
+export const checkSources = async (
+  load: Project[] | Promise<Project[]>,
+  get: Get,
+) => {
   try {
+    // Lu ici : un contenu illisible sort en 2, pas en 1 comme une erreur non rattrapée de Node.
+    const projects = await load;
     const lines = (
       await Promise.all(projects.map((project) => gaps(project, get)))
     ).flat();
@@ -107,7 +121,10 @@ export const checkSources = async (projects: Project[], get: Get) => {
       code: 1,
       report: [
         `Sections à relire : ${lines.length}.`,
+        // Lignes vides : en Markdown (ticket du workflow), la phrase suivante resterait dans la liste.
+        '',
         ...lines,
+        '',
         'Pour chacune : relis la source au dernier commit, mets à jour le contenu, puis le SHA et la date du relevé (AGENTS.md, pnpm dragon:ecart).',
       ].join('\n'),
     };
@@ -147,7 +164,7 @@ export const github =
 
 if (import.meta.main) {
   const { code, report } = await checkSources(
-    projectsOf(await loadProjectContents()),
+    loadProjectContents().then(projectsOf),
     github(process.env['GITHUB_TOKEN']),
   );
   (code === 2 ? console.error : console.log)(report);
