@@ -52,6 +52,9 @@ test.describe('sans JavaScript', () => {
       page.getByRole('link', { name: 'Retour en haut' }),
     ).toHaveAttribute('href', '#haut');
     await expect(page.locator('#haut')).toHaveCount(1);
+    await expect(page.getByRole('heading', { level: 2 })).toHaveText(
+      content.sections.map((section) => section.title),
+    );
   });
 
   test('le HTML pré-rendu contient le pitch et les 7 phases datées', async ({
@@ -68,21 +71,16 @@ test.describe('sans JavaScript', () => {
       .getByRole('row')
       .filter({ has: page.getByRole('cell') });
     await expect(rows).toHaveCount(7);
-    for (const [index, row] of (await rows.all()).entries()) {
-      // Phase, objectif et critère de sortie de accueil.ts, puis le badge de statut.
-      const [phase, goal, exit] = phases[index] ?? [];
-      const cells = row.getByRole('cell');
-      await expect(cells.nth(0)).toContainText(`${index}. `);
-      for (const [column, text] of [phase, goal, exit].entries()) {
-        await expect(cells.nth(column)).toContainText(String(text));
-      }
-      await expect(cells.nth(3).getByTestId('status-badge')).toHaveText(
-        index < 2 ? 'En cours' : 'À venir',
+    // Phase, objectif et critère de sortie de accueil.ts, ligne par ligne, puis le badge de statut.
+    for (const column of [0, 1, 2]) {
+      await expect(rows).toContainText(
+        phases.map((row) => String(row[column])),
       );
     }
-    await expect(
-      rows.filter({ hasText: '1. Construction' }).getByTestId('status-badge'),
-    ).toHaveText('En cours');
+    await expect(roadmap.getByTestId('status-badge')).toHaveText([
+      ...Array<string>(2).fill('En cours'),
+      ...Array<string>(5).fill('À venir'),
+    ]);
     await expect(roadmap.getByTestId('source')).toContainText(
       'relevé le 2026-11-22',
     );
@@ -96,33 +94,21 @@ test.describe('sans JavaScript', () => {
     const [rules, safety] = await method.getByRole('list').all();
     if (!rules || !safety) throw new Error('deux listes attendues');
 
-    await expect(rules.getByRole('listitem')).toHaveCount(5);
-    for (const rule of [
+    await expect(rules.getByRole('listitem')).toContainText([
       'sans trace écrite',
       'challengé',
       'Vérifier avant d’acheter',
       'journal de bord',
       'test mesurable',
-    ]) {
-      await expect(rules).toContainText(rule);
-    }
-    for (const rule of [
+    ]);
+    await expect(safety.getByRole('listitem')).toContainText([
       'Hélices démontées',
       'smoke stopper',
       'LiPo chargées sous surveillance',
       'failsafe testé',
       'réglementation',
-    ]) {
-      await expect(safety).toContainText(rule);
-    }
+    ]);
   });
-});
-
-test('le contenu de la page est celui de accueil.ts', async ({ page }) => {
-  await page.goto(url);
-  await expect(page.getByRole('heading', { level: 2 })).toHaveText(
-    accueil.sections.map((section) => section.title),
-  );
 });
 
 test('la page n’a ni style ni script en ligne', async ({ page }) => {

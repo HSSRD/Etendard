@@ -7,13 +7,11 @@ import { projectGroups } from '@/lib/projects';
 
 const states = projectGroups
   .flatMap(({ root, units }) => [
-    units.length > 0
-      ? {
-          label: `Présentation (intro) ${root.title}`,
-          project: root,
-          intro: true,
-        }
-      : { label: `Carte ${root.title}`, project: root, intro: false },
+    {
+      label: `${units.length > 0 ? 'Présentation (intro)' : 'Carte'} ${root.title}`,
+      project: root,
+      intro: units.length > 0,
+    },
     ...units.map((project) => ({
       label: `Carte ${project.title}`,
       project,

@@ -1,6 +1,6 @@
 // Section « Projets » de la one page (ticket #14) : chaque projet racine (Hussard), puis une
-// carte par sous-unité, sur deux colonnes à partir de 768 px de large. Un projet autonome
-// (Dragon, sans sous-unité) a sa propre carte.
+// carte par sous-unité, sur deux colonnes à partir de 768 px de large. Un projet sans
+// sous-unité a sa propre carte.
 import { StyleSheet, Text, View } from 'react-native';
 import { projectGroups } from '@/lib/projects';
 import { layout, space } from '@/theme/tokens';
@@ -15,20 +15,18 @@ export default function ProjectsSection() {
       <Text role="heading" aria-level={2} style={typography.h2}>
         Projets
       </Text>
-      {projectGroups.map(({ root, units }) =>
-        units.length > 0 ? (
-          <View key={root.id} style={styles.group}>
-            <ProjectCard project={root} intro />
+      {projectGroups.map(({ root, units }) => (
+        <View key={root.id} style={styles.group}>
+          <ProjectCard project={root} intro={units.length > 0} />
+          {units.length > 0 && (
             <View testID="project-units" style={styles.units}>
               {units.map((unit) => (
                 <ProjectCard key={unit.id} project={unit} style={styles.unit} />
               ))}
             </View>
-          </View>
-        ) : (
-          <ProjectCard key={root.id} project={root} />
-        ),
-      )}
+          )}
+        </View>
+      ))}
     </View>
   );
 }

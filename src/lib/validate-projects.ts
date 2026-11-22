@@ -61,7 +61,7 @@ export const validateProjects = (input: unknown): Project[] => {
       errors.push(`${project.id} : une sous-unité ne peut pas avoir de units.`);
     }
     // Une racine sans units ni page est une sous-unité oubliée dans les units de son projet ;
-    // avec sa page (ADR 0016), c'est un projet autonome (Dragon).
+    // avec sa page (ADR 0016), c'est un projet autonome.
     if (!referenced.has(project.id) && !hasUnits && !project.page) {
       errors.push(`${project.id} : absent des units de tout projet.`);
     }
