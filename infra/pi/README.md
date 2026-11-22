@@ -61,7 +61,7 @@ Ce qui est appliqué et pourquoi : [FONCTIONNEMENT.md](FONCTIONNEMENT.md#le-durc
    - `PORT=` : un port par service existant qui doit rester joignable du réseau local et du tailnet (SSH est ajouté seul). `sudo ss -Hltnup` liste les ports ouverts et leurs programmes.
    - `SERVICE=` : une unité systemd par service inutile (`systemctl list-unit-files --state=enabled` ; ajoute aussi son `.socket` s'il en a un).
    - `DEPOT_EXCLU=` : l'origine d'un dépôt à ne jamais mettre à jour seul (champ `o=` de `apt-cache policy`).
-4. **Aucun port redirigé** : `sudo nft list ruleset | grep -i dnat` et `sudo iptables-save -t nat | grep -i dnat` n'affichent rien. Un conteneur qui publie un port en pose un : ce port ne passerait pas par le pare-feu, et `install.sh` s'arrête. N'applique pas dans ce cas : signale-le dans le ticket, la façon de filtrer ce port est à décider (le service existant ne change pas dans ce ticket).
+4. **Un port redirigé** : `install.sh` s'arrête, sans rien modifier, si une règle de NAT redirige un port (un conteneur qui publie un port en pose une) : ce port ne passerait pas par le pare-feu. Dans ce cas, signale-le dans le ticket : la façon de le filtrer est à décider (le service existant ne change pas dans ce ticket).
 5. **Un accès de secours** : un clavier et un écran branchables sur le Pi, ou un lecteur de carte pour son support (voir « Retour arrière »).
 
 ### Appliquer

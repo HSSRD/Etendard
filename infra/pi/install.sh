@@ -4,7 +4,7 @@
 #   sudo bash install.sh github-deploy.pub
 # Lit les valeurs propres au serveur dans /etc/etendard/serveur.conf (format : serveur.conf.exemple).
 # Idempotent : peut être relancé sans dommage, sur ce Pi comme sur un système neuf.
-# Ne modifie aucun autre service du Pi, sauf ceux que le fichier local demande de désactiver.
+# Ne modifie pas les services existants du Pi, sauf ceux que le fichier local demande de désactiver.
 # SSH et le pare-feu changent en dernier : garde une session ouverte jusqu'au bout (README.md).
 set -euo pipefail
 
