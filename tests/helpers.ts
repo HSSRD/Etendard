@@ -81,11 +81,16 @@ export const tabTo = async (page: Page, target: Locator, maxPresses = 10) => {
 export const region = (page: Page, name: string) =>
   page.getByRole('region', { name, exact: true });
 
-/** Lignes de données d'un tableau nommé de `scope` (hors en-tête), en liste comme en tableau. */
-export const dataRows = (scope: Page | Locator, name: string) =>
+/** Lignes de données d'un tableau nommé (hors en-tête), cherché dans `scope`, en liste comme en tableau. */
+export const dataRows = (
+  page: Page,
+  name: string,
+  scope: Page | Locator = page,
+) =>
   scope
     .getByRole('table', { name, exact: true })
-    .locator('[role="row"]:has([role="cell"])');
+    .getByRole('row')
+    .filter({ has: page.getByRole('cell') });
 
 /** Apparences d'une page : thème clair, sombre, puis couleurs forcées (ADR 0016). */
 export const appearances = [

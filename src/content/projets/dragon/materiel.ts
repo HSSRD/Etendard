@@ -148,7 +148,7 @@ export const fiches: Section[] = [
     choices: [
       [
         'Les 4 moteurs 2216 KV920 du kit, et un moteur de rechange en option',
-        'Inclus et assortis au cadre et aux ESC. Fiche du fabricant vérifiée : 1 332 g de poussée à plein gaz, soit un rapport poussée/poids de 3,1 à 3,4 en phase 1. Le rechange, recommandé sans être obligatoire, évite d’attendre deux à trois semaines après un crash. Le budget va de rien, sans rechange, au prix d’un moteur.',
+        'Inclus et assortis au cadre et aux ESC. Fiche du fabricant vérifiée : 1 332 g de poussée à plein gaz, soit un rapport poussée/poids de 3,1 à 3,4 en phase 1. Le rechange, recommandé sans être obligatoire, évite d’attendre deux à trois semaines après un crash. Le budget va de rien, sans rechange, au prix d’un moteur.',
         price(0, 30),
       ],
     ],
@@ -180,17 +180,17 @@ export const fiches: Section[] = [
     ],
     choices: [
       [
-        'Deux ou trois LiPo 4S de 5 000 à 5 200 mAh, de marque, en XT60, sous 480 g (par exemple Tattu 5 200 mAh 35C)',
+        'Deux ou trois LiPo 4S de 5 000 à 5 200 mAh, de marque, en XT60, sous 480 g (par exemple Tattu 5 200 mAh 35C)',
         'Le XT60 est la prise de la carte de distribution du kit : aucune soudure de puissance à refaire. À 25C au moins, un pack couvre largement les 65 A du plein gaz. Le poids est le premier levier sur l’autonomie. Deux packs donnent environ 30 minutes de vol par sortie : c’est juste, d’où un troisième.',
         price(110, 190),
       ],
     ],
     alternatives: [
       [
-        'CNHL 4S 5 000 mAh',
+        'CNHL 4S 5 000 mAh',
         'Bien moins chère, mais environ 120 g de plus, soit une minute de vol en moins, et une prise XT90 ou EC5 à remplacer.',
       ],
-      ['Gens Ace 4S 5 000 mAh', 'Environ 550 g, et une prise EC5.'],
+      ['Gens Ace 4S 5 000 mAh', 'Environ 550 g, et une prise EC5.'],
       [
         'LiPo générique sans marque',
         'Capacité et courant annoncés souvent surévalués. Une LiPo peut mettre le feu : déconseillée.',
@@ -271,6 +271,7 @@ export const fiches: Section[] = [
     ],
     notes: [
       'Point de vigilance : à plein gaz, les 4 moteurs tirent environ 65 A, alors que les fils fournis avec le PM02 tiennent 30 A en continu et 60 A en pointe. En pratique, le plein gaz ne dure que quelques secondes. Parade : limiter les gaz maximum, par exemple à 85 %, ou refaire les fils en 10 AWG et passer la prise en XT90, plus lourde. En phase 1, les fils d’origine restent, et leur température est contrôlée après les vols les plus durs.',
+      'Ce qui ferait changer d’avis : la consommation réelle du Raspberry Pi, de la caméra et des capteurs, mesurée en phase 3. Elle fixera le BEC : 5 A, 8 A ou plus.',
     ],
   }),
   fiche({
@@ -380,13 +381,16 @@ export const fiches: Section[] = [
         'Utile pour les missions lointaines des phases 4 et 5, pas en phase 1.',
       ],
     ],
+    notes: [
+      'Ce qui ferait changer d’avis : les missions loin du pilote des phases 4 et 5. Un second GPS sur le port GPS2 du Pixhawk deviendrait utile.',
+    ],
   }),
   fiche({
     id: 'chargeur',
     title: 'Chargeur LiPo',
     file: '10-chargeur.md',
     intro: [
-      'Le chargeur charge en équilibrant les cellules, met les packs en tension de stockage et mesure leur résistance interne. Charger un pack 4S de 5 000 mAh à 1C demande environ 84 W.',
+      'Le chargeur charge en équilibrant les cellules, met les packs en tension de stockage et mesure leur résistance interne. Charger un pack 4S de 5 000 mAh à 1C demande environ 84 W.',
     ],
     choices: [
       [

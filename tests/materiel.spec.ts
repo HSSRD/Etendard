@@ -18,14 +18,19 @@ import {
 const content: ProjectPage = materiel;
 const url = pagePath(content.project, content.slug);
 
-/** Le tableau `table` de `scope` affiche toutes ses lignes, chaque cellule à sa place. */
-const expectTable = async (scope: Page | Locator, table: Table) => {
-  const shown = dataRows(scope, table.caption);
+/** Le tableau `table`, cherché dans `scope`, affiche toutes ses lignes, chaque cellule à sa place. */
+const expectTable = async (
+  page: Page,
+  table: Table,
+  scope: Page | Locator = page,
+) => {
+  const shown = dataRows(page, table.caption, scope);
   await expect(shown).toHaveCount(table.rows.length);
-  for (const column of table.columns.keys()) {
-    await expect(shown).toContainText(
-      table.rows.map((row) => cellText(row[column] ?? '')),
-    );
+  for (const [index, row] of table.rows.entries()) {
+    const cells = shown.nth(index).getByRole('cell');
+    await expect(cells).toHaveCount(row.length);
+    // Une valeur par cellule, dans l’ordre ; en liste, chaque cellule commence par le nom de sa colonne.
+    await expect(cells).toContainText(row.map(cellText));
   }
 };
 
@@ -79,8 +84,8 @@ test.describe('sans JavaScript', () => {
       expect(prices.map(({ date }) => date)).toContain('2026-11-20');
       expect(alternatives.rows.length).toBeGreaterThan(0);
       // Choix, raison et prix ; alternative et raison.
-      await expectTable(section, choices);
-      await expectTable(section, alternatives);
+      await expectTable(page, choices, section);
+      await expectTable(page, alternatives, section);
       await expect(section.getByTestId('source')).toContainText(
         `${source.path} au commit ${source.sha.slice(0, 7)}, relevé le ${source.date}`,
       );
