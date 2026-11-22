@@ -5,6 +5,7 @@ import type {
   Cell,
   ProjectPage,
   Section,
+  Table,
 } from '../../../lib/validate-project-pages';
 
 /** Commit de Dragon relevé. */
@@ -481,6 +482,58 @@ export const fiches: Section[] = [
   }),
 ];
 
+/** Fiches concernées par une contrainte : leurs titres, d'après leurs ids, dans l'ordre donné. */
+const concerned = (...ids: string[]) =>
+  ids
+    .map((id) => {
+      const fiche = fiches.find((entry) => entry.id === id);
+      if (!fiche) throw new Error(`fiche inconnue : ${id}`);
+      return fiche.title;
+    })
+    .join(', ');
+
+/** Matrice de compatibilité de la doc globale de la phase 1. */
+export const compatibilite: Table = {
+  type: 'table',
+  caption: 'Contraintes de compatibilité entre les achats',
+  columns: ['Contrainte', 'Fiches concernées'],
+  rows: [
+    [
+      'Diamètre des hélices inférieur ou égal au maximum du châssis',
+      concerned('chassis', 'helices'),
+    ],
+    [
+      'KV des moteurs, tension de la batterie et hélices donnent la poussée et le courant, d’après la fiche du fabricant',
+      concerned('helices', 'moteurs', 'batteries'),
+    ],
+    ['Entraxe de fixation des moteurs', concerned('chassis', 'moteurs')],
+    [
+      'Courant des ESC d’au moins 1,3 fois le courant maximum des moteurs, et ESC qui tiennent le 4S',
+      concerned('moteurs', 'batteries', 'esc'),
+    ],
+    [
+      'Courant maximum du module de puissance au moins égal au courant total',
+      concerned('esc', 'puissance-bec'),
+    ],
+    [
+      'Même connecteur de batterie partout : XT60',
+      concerned('batteries', 'puissance-bec', 'chargeur'),
+    ],
+    [
+      'Ports série du contrôleur de vol : GPS, récepteur, et un port libre pour la phase 3',
+      concerned('controleur-de-vol', 'radiocommande', 'gps'),
+    ],
+    [
+      'Protocole du récepteur (CRSF) lu par le contrôleur de vol',
+      concerned('controleur-de-vol', 'radiocommande'),
+    ],
+    [
+      'Connecteurs : JST-GH du Pixhawk, ou soudure',
+      concerned('puissance-bec', 'controleur-de-vol', 'gps'),
+    ],
+  ],
+};
+
 export default {
   project: 'dragon',
   slug: 'materiel',
@@ -517,46 +570,7 @@ export default {
           type: 'paragraph',
           text: 'Ce qui doit concorder d’une fiche à l’autre avant de commander.',
         },
-        {
-          type: 'table',
-          caption: 'Contraintes de compatibilité entre les achats',
-          columns: ['Contrainte', 'Fiches concernées'],
-          rows: [
-            [
-              'Diamètre des hélices inférieur ou égal au maximum du châssis',
-              'Châssis, Hélices',
-            ],
-            [
-              'KV des moteurs, tension de la batterie et hélices donnent la poussée et le courant, d’après la fiche du fabricant',
-              'Hélices, Moteurs, Batteries',
-            ],
-            ['Entraxe de fixation des moteurs', 'Châssis, Moteurs'],
-            [
-              'Courant des ESC d’au moins 1,3 fois le courant maximum des moteurs, et ESC qui tiennent le 4S',
-              'Moteurs, Batteries, ESC',
-            ],
-            [
-              'Courant maximum du module de puissance au moins égal au courant total',
-              'ESC, Puissance et BEC',
-            ],
-            [
-              'Même connecteur de batterie partout : XT60',
-              'Batteries, Puissance et BEC, Chargeur LiPo',
-            ],
-            [
-              'Ports série du contrôleur de vol : GPS, récepteur, et un port libre pour la phase 3',
-              'Contrôleur de vol, Radiocommande et récepteur, GPS et compas',
-            ],
-            [
-              'Protocole du récepteur (CRSF) lu par le contrôleur de vol',
-              'Contrôleur de vol, Radiocommande et récepteur',
-            ],
-            [
-              'Connecteurs : JST-GH du Pixhawk, ou soudure',
-              'Puissance et BEC, Contrôleur de vol, GPS et compas',
-            ],
-          ],
-        },
+        compatibilite,
       ],
     },
   ],

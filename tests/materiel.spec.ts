@@ -1,5 +1,8 @@
 import { expect, test } from '@playwright/test';
-import materiel, { fiches } from '../src/content/projets/dragon/materiel';
+import materiel, {
+  compatibilite as matrix,
+  fiches,
+} from '../src/content/projets/dragon/materiel';
 import { formatPrice, pagePath } from '../src/lib/project-pages';
 import type { ProjectPage, Table } from '../src/lib/validate-project-pages';
 import {
@@ -14,16 +17,6 @@ import {
 // Matériel du projet Dragon (ADR 0016, #99) : une section par fiche d'achat, puis la matrice.
 const content: ProjectPage = materiel;
 const url = pagePath(content.project, content.slug);
-
-/** Premier tableau de la section `id`. */
-const table = (id: string) => {
-  const found = content.sections
-    .find((section) => section.id === id)
-    ?.blocks.find((block): block is Table => block.type === 'table');
-  if (!found) throw new Error(`section « ${id} » sans tableau`);
-  return found;
-};
-const matrix = table('compatibilite');
 
 test.describe('sans JavaScript', () => {
   test.use({ javaScriptEnabled: false });
@@ -103,7 +96,7 @@ test.describe('sans JavaScript', () => {
     }
   });
 
-  test('la section Contrôleur de vol explique le choix du Pixhawk 6C, l’option disparue et le prix', async ({
+  test('la section Contrôleur de vol explique le choix du Pixhawk 6C et l’option disparue', async ({
     page,
   }) => {
     await page.goto(url);
@@ -115,15 +108,14 @@ test.describe('sans JavaScript', () => {
     );
     await expect(section).toContainText('L’option économique');
     await expect(section).toContainText('la carte est arrêtée');
-    const [[, , cell] = []] = table('controleur-de-vol').rows;
-    if (typeof cell !== 'object' || !cell.price) throw new Error('sans prix');
-    await expect(section).toContainText(formatPrice(cell.price));
+    // Son prix relevé : vérifié avec ceux des autres fiches.
   });
 
   test('aucun lien vers une boutique ni image tierce', async ({ page }) => {
     await page.goto(url);
 
-    // Liens externes : les dépôts GitHub de HSSRD seulement (Dragon et ses fichiers à un commit, Étendard).
+    // Liens externes : les dépôts GitHub de HSSRD seulement (Dragon et ses fichiers à un commit,
+    // Étendard), donc aucune boutique.
     const hrefs = await page
       .locator('a[href]')
       .evaluateAll((links) => links.map((link) => link.getAttribute('href')));
@@ -134,9 +126,6 @@ test.describe('sans JavaScript', () => {
         /^https:\/\/github\.com\/HSSRD\/(?:Dragon|Etendard)(?:\/|$)/,
       );
     }
-    expect(hrefs.join(' ')).not.toMatch(
-      /amazon|aliexpress|leboncoin|studiosport|holybro\.com|shopify/i,
-    );
     // Images : uniquement celles du site.
     const sources = await page
       .locator('img')

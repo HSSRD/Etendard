@@ -85,10 +85,7 @@ export const region = (page: Page, name: string) =>
 export const dataRows = (scope: Page | Locator, name: string) =>
   scope
     .getByRole('table', { name, exact: true })
-    .getByRole('row')
-    .filter({
-      has: ('goto' in scope ? scope : scope.page()).getByRole('cell'),
-    });
+    .locator('[role="row"]:has([role="cell"])');
 
 /** Apparences d'une page : thème clair, sombre, puis couleurs forcées (ADR 0016). */
 export const appearances = [
