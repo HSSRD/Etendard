@@ -1,5 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
+import dragon from '../src/content/projets/dragon/projet';
+import { pagePath } from '../src/lib/project-pages';
 import { schemes, themeBackground } from './helpers';
 
 /** La CSP n'est écrite que dans le Caddyfile du Pi (ticket #25) : le test la lit là. */
@@ -10,12 +12,10 @@ const caddyfile = await readFile(
 const csp = /^\s*Content-Security-Policy "([^"]+)"$/m.exec(caddyfile)?.[1];
 if (!csp) throw new Error('CSP introuvable dans infra/pi/Caddyfile');
 
-// La one page, puis des pages de projet (ADR 0016).
+// La one page, puis chaque page du projet Dragon, lue dans sa navigation (ADR 0016).
 for (const url of [
   '/',
-  '/projets/dragon',
-  '/projets/dragon/materiel',
-  '/projets/dragon/decisions',
+  ...dragon.pages.map(({ slug }) => pagePath(dragon.id, slug)),
 ]) {
   test(`${url} s’affiche sans violation de la CSP de Caddy`, async ({
     page,

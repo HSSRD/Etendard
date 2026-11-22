@@ -60,7 +60,7 @@ test.describe('sans JavaScript', () => {
       const [options, risks] = blocks.filter(
         (block): block is Table => block.type === 'table',
       );
-      // Au moins une ligne chacun : le type Adr l'impose.
+      // Les deux tableaux de adr() ; le type Adr leur impose au moins une ligne.
       if (!options || !risks) throw new Error(`${title} : tableaux`);
       await expectTable(page, options, section);
       await expectTable(page, risks, section);
