@@ -71,6 +71,14 @@ describe('validateProjectContent', () => {
                       { price: { min: 20, max: 40, date: '2026-11-20' } },
                     ],
                     ['Phase 1', { status: 'a-venir' }],
+                    [
+                      'Plafond',
+                      { budget: { min: 40, max: 40, date: '2026-11-20' } },
+                    ],
+                    [
+                      'Reste',
+                      { budget: { min: -5, max: 155, date: '2026-11-20' } },
+                    ],
                   ]),
                   {
                     type: 'links',
@@ -141,6 +149,35 @@ describe('validateProjectContent', () => {
         ]),
       ),
       'fourchette',
+    ],
+    [
+      'un budget sans date',
+      withBlock(table([['Plafond', { budget: { min: 1200, max: 1200 } }]])),
+      'budget sans date',
+    ],
+    [
+      'un budget à la fourchette inversée',
+      withBlock(
+        table([
+          ['Reste', { budget: { min: 155, max: -5, date: '2026-11-20' } }],
+        ]),
+      ),
+      'budget : min au plus égal à max',
+    ],
+    [
+      'une cellule à la fois prix et budget',
+      withBlock(
+        table([
+          [
+            'Carbone',
+            {
+              price: { min: 20, max: 40, date: '2026-11-20' },
+              budget: { min: 20, max: 40, date: '2026-11-20' },
+            },
+          ],
+        ]),
+      ),
+      'cellule : un statut, un prix ou un budget',
     ],
     [
       'un montant en euros dans un texte',
@@ -313,9 +350,9 @@ describe('validateProjectContent', () => {
       'repo : https://github.com/<org>/<repo>',
     ],
     [
-      'une cellule sans statut ni prix',
+      'une cellule sans statut, prix ni budget',
       withBlock(table([['Carbone', { status: undefined }]])),
-      'cellule : un statut ou un prix',
+      'cellule : un statut, un prix ou un budget',
     ],
     [
       'un lien vers un fichier non épinglé',

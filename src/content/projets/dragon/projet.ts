@@ -11,5 +11,6 @@ export default {
     { slug: '', label: 'Présentation' },
     { slug: 'materiel', label: 'Matériel' },
     { slug: 'decisions', label: 'Décisions' },
+    { slug: 'achats', label: 'Achats' },
   ],
 } satisfies ProjectMeta;
