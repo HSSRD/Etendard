@@ -42,7 +42,7 @@ export default [
       'Un quadricoptère construit de A à Z, où chaque choix est documenté, justifié et challengé.',
     order: 2,
     body: [
-      'Dragon en est à la construction de son premier drone : première commande passée le 2026-11-20, aucun vol encore.',
+      'Dragon en est à la construction de son premier drone : première commande passée le 2026-11-20 ; au 2026-11-22, aucun vol.',
     ],
     page: '/projets/dragon',
   },

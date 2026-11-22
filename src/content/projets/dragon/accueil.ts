@@ -34,7 +34,7 @@ export default {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Sept phases, chacune avec un objectif et un critère de sortie. Le code de l’équipe ne pilote le vrai drone qu’en phase 3, une fois qu’il vole déjà en manuel.',
+          text: 'Sept phases, chacune avec un objectif et, dès qu’il est défini, un critère de sortie. Le code de l’équipe ne pilote le vrai drone qu’en phase 3, une fois qu’il vole déjà en manuel.',
         },
         {
           type: 'table',

@@ -29,8 +29,9 @@ const projectSchema = z.strictObject({
 export type Project = z.infer<typeof projectSchema>;
 
 /**
- * Valide les fiches et leurs liens : un projet racine (non référencé) a des units ou sa page, une
- * sous-unité n'en a pas, chaque fiche est référencée au plus une fois. Lève une erreur qui liste chaque problème.
+ * Valide les fiches et leurs liens : un projet racine (non référencé) a des units ou mène à sa
+ * propre page (/projets/<id>), une sous-unité n'en a pas, chaque fiche est référencée au plus une
+ * fois. Lève une erreur qui liste chaque problème.
  */
 export const validateProjects = (input: unknown): Project[] => {
   const parsed = z.array(projectSchema).safeParse(input);

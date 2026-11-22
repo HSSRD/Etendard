@@ -1,5 +1,5 @@
 // ProjectCard dans chacun de ses états (ticket #14) : présentation (intro), carte de sous-unité,
-// puis carte d'une fiche qui a sa page (lien vers elle).
+// carte d'un projet autonome, puis carte d'une fiche qui a sa page (lien vers elle).
 import ProjectCard from '@/components/ProjectCard';
 import demo from '@/content/demo-projet';
 import StyleguideStates from '@/layouts/StyleguideStates';
