@@ -30,7 +30,7 @@ interface Fiche {
   /** Fichier de la fiche dans docs/phase-1-construction/achats/. */
   file: string;
   /** Rôle de la pièce, avant ses tableaux. */
-  intro: string[];
+  intro: [string, ...string[]];
   /** Choix retenu : quoi, pourquoi, budget relevé. */
   choices: [string, string, Cell][];
   /** Alternative écartée et sa raison. */
@@ -146,8 +146,13 @@ export const fiches: Section[] = [
     ],
     choices: [
       [
-        'Les 4 moteurs 2216 KV920 du kit, et un moteur de rechange',
-        'Inclus et assortis au cadre et aux ESC. Fiche du fabricant vérifiée : 1 332 g de poussée à plein gaz, soit un rapport poussée/poids de 3,1 à 3,4 en phase 1. Le rechange évite d’attendre deux à trois semaines après un crash.',
+        'Les 4 moteurs 2216 KV920 du kit',
+        'Inclus et assortis au cadre et aux ESC. Fiche du fabricant vérifiée : 1 332 g de poussée à plein gaz, soit un rapport poussée/poids de 3,1 à 3,4 en phase 1.',
+        'Inclus dans le kit',
+      ],
+      [
+        'Un moteur de rechange, recommandé sans être obligatoire',
+        'Il évite d’attendre deux à trois semaines après un crash : un moteur abîmé est la casse la plus fréquente après les hélices.',
         price(0, 30),
       ],
     ],
@@ -498,7 +503,7 @@ export default {
         },
         {
           type: 'paragraph',
-          text: 'Où ne pas économiser : les batteries (jamais d’occasion, jamais sans marque), le chargeur, le smoke stopper, le GPS (pas de copie) et le contrôleur de vol (pas de contrefaçon). La radio, le chargeur et l’outillage, eux, peuvent s’acheter d’occasion.',
+          text: 'Où ne pas économiser : les batteries (jamais d’occasion, jamais sans marque), le chargeur, le smoke stopper, le GPS (pas de copie) et le contrôleur de vol (pas de contrefaçon). La radio et l’outillage peuvent s’acheter d’occasion, le chargeur aussi s’il est d’une marque reconnue.',
         },
       ],
     },

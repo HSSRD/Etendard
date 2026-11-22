@@ -65,7 +65,7 @@ test.describe('sans JavaScript', () => {
       'Le projet est piloté avec l’IA',
     );
     const roadmap = region(page, 'Feuille de route');
-    const rows = dataRows(page, 'Phases du projet Dragon');
+    const rows = dataRows(roadmap, 'Phases du projet Dragon');
     await expect(rows).toHaveCount(7);
     // Phase, objectif et critère de sortie de accueil.ts, ligne par ligne, puis le badge de statut.
     for (const column of [0, 1, 2]) {

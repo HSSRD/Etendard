@@ -15,19 +15,15 @@ import {
 const content: ProjectPage = materiel;
 const url = pagePath(content.project, content.slug);
 
-const matrix = content.sections
-  .find((section) => section.id === 'compatibilite')
-  ?.blocks.find((block): block is Table => block.type === 'table');
-if (!matrix) throw new Error('matrice absente de materiel.ts');
-
-test('chaque fiche citée par la matrice est une section de la page', () => {
-  const titles = fiches.map(({ title }) => title);
-  for (const row of matrix.rows) {
-    for (const fiche of String(row[1]).split(', ')) {
-      expect(titles).toContain(fiche);
-    }
-  }
-});
+/** Premier tableau de la section `id`. */
+const table = (id: string) => {
+  const found = content.sections
+    .find((section) => section.id === id)
+    ?.blocks.find((block): block is Table => block.type === 'table');
+  if (!found) throw new Error(`section « ${id} » sans tableau`);
+  return found;
+};
+const matrix = table('compatibilite');
 
 test.describe('sans JavaScript', () => {
   test.use({ javaScriptEnabled: false });
@@ -61,25 +57,35 @@ test.describe('sans JavaScript', () => {
     expect(fiches).toHaveLength(12);
     await page.goto(url);
 
-    for (const { title, source } of fiches) {
+    for (const { title, source, blocks } of fiches) {
       const section = region(page, title);
-      await expect(section.getByRole('paragraph').first()).not.toBeEmpty();
-      await expect(dataRows(page, `${title} : choix retenu`)).not.toHaveCount(
-        0,
+      // Le rôle : le premier paragraphe de la fiche, avant ses tableaux.
+      const [role] = blocks;
+      if (role?.type !== 'paragraph') throw new Error(`${title} : sans rôle`);
+      await expect(section.getByRole('paragraph').first()).toHaveText(
+        role.text,
       );
-      await expect(
-        page.getByRole('table', { name: `${title} : choix retenu` }),
-      ).toContainText(/\d+ à \d+\s€, relevé le 2026-11-20/);
-      const alternatives = dataRows(page, `${title} : alternatives écartées`);
-      await expect(alternatives).not.toHaveCount(0);
+      const [choices, alternatives] = blocks.filter(
+        (block): block is Table => block.type === 'table',
+      );
+      if (!choices || !alternatives) throw new Error(`${title} : tableaux`);
+      const prices = choices.rows
+        .flat()
+        .flatMap((cell) => (typeof cell === 'object' && cell.price) || []);
+      expect(prices.map(({ date }) => date)).toContain('2026-11-20');
+      await expect(dataRows(section, choices.caption)).toContainText(
+        prices.map(formatPrice),
+      );
       // Chaque alternative a sa raison.
-      for (const row of await alternatives.all()) {
+      const rows = dataRows(section, alternatives.caption);
+      await expect(rows).not.toHaveCount(0);
+      for (const row of await rows.all()) {
         await expect(row.getByRole('cell')).toHaveCount(2);
         await expect(row.getByRole('cell').last()).not.toBeEmpty();
       }
-      const note = section.getByTestId('source');
-      await expect(note).toContainText(source.path);
-      await expect(note).toContainText('au commit 3afc561, relevé le');
+      await expect(section.getByTestId('source')).toContainText(
+        `${source.path} au commit ${source.sha.slice(0, 7)}, relevé le ${source.date}`,
+      );
     }
   });
 
@@ -109,9 +115,9 @@ test.describe('sans JavaScript', () => {
     );
     await expect(section).toContainText('L’option économique');
     await expect(section).toContainText('la carte est arrêtée');
-    await expect(section).toContainText(
-      formatPrice({ min: 230, max: 260, date: '2026-11-20' }),
-    );
+    const [[, , cell] = []] = table('controleur-de-vol').rows;
+    if (typeof cell !== 'object' || !cell.price) throw new Error('sans prix');
+    await expect(section).toContainText(formatPrice(cell.price));
   });
 
   test('aucun lien vers une boutique ni image tierce', async ({ page }) => {
