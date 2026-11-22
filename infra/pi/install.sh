@@ -217,6 +217,9 @@ mapfile -t tcp < <(sshd -T | awk '$1 == "port" { print $2 }')
 for p in "${PORTS[@]}"; do
   if [ "${p#*/}" = udp ]; then udp+=("${p%/*}"); else tcp+=("${p%/*}"); fi
 done
+# Sans doublon (port SSH aussi listé en PORT=) : nft peut refuser un élément répété dans un ensemble.
+mapfile -t tcp < <(printf '%s\n' "${tcp[@]}" | sort -un)
+mapfile -t udp < <(printf '%s\n' "${udp[@]}" | sort -un | grep .)
 join() { local IFS=,; echo "$*"; }
 # autoriser <proto> <ports…> : une règle par source autorisée (tailnet, réseau local en IPv4 et en IPv6).
 autoriser() {
