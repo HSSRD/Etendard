@@ -54,6 +54,10 @@ test('la présentation (intro) n’a pas de cadre, les cartes en ont un', async 
   await expect(articles.first()).toHaveCSS('box-shadow', 'none');
   await expect(articles.nth(1)).toHaveCSS('border-top-style', 'solid');
   await expect(articles.nth(1)).not.toHaveCSS('border-top-width', '0px');
+  // Un projet sans sous-unité (Dragon) a une carte, pas une présentation.
+  const dragon = articles.filter({ hasText: 'Dragon' }).first();
+  await expect(dragon).toHaveCSS('border-top-style', 'solid');
+  await expect(dragon).not.toHaveCSS('border-top-width', '0px');
 });
 
 testAppearances('/styleguide/project-card', 'project-card');

@@ -48,6 +48,16 @@ describe('validateProjects', () => {
     expect(validateProjects(fiches)).toEqual(fiches);
   });
 
+  it('refuse une sous-unité oubliée qui mène à la page d’un autre projet', () => {
+    expect(() =>
+      validateProjects([
+        fiche('a', 1, ['b']),
+        fiche('b', 1),
+        { ...fiche('oubli', 1), page: '/projets/a' },
+      ]),
+    ).toThrow('oubli : absent des units de tout projet.');
+  });
+
   it('accepte un projet racine sans units qui a sa page', () => {
     const autonome = { ...fiche('dragon', 2), page: '/projets/dragon' };
     expect(validateProjects([autonome])).toEqual([autonome]);

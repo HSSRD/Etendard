@@ -34,7 +34,7 @@ export default {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Sept phases, chacune avec un objectif et un critère de sortie mesurable. Le logiciel écrit par l’équipe n’arrive qu’en phase 3, sur un drone qui vole déjà.',
+          text: 'Sept phases, chacune avec un objectif et un critère de sortie. Le code de l’équipe ne pilote le vrai drone qu’en phase 3, une fois qu’il vole déjà en manuel.',
         },
         {
           type: 'table',
@@ -117,6 +117,7 @@ export default {
             'Première mise sous tension après une soudure derrière un smoke stopper, ou une alimentation de laboratoire limitée en courant.',
             'Batteries LiPo chargées sous surveillance, dans un sac ignifuge ; jamais de batterie gonflée ou abîmée.',
             'Un interrupteur d’armement et de coupure sur la radiocommande, et un failsafe testé avant le premier vol.',
+            'Premiers vols dans un espace dégagé, sans personne autour, pilote derrière le drone.',
             'Respect de la réglementation de la DGAC.',
           ],
         },

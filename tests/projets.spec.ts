@@ -106,6 +106,7 @@ test.describe('sans JavaScript', () => {
       'smoke stopper',
       'LiPo chargées sous surveillance',
       'failsafe testé',
+      'Premiers vols',
       'réglementation',
     ]);
   });
