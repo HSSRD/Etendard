@@ -54,7 +54,7 @@ test('une figure se place entre le titre et les blocs', async ({ page }) => {
   const section = page.getByRole('region', { name: 'Schéma', exact: true });
   // Le schéma suit le bloc du titre et précède le premier paragraphe.
   await expect(
-    section.locator(':has(> h2) + [data-testid="schema"] + p'),
+    section.locator(':has(> h2) + [data-testid="figure"] + p'),
   ).toHaveText('La figure précède les blocs.');
 });
 

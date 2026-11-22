@@ -14,32 +14,32 @@ import {
 } from '@/theme/tokens';
 import { useTypography } from '@/theme/typography';
 
-export interface DiagramNode {
+interface DiagramNode {
   label: string;
   /** Précision sous le nom (modèle, logiciel). */
   detail?: string;
 }
 
 /** Liaison latérale : un bloc qui alimente l'étape (`in`) ou qu'elle alimente (`out`). */
-export interface DiagramBranch extends DiagramNode {
+interface DiagramBranch extends DiagramNode {
   direction: 'in' | 'out';
   via: string;
   /** Prévu pour une phase suivante : bordure en tirets et mention « plus tard ». */
   later?: boolean;
 }
 
-export interface DiagramStep extends DiagramNode {
+interface DiagramStep extends DiagramNode {
   /** Liaison depuis l'étape précédente, écrite sur la flèche. */
   via?: string;
   branches?: DiagramBranch[];
 }
 
-export interface DiagramChain {
+interface DiagramChain {
   title: string;
   steps: DiagramStep[];
 }
 
-interface Props {
+export interface WiringDiagramProps {
   /** Nom de l'image pour les lecteurs d'écran. */
   label: string;
   chains: DiagramChain[];
@@ -57,7 +57,7 @@ function Node({ label, detail, later }: DiagramNode & { later?: boolean }) {
   );
 }
 
-export default function WiringDiagram({ label, chains }: Props) {
+export default function WiringDiagram({ label, chains }: WiringDiagramProps) {
   const styles = useStyles();
   const typography = useTypography();
   return (

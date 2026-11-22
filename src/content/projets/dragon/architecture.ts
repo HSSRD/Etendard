@@ -2,7 +2,7 @@
 // des règles générales du §1 de la doc de la phase 1, des niveaux de l'ADR-001, des règles de
 // sécurité et de trois règles de bom.md (ADR 0016). Jamais le statut personnel des préalables
 // (exploitant, lieu de vol, club, assurance) ni les mots « sans club ».
-import type { DiagramChain } from '../../../components/WiringDiagram';
+import type { WiringDiagramProps } from '../../../components/WiringDiagram';
 import type { ProjectPage } from '../../../lib/validate-project-pages';
 import { securite } from './accueil.ts';
 
@@ -17,7 +17,7 @@ const phase1 = source('docs/phase-1-construction/README.md');
 const paragraph = (text: string) => ({ type: 'paragraph' as const, text });
 
 /** Schéma du §2 : la chaîne de commande, puis la chaîne de puissance. */
-export const schema: { label: string; chains: DiagramChain[] } = {
+export const schema: WiringDiagramProps = {
   label:
     'Schéma des liaisons entre les composants de Dragon, décrit par la liste qui le suit.',
   chains: [
@@ -149,7 +149,6 @@ export default {
             'Choisir la batterie et les ESC d’après le courant que consomment ces moteurs.',
           ],
         },
-        paragraph('Bilan de poids prévisionnel, révisé le 2026-11-20 :'),
         {
           type: 'table',
           caption: 'Bilan de poids prévisionnel, révisé le 2026-11-20',

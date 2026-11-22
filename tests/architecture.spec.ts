@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { securite } from '../src/content/projets/dragon/accueil';
 import architecture, {
   liaisons,
   schema,
@@ -62,19 +63,10 @@ test.describe('sans JavaScript', () => {
 
     const image = section.getByRole('img', { name: schema.label });
     await expect(image).toBeVisible();
-    for (const label of [
-      'Radiocommande',
-      'Récepteur radio',
-      'GPS et compas',
-      'Contrôleur de vol',
-      'Batterie 4S',
-      'Module de puissance',
-      'ESC ×4',
-      'Moteurs ×4',
-      'Hélices',
-      'BEC 5 V 5 A',
-      'Plus tard',
-    ]) {
+    const labels = schema.chains.flatMap(({ steps }) =>
+      steps.flatMap((step) => [step, ...(step.branches ?? [])]),
+    );
+    for (const { label } of [...labels, { label: 'Plus tard' }]) {
       await expect(
         image.getByText(label, { exact: true }).first(),
       ).toBeVisible();
@@ -133,9 +125,7 @@ test.describe('sans JavaScript', () => {
       await expect(rules).toContainText(rule);
     }
     const safety = region(page, 'Règles de sécurité');
-    await expect(safety.getByRole('listitem')).toHaveCount(6);
-    await expect(safety).toContainText('Hélices démontées');
-    await expect(safety).toContainText('failsafe testé');
+    await expect(safety.getByRole('listitem')).toContainText(securite);
     const firstFlight = region(page, 'Avant le premier vol');
     await expect(firstFlight).toContainText('Cinq heures de simulateur');
     await expect(firstFlight).toContainText('Un assistant présent');
@@ -161,11 +151,13 @@ test('la page n’a ni style ni script en ligne', async ({ page }) => {
 for (const { name, ...media } of appearances) {
   test(`${url}, ${name} : accessibilité, schéma lisible, sans défilement horizontal`, async ({
     page,
-  }) => {
+  }, testInfo) => {
     await page.emulateMedia(media);
     await page.goto(url);
     await expectNoAxeViolations(page);
     await expectNoHorizontalScroll(page);
+    // Une capture du vrai schéma suffit, à la largeur la plus étroite : le styleguide le capture aux trois.
+    if (testInfo.project.name !== 'chromium-375') return;
     await expect(page.getByTestId('schema')).toHaveScreenshot(
       `architecture-schema-${name}.png`,
     );

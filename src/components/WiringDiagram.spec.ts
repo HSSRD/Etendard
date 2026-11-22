@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import demo from '../content/demo-projet';
 import { expectNoHorizontalScroll, testAppearances } from '../../tests/helpers';
 
 test('le schéma est une image nommée qui contient chaque bloc et chaque liaison', async ({
@@ -10,20 +11,24 @@ test('le schéma est une image nommée qui contient chaque bloc et chaque liaiso
     name: 'Schéma de démonstration des liaisons.',
   });
   await expect(schema).toHaveAttribute('data-testid', 'schema');
-  for (const text of [
-    'Commande',
-    'Radiocommande',
-    'au sol',
-    'commandes',
-    'Contrôleur de vol',
-    '← position',
-    'GPS',
-    'Puissance',
-    '→ alimentation',
-    'BEC',
-    'Plus tard',
-    'Moteurs',
-  ]) {
+  const nodes = demo.schema.chains.flatMap(({ title, steps }) => [
+    title,
+    ...steps.flatMap((step) => [
+      step,
+      ...(step.branches ?? []).map((branch) => ({
+        ...branch,
+        via: `${branch.direction === 'in' ? '←' : '→'} ${branch.via}`,
+      })),
+    ]),
+  ]);
+  const texts = nodes.flatMap((node) =>
+    typeof node === 'string'
+      ? [node]
+      : [node.label, node.detail, node.via].filter(
+          (text) => text !== undefined,
+        ),
+  );
+  for (const text of [...texts, 'Plus tard']) {
     await expect(schema.getByText(text, { exact: true })).toBeVisible();
   }
 });

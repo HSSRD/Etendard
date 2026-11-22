@@ -17,7 +17,7 @@ interface Props {
   project: ProjectMeta;
   page: ProjectPage;
   /** Figure de chaque section qui en a une, par id de section. */
-  figures?: Partial<Record<string, ReactNode>>;
+  figures?: Record<string, ReactNode>;
 }
 
 export default function ProjectLayout({ project, page, figures }: Props) {

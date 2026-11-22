@@ -1,13 +1,15 @@
 // ProjectSection dans chacun de ses états (ADR 0016) : tableau et statut, liste et liens,
 // prix datés, source sans lien (fichier aux données jamais publiées), figure avant les blocs.
 import ProjectSection from '@/components/ProjectSection';
-import WiringDiagram from '@/components/WiringDiagram';
 import demo from '@/content/demo-projet';
 import StyleguideStates from '@/layouts/StyleguideStates';
+import { Text } from 'react-native';
+import { useTypography } from '@/theme/typography';
 
 const sections = demo.pages.flatMap((page) => page.sections);
 
 export default function ProjectSectionPage() {
+  const typography = useTypography();
   return (
     <StyleguideStates
       name="ProjectSection"
@@ -31,7 +33,11 @@ export default function ProjectSectionPage() {
                 ],
               }}
               repo={demo.projet.repo}
-              figure={<WiringDiagram {...demo.schema} />}
+              figure={
+                <Text testID="figure" style={typography.body}>
+                  Figure de la section
+                </Text>
+              }
             />
           ),
         })),
