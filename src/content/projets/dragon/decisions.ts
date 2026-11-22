@@ -1,7 +1,11 @@
 // Décisions du projet Dragon (/projets/dragon/decisions), copie rédigée de ses ADR et du challenge
 // de la phase 1 (ADR 0016). Sans le §2.6 du challenge (club), ni l'encadré écrit après les
 // réponses (contraintes personnelles), ni aucun prix ou lien marchand.
-import type { ProjectPage, Table } from '../../../lib/validate-project-pages';
+import type {
+  ProjectPage,
+  Section,
+  Table,
+} from '../../../lib/validate-project-pages';
 
 /** Commit de Dragon relevé. */
 const sha = '3afc561a33cdb9241e380040d74ab37cdd1d8f1f';
@@ -10,21 +14,189 @@ const read = '2026-11-22';
 
 const source = (path: string) => ({ path: `docs/${path}`, sha, date: read });
 
-/** Tableau des options écartées d'un ADR. */
-const rejected = (adr: string, rows: [string, string][]): Table => ({
-  type: 'table',
-  caption: `${adr} : options écartées`,
-  columns: ['Option écartée', 'Pourquoi'],
-  rows,
-});
+const paragraph = (text: string) => ({ type: 'paragraph' as const, text });
 
-/** Tableau des risques d'un ADR. */
-const risks = (adr: string, rows: [string, string][]): Table => ({
-  type: 'table',
-  caption: `${adr} : risques`,
-  columns: ['Risque', 'Réponse'],
-  rows,
-});
+interface Adr {
+  /** « 001 » pour l'ADR-001. */
+  number: string;
+  title: string;
+  /** Fichier de l'ADR dans docs/decisions/. */
+  file: string;
+  /** Statut de l'ADR dans Dragon : le seul champ à changer quand il évolue. */
+  status: NonNullable<Section['status']>;
+  date: string;
+  context: string[];
+  decision: string;
+  rejected: [string, string][];
+  risks: [string, string][];
+  /** Ce qui ferait changer d'avis, points ouverts, après les tableaux. */
+  notes: string[];
+}
+
+/** Section d'un ADR : date, contexte, décision proposée, options écartées, risques. */
+const adr = ({ number, title, file, status, date, ...adr }: Adr): Section => {
+  const name = `ADR-${number}`;
+  return {
+    id: `adr-${number}`,
+    title: `${name} : ${title}`,
+    status,
+    source: source(`decisions/${file}`),
+    blocks: [
+      paragraph(`Date : ${date}.`),
+      ...adr.context.map(paragraph),
+      paragraph(`Décision proposée : ${adr.decision}`),
+      {
+        type: 'table',
+        caption: `${name} : options écartées`,
+        columns: ['Option écartée', 'Pourquoi'],
+        rows: adr.rejected,
+      },
+      {
+        type: 'table',
+        caption: `${name} : risques`,
+        columns: ['Risque', 'Réponse'],
+        rows: adr.risks,
+      },
+      ...adr.notes.map(paragraph),
+    ],
+  };
+};
+
+/** Les trois ADR de Dragon. */
+export const adrs: Section[] = [
+  adr({
+    number: '001',
+    title: 'architecture logicielle',
+    file: 'ADR-001-architecture-logicielle.md',
+    status: 'propose',
+    date: '2026-11-20',
+    context: [
+      'La question : où vit le code écrit pour Dragon ? Un quadricoptère n’est pas stable de lui-même. Il faut recalculer la poussée des quatre moteurs 1 000 à 8 000 fois par seconde, à partir du gyroscope. Ce travail en temps réel revient au contrôleur de vol, un microcontrôleur STM32 sans système d’exploitation. Les déplacements et les missions, eux, tournent 1 à 50 fois par seconde sur un ordinateur compagnon sous Linux.',
+    ],
+    decision:
+      'un firmware ouvert et éprouvé, ArduPilot ou PX4, sur le contrôleur de vol, et le code de Dragon sur un ordinateur compagnon sous un Linux minimal, qui pilote les déplacements par MAVLink. Un firmware de vol maison reste possible en phase 6, sur le même matériel : le contrôleur de vol de la phase 1 doit donc pouvoir être reflashé (STM32H7 documenté, flash par USB).',
+    rejected: [
+      [
+        'Coder tout le firmware de vol soi-même dès le départ',
+        'L’apprentissage est maximal, mais il faut des mois avant le premier vol, le risque de casse est élevé, et le débogage est très difficile sans référence qui marche.',
+      ],
+      [
+        'Firmware FPV (Betaflight)',
+        'Pensé pour le pilotage manuel acrobatique : pas de GPS sérieux, pas de mode autonome.',
+      ],
+    ],
+    risks: [
+      [
+        'La stabilisation n’est pas codée au début.',
+        'Assumé : elle reste possible en phase 6, une fois le drone en vol, avec un simulateur et un banc de test.',
+      ],
+      [
+        'Le code de Dragon n’arriverait qu’en phase 3 : trop tard.',
+        'Évitable : le simulateur ArduPilot SITL pilote un drone simulé en MAVLink dès maintenant, et les scripts Lua tournent sur le contrôleur de vol dès la phase 1. La simulation (phase 2) démarre en parallèle de la phase 1.',
+      ],
+      [
+        'Un firmware maison demande des mois de travail, et un drone de 2 kg aux hélices de 10 pouces est le pire banc d’essai pour un code de stabilisation encore bogué.',
+        'Faire la phase 6 sur un petit drone dédié (Crazyflie, ESP-Drone), pas sur Dragon, sauf si un banc de test sécurisé devient disponible : drone attaché sur un cardan.',
+      ],
+    ],
+    notes: [
+      'Point ouvert : ArduPilot ou PX4, à trancher en phase 2. Le penchant va à ArduPilot : DShot sur toutes les sorties du Pixhawk 6C, scripts Lua, simulateur plus simple, outils sol plus complets. Le matériel est le même : un reflash de dix minutes suffit à changer d’avis.',
+      'Ce qui ferait changer d’avis : si le but premier devenait d’apprendre l’automatique et l’embarqué plutôt que d’avoir un drone utile, commencer en parallèle par un petit drone de développement au code de vol entièrement lisible.',
+    ],
+  }),
+  adr({
+    number: '002',
+    title: 'format du châssis',
+    file: 'ADR-002-format-chassis.md',
+    status: 'propose',
+    date: '2026-11-20',
+    context: [
+      'Le drone doit d’abord voler, puis embarquer un ordinateur compagnon, des caméras et des capteurs (phases 3 à 5). La taille du châssis conditionne le reste : moteurs, hélices, batterie, poids et réglementation.',
+    ],
+    decision:
+      'un châssis d’environ 500 mm, de type Holybro X500 V2. C’est une plateforme de développement standard : beaucoup de documentation, de la place pour la suite, et des tutoriels qui correspondent à cet usage. L’ADR-002 prévoyait le cadre seul ; l’ADR-003 le remplace par le kit ARF du même châssis.',
+    rejected: [
+      [
+        '5 pouces FPV (environ 220 mm)',
+        'Très serré pour un Raspberry Pi, des caméras et des capteurs, nerveux en vol stationnaire, 4 à 6 minutes d’autonomie, et un écosystème marginal pour le vol autonome.',
+      ],
+      [
+        '7 pouces longue portée (environ 300 mm)',
+        'Plus robuste et plus léger, environ 1 kg, mais sans plateforme de charge utile, avec peu de documentation ArduPilot pour l’autonomie et une électronique FPV moins standard. Écarté pour l’instant.',
+      ],
+      [
+        'Micro-drone de moins de 250 g',
+        'Une réglementation plus simple, mais l’emport de capteurs devient quasi impossible.',
+      ],
+    ],
+    risks: [
+      [
+        'Poids sous-estimé : le cadre pèse 610 g, pas environ 400 g. Le drone pèse 1,6 à 1,7 kg en phase 1, environ 2 kg avec la charge des phases 3 et 4.',
+        'Compensé par une poussée réelle plus forte que prévu, 1 332 g par moteur : le rapport poussée/poids reste supérieur à 3.',
+      ],
+      [
+        'Au-delà de 800 g, la réglementation française impose l’enregistrement du drone et un signalement électronique.',
+        'Assumé : les capteurs des phases suivantes l’imposeraient de toute façon.',
+      ],
+      [
+        'Un premier drone de 1,7 kg : une hélice de 10 pouces à plein régime blesse gravement, et un crash coûte des hélices, un bras, parfois un moteur.',
+        'Maintenu : le maintien de position par GPS et un objectif non acrobatique le rendent pilotable. Conditions : 5 heures de simulateur, premiers vols sur un terrain dégagé, jamais à moins de 15 m de soi pendant les essais.',
+      ],
+      [
+        'Casse en apprentissage, alors que les bras, raccords et plaques de rechange étaient en rupture au 2026-11-20.',
+        'Prévoir des hélices et un ou deux bras de rechange, à prendre dès leur retour en stock.',
+      ],
+    ],
+    notes: [
+      'Ce qui ferait changer d’avis : un budget serré ou l’envie de piloter en FPV mèneraient au 7 pouces, en compromis.',
+    ],
+  }),
+  adr({
+    number: '003',
+    title: 'kit ARF plutôt que pièce par pièce',
+    file: 'ADR-003-kit-arf-vs-piece-par-piece.md',
+    status: 'propose',
+    date: '2026-11-20',
+    context: [
+      'La première version des fiches recommandait le cadre X500 V2 seul, puis des moteurs 2216 KV920 et des ESC AM32 individuels de 35 à 40 A achetés à part.',
+      'La vérification du 2026-11-20 a montré trois choses. Holybro vend un kit ARF (Almost Ready to Fly, presque prêt à voler) qui contient exactement ces moteurs, des ESC de 20 A déjà montés sur les bras, six hélices 1045 et une carte de distribution. Pièce par pièce, c’est plus cher. Et les ESC AM32 individuels de 30 à 45 A sont rares en 2026 : BLHeli_32 n’est plus développé depuis juin 2024, et les bons modèles AM32 sont chers et souvent en rupture.',
+    ],
+    decision:
+      'le kit ARF X500 V2. Ses quatre moteurs 2216 KV920 sont des T-Motor AIR2216 II sous la marque Holybro, ses quatre ESC BLHeli_S de 20 A sont montés, avec six hélices 1045 et une carte de distribution en XT60. La propulsion est déjà dimensionnée et testée par le fabricant, il y a moins de soudures, et les pièces de rechange sont au catalogue. Le contrôleur de vol Pixhawk 6C et son module de puissance PM02, le GPS M10 et le récepteur ELRS s’achètent à part.',
+    rejected: [
+      [
+        'Cadre seul, puis moteurs, ESC, hélices et carte de distribution achetés à part',
+        'Le libre choix de chaque pièce, mais plus cher, avec plus de soudures et un risque d’incompatibilité.',
+      ],
+      [
+        'PX4 Development Kit X500 V2 : kit ARF, Pixhawk 6C, PM02, GPS M10 et télémétrie',
+        'Tout-en-un et livré flashé PX4, mais l’économie est faible face au kit ARF et aux mêmes pièces achetées à part. Et sa télémétrie en 915 MHz est illégale en France ; la version 433 MHz était en rupture.',
+      ],
+    ],
+    risks: [
+      [
+        'Des ESC de 20 A pour des moteurs qui tirent 16,4 A à plein gaz : une marge de 1,22 au lieu du 1,3 de la règle du projet.',
+        'Assumé : le pic de 30 A pendant 10 secondes couvre les à-coups, et le vol stationnaire tire environ 4 A par moteur. La température des ESC est vérifiée après les premiers vols ; au-delà de 80 °C, passage à un ESC 4-en-1 AM32 de 55 A.',
+      ],
+      [
+        'Filtrage RPM : les ESC ne sont pas livrés sous Bluejay, et leur flash n’est confirmé par aucune source.',
+        'À confirmer. Sans ce flash, le drone vole quand même, avec un filtrage des vibrations moins bon.',
+      ],
+      [
+        'Stock : le kit et ses pièces de rechange (tubes de bras, raccords, plaques) étaient en rupture chez certains vendeurs au 2026-11-20.',
+        'Prendre un ou deux bras de rechange dès qu’ils sont disponibles.',
+      ],
+      [
+        'Achat direct chez Holybro, hors de l’Union européenne : les prix sont en dollars hors taxes.',
+        'Ajouter le port, la TVA de 20 % et parfois des frais de dédouanement avant de comparer.',
+      ],
+    ],
+    notes: [
+      'Ce qui ferait changer d’avis : un kit introuvable en Europe pendant plus de quatre semaines (alors, le cadre seul ou un châssis équivalent), ou une charge utile de plus de 800 g en phase 3 (alors, des moteurs 2814 de 700 KV et des hélices de 12 pouces).',
+      'Retour en arrière : les moteurs et les ESC du kit se démontent, et le cadre accepte n’importe quelle propulsion en fixation de 16 × 16 ou 19 × 19 mm.',
+    ],
+  }),
+];
 
 /** Les 14 erreurs factuelles de la première version des fiches (§1 du challenge). */
 export const erreurs: Table = {
@@ -156,165 +328,7 @@ export default {
   description:
     'Les trois décisions d’architecture de Dragon, encore proposées, et le challenge du 2026-11-20 : les erreurs corrigées et les choix remis en cause.',
   sections: [
-    {
-      id: 'adr-001',
-      title: 'ADR-001 : architecture logicielle',
-      status: 'propose',
-      source: source('decisions/ADR-001-architecture-logicielle.md'),
-      blocks: [
-        { type: 'paragraph', text: 'Date : 2026-11-20.' },
-        {
-          type: 'paragraph',
-          text: 'La question : où vit le code écrit pour Dragon ? Un quadricoptère n’est pas stable de lui-même. Il faut recalculer la poussée des quatre moteurs 1 000 à 8 000 fois par seconde, à partir du gyroscope. Ce travail en temps réel revient au contrôleur de vol, un microcontrôleur STM32 sans système d’exploitation. Les déplacements et les missions, eux, tournent 1 à 50 fois par seconde sur un ordinateur compagnon sous Linux.',
-        },
-        {
-          type: 'paragraph',
-          text: 'Décision proposée : un firmware ouvert et éprouvé, ArduPilot ou PX4, sur le contrôleur de vol, et le code de Dragon sur un ordinateur compagnon sous un Linux minimal, qui pilote les déplacements par MAVLink. Un firmware de vol maison reste possible en phase 6, sur le même matériel : le contrôleur de vol de la phase 1 doit donc pouvoir être reflashé (STM32H7 documenté, flash par USB).',
-        },
-        rejected('ADR-001', [
-          [
-            'Coder tout le firmware de vol soi-même dès le départ',
-            'L’apprentissage est maximal, mais il faut des mois avant le premier vol, le risque de casse est élevé, et le débogage est très difficile sans référence qui marche.',
-          ],
-          [
-            'Firmware FPV (Betaflight)',
-            'Pensé pour le pilotage manuel acrobatique : pas de GPS sérieux, pas de mode autonome.',
-          ],
-        ]),
-        risks('ADR-001', [
-          [
-            'La stabilisation n’est pas codée au début.',
-            'Assumé : elle reste possible en phase 6, une fois le drone en vol, avec un simulateur et un banc de test.',
-          ],
-          [
-            'Le code de Dragon n’arriverait qu’en phase 3 : trop tard.',
-            'Évitable : le simulateur ArduPilot SITL pilote un drone simulé en MAVLink dès maintenant, et les scripts Lua tournent sur le contrôleur de vol dès la phase 1. La simulation (phase 2) démarre en parallèle de la phase 1.',
-          ],
-          [
-            'Un firmware maison demande des mois de travail, et un drone de 2 kg aux hélices de 10 pouces est le pire banc d’essai pour un code de stabilisation encore bogué.',
-            'Faire la phase 6 sur un petit drone dédié (Crazyflie, ESP-Drone), pas sur Dragon, sauf si un banc de test sécurisé devient disponible : drone attaché sur un cardan.',
-          ],
-        ]),
-        {
-          type: 'paragraph',
-          text: 'Point ouvert : ArduPilot ou PX4, à trancher en phase 2. Le penchant va à ArduPilot : DShot sur toutes les sorties du Pixhawk 6C, scripts Lua, simulateur plus simple, outils sol plus complets. Le matériel est le même : un reflash de dix minutes suffit à changer d’avis.',
-        },
-        {
-          type: 'paragraph',
-          text: 'Ce qui ferait changer d’avis : si le but premier devenait d’apprendre l’automatique et l’embarqué plutôt que d’avoir un drone utile, commencer en parallèle par un petit drone de développement au code de vol entièrement lisible.',
-        },
-      ],
-    },
-    {
-      id: 'adr-002',
-      title: 'ADR-002 : format du châssis',
-      status: 'propose',
-      source: source('decisions/ADR-002-format-chassis.md'),
-      blocks: [
-        { type: 'paragraph', text: 'Date : 2026-11-20.' },
-        {
-          type: 'paragraph',
-          text: 'Le drone doit d’abord voler, puis embarquer un ordinateur compagnon, des caméras et des capteurs (phases 3 à 5). La taille du châssis conditionne le reste : moteurs, hélices, batterie, poids et réglementation.',
-        },
-        {
-          type: 'paragraph',
-          text: 'Décision proposée : un châssis d’environ 500 mm, de type Holybro X500 V2. C’est une plateforme de développement standard : beaucoup de documentation, de la place pour la suite, et des tutoriels qui correspondent à cet usage. L’ADR-002 prévoyait le cadre seul ; l’ADR-003 le remplace par le kit ARF du même châssis.',
-        },
-        rejected('ADR-002', [
-          [
-            '5 pouces FPV (environ 220 mm)',
-            'Très serré pour un Raspberry Pi, des caméras et des capteurs, nerveux en vol stationnaire, 4 à 6 minutes d’autonomie, et un écosystème marginal pour le vol autonome.',
-          ],
-          [
-            '7 pouces longue portée (environ 300 mm)',
-            'Plus robuste et plus léger, environ 1 kg, mais sans plateforme de charge utile, avec peu de documentation ArduPilot pour l’autonomie et une électronique FPV moins standard. Écarté pour l’instant.',
-          ],
-          [
-            'Micro-drone de moins de 250 g',
-            'Une réglementation plus simple, mais l’emport de capteurs devient quasi impossible.',
-          ],
-        ]),
-        risks('ADR-002', [
-          [
-            'Poids sous-estimé : le cadre pèse 610 g, pas environ 400 g. Le drone pèse 1,6 à 1,7 kg en phase 1, environ 2 kg avec la charge des phases 3 et 4.',
-            'Compensé par une poussée réelle plus forte que prévu, 1 332 g par moteur : le rapport poussée/poids reste supérieur à 3.',
-          ],
-          [
-            'Au-delà de 800 g, la réglementation française impose l’enregistrement du drone et un signalement électronique.',
-            'Assumé : les capteurs des phases suivantes l’imposeraient de toute façon.',
-          ],
-          [
-            'Un premier drone de 1,7 kg : une hélice de 10 pouces à plein régime blesse gravement, et un crash coûte des hélices, un bras, parfois un moteur.',
-            'Maintenu : le maintien de position par GPS et un objectif non acrobatique le rendent pilotable. Conditions : 5 heures de simulateur, premiers vols sur un terrain dégagé, jamais à moins de 15 m de soi pendant les essais.',
-          ],
-          [
-            'Casse en apprentissage, alors que les bras, raccords et plaques de rechange étaient en rupture au 2026-11-20.',
-            'Prévoir des hélices et un ou deux bras de rechange, à prendre dès leur retour en stock.',
-          ],
-        ]),
-        {
-          type: 'paragraph',
-          text: 'Ce qui ferait changer d’avis : un budget serré ou l’envie de piloter en FPV mèneraient au 7 pouces, en compromis.',
-        },
-      ],
-    },
-    {
-      id: 'adr-003',
-      title: 'ADR-003 : kit ARF plutôt que pièce par pièce',
-      status: 'propose',
-      source: source('decisions/ADR-003-kit-arf-vs-piece-par-piece.md'),
-      blocks: [
-        { type: 'paragraph', text: 'Date : 2026-11-20.' },
-        {
-          type: 'paragraph',
-          text: 'La première version des fiches recommandait le cadre X500 V2 seul, puis des moteurs 2216 KV920 et des ESC AM32 individuels de 35 à 40 A achetés à part.',
-        },
-        {
-          type: 'paragraph',
-          text: 'La vérification du 2026-11-20 a montré trois choses. Holybro vend un kit ARF (Almost Ready to Fly, presque prêt à voler) qui contient exactement ces moteurs, des ESC de 20 A déjà montés sur les bras, six hélices 1045 et une carte de distribution. Pièce par pièce, c’est plus cher. Et les ESC AM32 individuels de 30 à 45 A sont rares en 2026 : BLHeli_32 n’est plus développé depuis juin 2024, et les bons modèles AM32 sont chers et souvent en rupture.',
-        },
-        {
-          type: 'paragraph',
-          text: 'Décision proposée : le kit ARF X500 V2. Ses quatre moteurs 2216 KV920 sont des T-Motor AIR2216 II sous la marque Holybro, ses quatre ESC BLHeli_S de 20 A sont montés, avec six hélices 1045 et une carte de distribution en XT60. La propulsion est déjà dimensionnée et testée par le fabricant, il y a moins de soudures, et les pièces de rechange sont au catalogue. Le contrôleur de vol Pixhawk 6C et son module de puissance PM02, le GPS M10 et le récepteur ELRS s’achètent à part.',
-        },
-        rejected('ADR-003', [
-          [
-            'Cadre seul, puis moteurs, ESC, hélices et carte de distribution achetés à part',
-            'Le libre choix de chaque pièce, mais plus cher, avec plus de soudures et un risque d’incompatibilité.',
-          ],
-          [
-            'PX4 Development Kit X500 V2 : kit ARF, Pixhawk 6C, PM02, GPS M10 et télémétrie',
-            'Tout-en-un et livré flashé PX4, mais l’économie est faible face au kit ARF et aux mêmes pièces achetées à part. Et sa télémétrie en 915 MHz est illégale en France ; la version 433 MHz était en rupture.',
-          ],
-        ]),
-        risks('ADR-003', [
-          [
-            'Des ESC de 20 A pour des moteurs qui tirent 16,4 A à plein gaz : une marge de 1,22 au lieu du 1,3 de la règle du projet.',
-            'Assumé : le pic de 30 A pendant 10 secondes couvre les à-coups, et le vol stationnaire tire environ 4 A par moteur. La température des ESC est vérifiée après les premiers vols ; au-delà de 80 °C, passage à un ESC 4-en-1 AM32 de 55 A.',
-          ],
-          [
-            'Filtrage RPM : les ESC ne sont pas livrés sous Bluejay, et leur flash n’est confirmé par aucune source.',
-            'À confirmer. Sans ce flash, le drone vole quand même, avec un filtrage des vibrations moins bon.',
-          ],
-          [
-            'Stock : le kit et ses pièces de rechange (tubes de bras, raccords, plaques) étaient en rupture chez certains vendeurs au 2026-11-20.',
-            'Prendre un ou deux bras de rechange dès qu’ils sont disponibles.',
-          ],
-          [
-            'Achat direct chez Holybro, hors de l’Union européenne : les prix sont en dollars hors taxes.',
-            'Ajouter le port, la TVA de 20 % et parfois des frais de dédouanement avant de comparer.',
-          ],
-        ]),
-        {
-          type: 'paragraph',
-          text: 'Ce qui ferait changer d’avis : un kit introuvable en Europe pendant plus de quatre semaines (alors, le cadre seul ou un châssis équivalent), ou une charge utile de plus de 800 g en phase 3 (alors, des moteurs 2814 de 700 KV et des hélices de 12 pouces).',
-        },
-        {
-          type: 'paragraph',
-          text: 'Retour en arrière : les moteurs et les ESC du kit se démontent, et le cadre accepte n’importe quelle propulsion en fixation de 16 × 16 ou 19 × 19 mm.',
-        },
-      ],
-    },
+    ...adrs,
     {
       id: 'erreurs',
       title: 'Challenge : les erreurs corrigées',

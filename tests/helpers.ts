@@ -1,5 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { cellText } from '../src/lib/project-pages';
+import type { Table } from '../src/lib/validate-project-pages';
 
 /** Thèmes à émuler (`colorScheme`) : chaque page est testée dans les deux (ticket #10). */
 export const schemes = ['light', 'dark'] as const;
@@ -91,6 +93,44 @@ export const dataRows = (
     .getByRole('table', { name, exact: true })
     .getByRole('row')
     .filter({ has: page.getByRole('cell') });
+
+/** Le tableau `table`, cherché dans `scope`, affiche toutes ses lignes, chaque cellule à sa place. */
+export const expectTable = async (
+  page: Page,
+  table: Table,
+  scope: Page | Locator = page,
+) => {
+  const shown = dataRows(page, table.caption, scope);
+  await expect(shown).toHaveCount(table.rows.length);
+  for (const [index, row] of table.rows.entries()) {
+    const cells = shown.nth(index).getByRole('cell');
+    await expect(cells).toHaveCount(row.length);
+    // Une valeur par cellule, dans l’ordre ; en liste, chaque cellule commence par le nom de sa colonne.
+    await expect(cells).toContainText(row.map(cellText));
+  }
+};
+
+/** Liens externes vers les seuls dépôts GitHub de HSSRD (donc aucune boutique), images du site seulement. */
+export const expectNoShopLinkNorThirdPartyImage = async (page: Page) => {
+  const hrefs = await page
+    .locator('a[href]')
+    .evaluateAll((links) => links.map((link) => link.getAttribute('href')));
+  expect(hrefs.length).toBeGreaterThan(0);
+  const origin = new URL(page.url()).origin;
+  for (const href of hrefs) {
+    const link = new URL(href ?? '', page.url());
+    if (link.origin === origin) continue;
+    expect(link.href).toMatch(
+      /^https:\/\/github\.com\/HSSRD\/(?:Dragon|Etendard)(?:\/|$)/,
+    );
+  }
+  const sources = await page
+    .locator('img')
+    .evaluateAll((images) =>
+      images.map((image) => (image as HTMLImageElement).src),
+    );
+  for (const source of sources) expect(new URL(source).origin).toBe(origin);
+};
 
 /** Apparences d'une page : thème clair, sombre, puis couleurs forcées (ADR 0016). */
 export const appearances = [
