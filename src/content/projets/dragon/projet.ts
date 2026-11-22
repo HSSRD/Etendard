@@ -10,5 +10,6 @@ export default {
   pages: [
     { slug: '', label: 'Présentation' },
     { slug: 'materiel', label: 'Matériel' },
+    { slug: 'decisions', label: 'Décisions' },
   ],
 } satisfies ProjectMeta;
