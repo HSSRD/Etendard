@@ -74,8 +74,8 @@ mode_pi() {
   # Chemin propre à ce passage : sa ligne dans le journal ne peut venir que de lui.
   local url name absent="/absente-verify-sh-$(date +%s)"
   # À la racine, dans un dossier du site, sous /_expo/static/ (cache d'un an) : trois routes de Caddy.
-  local missing=("$absent" "/projets$absent" "/_expo/static$absent.js")
-  for url in http://127.0.0.1:8080/ "${missing[@]/#/http://127.0.0.1:8080}"; do
+  local missing=("http://127.0.0.1:8080$absent" "http://127.0.0.1:8080/projets$absent" "http://127.0.0.1:8080/_expo/static$absent.js")
+  for url in http://127.0.0.1:8080/ "${missing[@]}"; do
     for name in Content-Security-Policy X-Content-Type-Options Referrer-Policy Permissions-Policy; do
       check "$name sur $url, conforme au Caddyfile" '^conforme$' header "$url" "$name"
     done
@@ -126,13 +126,12 @@ mode_pi() {
   fi
 
   title "Ticket #114 — page 404 du site"
-  # La page +not-found.html d'Expo, avec le statut 404, revalidée comme les pages HTML.
   for url in "${missing[@]}"; do
-    check "$url répond 404" '^HTTP/1.1 404' curl -sSI "http://127.0.0.1:8080$url"
-    check "Content-Type text/html sur $url" '^Content-Type: text/html' served "http://127.0.0.1:8080$url" Content-Type
+    check "$url répond 404" '^HTTP/1.1 404' curl -sSI "$url"
+    check "Content-Type text/html sur $url" '^Content-Type: text/html' served "$url" Content-Type
     check "corps de $url identique à +not-found.html" '^ok$' \
-      sh -c "curl -s 'http://127.0.0.1:8080$url' | cmp -s - /srv/etendard/current/+not-found.html && echo ok"
-    check "Cache-Control sur $url, conforme au Caddyfile (celui des pages)" '^conforme$' header "http://127.0.0.1:8080$url" Cache-Control @html
+      sh -c "curl -s '$url' | cmp -s - /srv/etendard/current/+not-found.html && echo ok"
+    check "Cache-Control sur $url, conforme au Caddyfile (celui des pages)" '^conforme$' header "$url" Cache-Control @html
   done
 
   title "Critère 2 — utilisateur deploy"
