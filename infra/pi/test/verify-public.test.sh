@@ -13,7 +13,7 @@ trap 'rm -rf "$WORK"' EXIT
 awk '{ l = $0; sub(/^[[:space:]]+/, "", l) } l == "header {" { b = 1; next } b && l == "}" { b = 0 }
   b && match(l, /^[A-Za-z-]+ "/) { n = substr(l, 1, RLENGTH - 2); v = substr(l, RLENGTH + 1); sub(/"$/, "", v); print tolower(n) ": " v "\r" }' \
   "$HERE/../Caddyfile" > "$WORK/securite"
-[ "$(grep -c . "$WORK/securite")" -eq 4 ] || { echo "FAIL - en-têtes du Caddyfile illisibles"; exit 1; }
+[ -s "$WORK/securite" ] || { echo "FAIL - en-têtes du Caddyfile illisibles"; exit 1; }
 
 # Faux curl : -sSI ou -D donne le statut et les en-têtes, sinon le corps. Réglages : STUB_SCRIPT (balise ajoutée aux
 # pages, comme une injection de Cloudflare), STUB_CSP (CSP servie), STUB_STATUS_404 (statut d'une page

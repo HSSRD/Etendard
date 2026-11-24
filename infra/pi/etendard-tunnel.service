@@ -1,8 +1,8 @@
 # Cloudflare Tunnel d'Étendard (ticket #125, ADR 0002), installé dans /etc/systemd/system/ par install.sh.
 # Tunnel géré depuis le tableau de bord Cloudflare : sa seule règle (domaine → serveur web local) y est
-# écrite, ce service n'apporte que le jeton. Isolé en plus par etendard-isolation.conf (isolation.conf) ;
-# relancé après une mise à jour par etendard-tunnel-maj.path. Le paquet installé par apt ne se met pas à jour
-# lui-même (il le sait par /usr/local/etc/cloudflared/.installedFromPackageManager).
+# écrite, ce service n'apporte que le jeton. Isolé en plus par etendard-isolation.conf (isolation.conf),
+# relancé par apt quand une mise à jour remplace cloudflared (RELANCE_APRES_MAJ de commun.sh). Installé par
+# apt, cloudflared ne se met pas à jour lui-même (/usr/local/etc/cloudflared/.installedFromPackageManager).
 [Unit]
 Description=Cloudflare Tunnel d'Étendard
 Wants=network-online.target

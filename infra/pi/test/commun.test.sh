@@ -51,7 +51,6 @@ conf "socket SSH refusé" 'nécessaire à l.accès' $'SERVICE=ssh.socket\n'"$com
 conf "service de Tailscale refusé" 'nécessaire à l.accès' $'SERVICE=tailscaled\n'"$complet"
 conf "service isolé (Caddy) refusé" 'nécessaire à l.accès' $'SERVICE=caddy\n'"$complet"
 conf "service du tunnel refusé" 'nécessaire à l.accès' $'SERVICE=etendard-tunnel\n'"$complet"
-conf "relance du tunnel après mise à jour refusée" 'nécessaire à l.accès' $'SERVICE=etendard-tunnel-maj.path\n'"$complet"
 conf "dépôt avec guillemet" 'ligne 1 : DEPOT_EXCLU attend' $'DEPOT_EXCLU=secret"\n'"$complet"
 conf "dépôt avec virgule" 'ligne 1 : DEPOT_EXCLU attend' $'DEPOT_EXCLU=secret,x\n'"$complet"
 conf "dépôt suivi d'une espace" 'ligne 1 : DEPOT_EXCLU attend' $'DEPOT_EXCLU=secret \n'"$complet"
@@ -160,6 +159,22 @@ printf '\r\n  %s \t\r\n\r\n' "$JETON" > "$JETON_TUNNEL"
 jeton "blancs autour, fins de ligne Windows et lignes vides tolérés (comme par cloudflared)" '' '0 600'
 : > "$JETON_TUNNEL"
 jeton "fichier vide : arrêt" 'sur une ligne' '0 600'
+
+# Relance après une mise à jour (#125) : un faux systemctl donne le PID de chaque service (42 pour le tunnel)
+# et note les relances ; un faux readlink marque « (deleted) » le binaire de FAUX_REMPLACE.
+printf '#!/bin/bash\nif [ "$1" = show ]; then [ "$5" = etendard-tunnel.service ] && echo 42 || echo 7; else echo "$*" >> "$WORK/relances"; fi\n' > "$WORK/bin/systemctl"
+printf '#!/bin/bash\n[ "$1" = "/proc/$FAUX_REMPLACE/exe" ] && echo "/usr/bin/x (deleted)" || echo /usr/bin/x\n' > "$WORK/bin/readlink"
+chmod +x "$WORK/bin/systemctl" "$WORK/bin/readlink"
+export WORK
+relance() { # <description> <PID au binaire remplacé> <relances attendues>
+  : > "$WORK/relances"
+  FAUX_REMPLACE="$2" sh -c "$RELANCE_APRES_MAJ" && [ "$(cat "$WORK/relances")" = "$3" ] \
+    && ok "$1" || ko "$1 : $(cat "$WORK/relances")"
+}
+relance "binaire du tunnel remplacé : tunnel relancé, lui seul" 42 'try-restart etendard-tunnel.service'
+relance "aucun binaire remplacé : aucune relance" 99 ''
+grep -q '["\\]' <<<"$RELANCE_APRES_MAJ" && ko "guillemet ou barre oblique inverse dans la commande de relance" \
+  || ok "commande de relance sans guillemet ni barre oblique inverse (chaîne d'apt.conf)"
 
 echo
 echo "$pass réussis, $fail échoués"

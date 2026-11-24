@@ -1,7 +1,0 @@
-# Lancé par etendard-tunnel-maj.path (ticket #125). try-restart : un tunnel arrêté exprès (coupure) le reste.
-[Unit]
-Description=Relance du tunnel d'Étendard après une mise à jour de cloudflared
-
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/systemctl try-restart etendard-tunnel.service

@@ -24,6 +24,8 @@ show=1   # 0 (modes pi et public) : seulement la description et le verdict, sans
 # contrôlé en local (mode pi) et en public sans autre modification.
 mapfile -t EN_TETES_SECURITE < <(awk '{ l = $0; sub(/^[[:space:]]+/, "", l) } l == "header {" { b = 1; next }
   b && l == "}" { b = 0 } b && match(l, /^[A-Za-z-]+ "/) { print substr(l, 1, RLENGTH - 2) }' "$HERE/Caddyfile")
+# Une liste vide ne contrôlerait aucun en-tête, en silence (bloc renommé ou réécrit).
+[ "${#EN_TETES_SECURITE[@]}" -gt 0 ] || { echo "aucun en-tête de sécurité lu dans le bloc « header { » du Caddyfile" >&2; exit 1; }
 
 # probe <attendu|interdit> <description> <motif grep -E> <commande...> :
 # affiche la commande, sa sortie et le verdict.
@@ -291,22 +293,23 @@ mode_pi() {
   title "Ticket #125 — Cloudflare Tunnel"
   controler_jeton
   verdict $? "jeton à root, lisible par root seul, sans la commande qui l'entoure"
-  check "clé du dépôt de Cloudflare : empreinte attendue" "^$EMPREINTE_CLOUDFLARE\$" \
-    empreinte_cle /usr/share/keyrings/cloudflare-public-v2.gpg
+  check "clé du dépôt de Cloudflare : empreinte attendue" "^$EMPREINTE_CLOUDFLARE\$" empreinte_cle "$CLE_CLOUDFLARE"
+  [ "$(cat /etc/apt/sources.list.d/cloudflared.list)" = "$DEPOT_CLOUDFLARE" ]
+  verdict $? "dépôt de Cloudflare signé par cette clé, et seulement par elle"
   check "cloudflared installé" '^cloudflared version ' cloudflared --version
-  for f in "${UNITES_TUNNEL[@]}"; do
-    check "$f identique à ce dossier" '^ok$' sh -c "cmp /etc/systemd/system/$f '$HERE/$f' && echo ok"
-  done
+  check "relance après une mise à jour qui remplace un binaire" '^ok$' \
+    sh -c "apt-config dump DPkg::Post-Invoke | grep -qF -- \"\$1\" && echo ok" sh "$RELANCE_APRES_MAJ"
+  check "service identique à ce dossier" '^ok$' sh -c "cmp /etc/systemd/system/etendard-tunnel.service '$HERE/etendard-tunnel.service' && echo ok"
   check "démarre au boot" '^enabled$' systemctl is-enabled etendard-tunnel
   check "actif" '^active$' systemctl is-active etendard-tunnel
-  check "relance après une mise à jour de cloudflared active" '^active$' systemctl is-active etendard-tunnel-maj.path
   pid="$(systemctl show -p MainPID --value etendard-tunnel)"
   check "processus sous un utilisateur sans privilèges" '^Uid:([[:space:]]+[1-9][0-9]*){4}$' grep '^Uid:' "/proc/$pid/status"
   # Le jeton passe à grep par un descripteur (printf est interne à bash) : jamais dans une ligne de commande.
+  # Seul le code 1 de grep (rien trouvé) vaut preuve : 2 dit qu'il n'a pas pu lire.
   local jeton
   jeton="$(lire_jeton)"
-  [ -n "$jeton" ] && [ -r "/proc/$pid/cmdline" ] && [ -r "/proc/$pid/environ" ] \
-    && ! grep -qaFf <(printf '%s\n' "$jeton") "/proc/$pid/cmdline" "/proc/$pid/environ"
+  [ -n "$jeton" ] && grep -qaFf <(printf '%s\n' "$jeton") "/proc/$pid/cmdline" "/proc/$pid/environ"
+  [ $? -eq 1 ] && [ -n "$jeton" ]
   verdict $? "jeton absent de la ligne de commande (ps) et de l'environnement du service"
   # ss lit le processus de chaque port, filtré sur celui du tunnel (un autre cloudflared du Pi ne compte pas) :
   # la première ligne prouve qu'il le voit, la seconde qu'aucun autre port.

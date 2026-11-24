@@ -139,18 +139,17 @@ systemctl is-active caddy
 step "Paquet cloudflared (dépôt apt officiel de Cloudflare, clé vérifiée par son empreinte)"
 # Selon le dépôt, pas le paquet : un cloudflared installé d'ailleurs reçoit ainsi aussi les mises à jour. Une
 # autre clé ou une autre ligne (anciennes instructions de Cloudflare) est remplacée.
-cle=/usr/share/keyrings/cloudflare-public-v2.gpg
-depot="deb [signed-by=$cle] https://pkg.cloudflare.com/cloudflared any main"
-if [ "$(empreinte_cle "$cle")" != "$EMPREINTE_CLOUDFLARE" ] || [ "$(cat /etc/apt/sources.list.d/cloudflared.list 2>/dev/null)" != "$depot" ]; then
+if [ "$(empreinte_cle "$CLE_CLOUDFLARE")" != "$EMPREINTE_CLOUDFLARE" ] \
+  || [ "$(cat /etc/apt/sources.list.d/cloudflared.list 2>/dev/null)" != "$DEPOT_CLOUDFLARE" ]; then
   paquets curl gpg
-  curl -fsSL https://pkg.cloudflare.com/cloudflare-public-v2.gpg -o "$cle.new"
-  if [ "$(empreinte_cle "$cle.new")" != "$EMPREINTE_CLOUDFLARE" ]; then
-    rm -f "$cle.new"
+  curl -fsSL https://pkg.cloudflare.com/cloudflare-public-v2.gpg -o "$CLE_CLOUDFLARE.new"
+  if [ "$(empreinte_cle "$CLE_CLOUDFLARE.new")" != "$EMPREINTE_CLOUDFLARE" ]; then
+    rm -f "$CLE_CLOUDFLARE.new"
     die "la clé servie par pkg.cloudflare.com n'est pas celle attendue (EMPREINTE_CLOUDFLARE de commun.sh) : dépôt non ajouté"
   fi
-  chmod 644 "$cle.new"
-  mv -f "$cle.new" "$cle"
-  echo "$depot" > /etc/apt/sources.list.d/cloudflared.list
+  chmod 644 "$CLE_CLOUDFLARE.new"
+  mv -f "$CLE_CLOUDFLARE.new" "$CLE_CLOUDFLARE"
+  echo "$DEPOT_CLOUDFLARE" > /etc/apt/sources.list.d/cloudflared.list
   # Relu même si cloudflared est déjà installé : sans lui, les mises à jour automatiques ignoreraient ce dépôt.
   apt-get update
   apt_a_jour=1
@@ -159,16 +158,12 @@ paquets cloudflared
 cloudflared --version
 
 step "Service du tunnel (démarré en dernier, une fois le serveur durci)"
-unites_changees=0 tunnel_changed=0
-for f in "${UNITES_TUNNEL[@]}"; do
-  if ! cmp -s "$HERE/$f" "/etc/systemd/system/$f"; then
-    install -o root -g root -m 644 "$HERE/$f" "/etc/systemd/system/$f"
-    unites_changees=1
-    # Seul un changement du service lui-même demande de relancer le tunnel (coupure du site).
-    [ "$f" != etendard-tunnel.service ] || tunnel_changed=1
-  fi
-done
-[ "$unites_changees" = 0 ] || systemctl daemon-reload
+tunnel_changed=0
+if ! cmp -s "$HERE/etendard-tunnel.service" /etc/systemd/system/etendard-tunnel.service; then
+  install -o root -g root -m 644 "$HERE/etendard-tunnel.service" /etc/systemd/system/etendard-tunnel.service
+  systemctl daemon-reload
+  tunnel_changed=1
+fi
 
 # --- Isolation des services exposés (#113, critère 7) -------------------------
 # score <unité> : niveau d'exposition de systemd-analyze security (0 : isolé, 10 : aucune isolation).
@@ -218,6 +213,8 @@ maj=/etc/apt/apt.conf.d/52etendard-maj-auto
   echo 'APT::Periodic::Unattended-Upgrade "1";'
   echo '// Pas de redémarrage automatique : verify.sh pi signale celui qui est en attente.'
   echo 'Unattended-Upgrade::Automatic-Reboot "false";'
+  echo '// Services isolés relancés quand une mise à jour remplace leur binaire (#125 : cloudflared ne le fait pas seul).'
+  echo "DPkg::Post-Invoke { \"$RELANCE_APRES_MAJ\"; };"
   echo 'Unattended-Upgrade::Origins-Pattern {'
   maj_paquets=("$noyau" "${PAQUETS_MAJ_AUTO[@]}")
   mapfile -t motifs < <(origines_maj "${maj_paquets[@]}")
@@ -319,15 +316,14 @@ systemctl is-active etendard-pare-feu
 
 # --- Mise en ligne (#125) ------------------------------------------------------
 # En dernier : un arrêt plus haut (die) laisse le site hors ligne plutôt que public sur un serveur à moitié durci.
-step "Tunnel Cloudflare (mise en ligne) et sa relance après une mise à jour de cloudflared"
-systemctl enable etendard-tunnel etendard-tunnel-maj.path
-systemctl start etendard-tunnel-maj.path
+step "Tunnel Cloudflare (mise en ligne)"
+systemctl enable etendard-tunnel
 if [ "$tunnel_changed" = 1 ] || ! systemctl is-active --quiet etendard-tunnel; then
   # Type=notify : le redémarrage ne réussit qu'une fois le tunnel connecté à Cloudflare.
   systemctl restart etendard-tunnel \
-    || die "le tunnel ne se connecte pas à Cloudflare (jeton révoqué ? réseau ? isolation ?) : journalctl -u etendard-tunnel"
+    || die "le tunnel ne se connecte pas à Cloudflare : journalctl -u etendard-tunnel (jeton révoqué ? réseau ? Si le journal montre un refus du système, essaie sans isolation : README.md, « Retour arrière »)"
 fi
-systemctl is-active etendard-tunnel etendard-tunnel-maj.path
+systemctl is-active etendard-tunnel
 
 step "Terminé. Avant de fermer cette session, ouvre-en une nouvelle depuis le réseau local et depuis le tailnet (README.md)."
 echo "Preuves : sudo bash verify.sh pi (sur le Pi), puis HOST=<hote-du-pi> FLO=<login>@<ip-du-pi> bash verify.sh ssh et bash verify.sh public <domaine> (sur le PC)."

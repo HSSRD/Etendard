@@ -6,12 +6,21 @@ ETENDARD_CONF="${ETENDARD_CONF:-/etc/etendard/serveur.conf}"
 
 # Logiciels exposés : mises à jour automatiques (avec le noyau en cours) et isolation systemd, appliquées
 # par install.sh, contrôlées par verify.sh. Pour en ajouter un : son paquet dans PAQUETS_MAJ_AUTO, son unité
-# et les dossiers où elle écrit dans SERVICES_ISOLES (le tunnel n'écrit nulle part, #125). Si son paquet ne
-# relance pas le service après une mise à jour, comme cloudflared : une unité .path (etendard-tunnel-maj.path).
+# et les dossiers où elle écrit dans SERVICES_ISOLES (le tunnel n'écrit nulle part, #125). Un service isolé
+# est relancé après une mise à jour qui remplace son binaire (RELANCE_APRES_MAJ), même si son paquet ne le
+# fait pas (cloudflared).
 PAQUETS_MAJ_AUTO=(caddy tailscale cloudflared)
 declare -A SERVICES_ISOLES=([caddy.service]="/var/lib/caddy /var/log/caddy" [etendard-tunnel.service]="")
-# Unités du tunnel (#125), copiées par install.sh dans /etc/systemd/system/ et comparées par verify.sh.
-UNITES_TUNNEL=(etendard-tunnel.service etendard-tunnel-maj.service etendard-tunnel-maj.path)
+
+# Commande lancée par apt après chaque passage de dpkg (DPkg::Post-Invoke, écrite par install.sh) : relance
+# chaque service isolé dont le processus tourne encore sur un binaire remplacé (« (deleted) »). Après dpkg,
+# pas avant : le nouveau binaire est alors en place. try-restart : un service arrêté exprès le reste.
+# Ni guillemet ni barre oblique inverse : la commande entre telle quelle dans une chaîne d'apt.conf.
+RELANCE_APRES_MAJ="for u in ${!SERVICES_ISOLES[*]}; do p=\$(systemctl show -p MainPID --value \$u); readlink /proc/\$p/exe | grep -q deleted && systemctl try-restart \$u; done; true"
+
+# Dépôt apt de Cloudflare (#125), écrit par install.sh dans /etc/apt/sources.list.d/cloudflared.list.
+CLE_CLOUDFLARE=/usr/share/keyrings/cloudflare-public-v2.gpg
+DEPOT_CLOUDFLARE="deb [signed-by=$CLE_CLOUDFLARE] https://pkg.cloudflare.com/cloudflared any main"
 # Nécessaires à l'accès de Flo ou au déploiement, en plus des services isolés : jamais masqués.
 SERVICES_PROTEGES=(ssh.service sshd.service ssh.socket tailscaled.service etendard-pare-feu.service)
 
@@ -52,7 +61,7 @@ lire_conf() {
         # Masquer l'un d'eux couperait l'accès de Flo, le déploiement ou le site (sans suffixe, systemd lit .service).
         unite="$value"
         [[ "$unite" == *.* ]] || unite+=.service
-        for p in "${SERVICES_PROTEGES[@]}" "${!SERVICES_ISOLES[@]}" "${UNITES_TUNNEL[@]}"; do
+        for p in "${SERVICES_PROTEGES[@]}" "${!SERVICES_ISOLES[@]}"; do
           if [ "$unite" = "$p" ]; then
             echo "$f, ligne $n : ce service est nécessaire à l'accès ou au site, il ne peut pas être désactivé" >&2; return 1
           fi

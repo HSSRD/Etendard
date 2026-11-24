@@ -11,7 +11,6 @@ Ce qui est en place et pourquoi : [FONCTIONNEMENT.md](FONCTIONNEMENT.md). Ce REA
 | `serveur.conf.exemple` | Format du fichier local `/etc/etendard/serveur.conf`, aux valeurs neutres |
 | `sshd-etendard.conf`, `isolation.conf`, `etendard-pare-feu.service` | SSH par clé uniquement, isolation systemd de Caddy et du tunnel, pare-feu d'entrée |
 | `etendard-tunnel.service` | Service du tunnel : utilisateur sans privilèges, jeton passé par systemd, aucune écoute hors de la boucle locale |
-| `etendard-tunnel-maj.path`, `etendard-tunnel-maj.service` | Relance du tunnel quand une mise à jour remplace `cloudflared` |
 | `Caddyfile` | Caddy sur `127.0.0.1:8080` uniquement, racine `/srv/etendard/current`, pages sans extension, page 404, en-têtes de sécurité, cache de `/_expo/static/`, des pages HTML et de `version.txt`, journal d'accès |
 | `etendard-receive` | Seule commande de la clé de déploiement : réception (stdin), `rollback`, `restore <sha>`, `status` |
 | `verify.sh` | Preuves des critères 1 à 5 du ticket #4, des en-têtes et du journal (#25), du cache de `/_expo/static/` (#36), des pages HTML et de `version.txt` (#52), de HSTS sur le domaine public (#41), des pages sans extension (#106), de la page 404 (#114), du durcissement (#113), du tunnel et du site public (#125) |
@@ -127,14 +126,16 @@ Pendant la coupure, Cloudflare répond par sa page d'erreur ; Caddy, les service
 Pour retirer le tunnel du Pi (le site reste servi en local, comme avant #125) :
 
 ```bash
-sudo systemctl disable --now etendard-tunnel etendard-tunnel-maj.path
-sudo rm -r /etc/systemd/system/etendard-tunnel.service /etc/systemd/system/etendard-tunnel.service.d /etc/systemd/system/etendard-tunnel-maj.* && sudo systemctl daemon-reload
+sudo systemctl disable --now etendard-tunnel
+sudo rm -r /etc/systemd/system/etendard-tunnel.service /etc/systemd/system/etendard-tunnel.service.d && sudo systemctl daemon-reload
 sudo apt-get purge -y cloudflared
 sudo rm /etc/apt/sources.list.d/cloudflared.list /usr/share/keyrings/cloudflare-public-v2.gpg /etc/etendard/tunnel.jeton
 gh variable delete SITE_URL --env production -R HSSRD/Etendard   # sur le PC
 ```
 
 Puis supprime le tunnel dans Cloudflare (Zero Trust > Networks > Tunnels) : son jeton ne vaut plus rien. Tant que la version de `infra/pi/` qui l'installe reste dans `main`, `install.sh` s'arrête faute de jeton : reviens au commit d'avant #125 pour le relancer.
+
+**Si le tunnel ne démarre pas sous son isolation** (`journalctl -u etendard-tunnel` montre un appel ou une famille d'adresses refusés) : `sudo rm /etc/systemd/system/etendard-tunnel.service.d/etendard-isolation.conf && sudo systemctl daemon-reload && sudo systemctl restart etendard-tunnel`, puis signale la ligne du journal dans un ticket : `isolation.conf` est à ajuster. Un `install.sh` relancé remet l'isolation.
 
 ## À la mise en ligne : HSTS chez Cloudflare
 
