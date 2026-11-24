@@ -1,0 +1,26 @@
+# Cloudflare Tunnel d'Étendard (ticket #125, ADR 0002), installé dans /etc/systemd/system/ par install.sh.
+# Tunnel géré depuis le tableau de bord Cloudflare : sa seule règle (domaine → serveur web local) y est
+# écrite, ce service n'apporte que le jeton. Isolé en plus par etendard-isolation.conf (isolation.conf),
+# relancé par apt quand une mise à jour remplace cloudflared (RELANCE_APRES_MAJ de commun.sh). Installé par
+# apt, cloudflared ne se met pas à jour lui-même (/usr/local/etc/cloudflared/.installedFromPackageManager).
+[Unit]
+Description=Cloudflare Tunnel d'Étendard
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+# Utilisateur créé par systemd à chaque démarrage, sans privilèges ni dossier.
+DynamicUser=yes
+# Le jeton, lisible par root seul, est copié par systemd dans un dossier propre au service : ni dans la
+# ligne de commande (visible par ps), ni dans l'environnement.
+LoadCredential=jeton:/etc/etendard/tunnel.jeton
+# Prêt (systemctl start rend la main) une fois connecté à Cloudflare.
+Type=notify
+# --metrics : le seul port ouvert par cloudflared, sur la boucle locale, au numéro choisi par le système.
+# --protocol http2 : connexions TCP sortantes ; QUIC ouvrirait un port UDP sur toutes les interfaces.
+ExecStart=/usr/bin/cloudflared tunnel --metrics 127.0.0.1:0 run --protocol http2 --token-file ${CREDENTIALS_DIRECTORY}/jeton
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

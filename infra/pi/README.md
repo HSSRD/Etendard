@@ -1,22 +1,24 @@
 # Pi : recevoir et servir Étendard
 
-Prépare le Pi au déploiement décrit dans les ADR 0002 et 0006 (ticket #4) et le durcit (ADR 0017, ticket #113). Le workflow `deploy.yml` (#5) y dépose le site à chaque merge ; ses secrets se saisissent comme indiqué dans [FONCTIONNEMENT.md](FONCTIONNEMENT.md#les-secrets-de-lenvironment-production).
+Prépare le Pi au déploiement décrit dans les ADR 0002 et 0006 (ticket #4), le durcit (ADR 0017, ticket #113) et le met en ligne par Cloudflare Tunnel (ticket #125). Le workflow `deploy.yml` (#5) y dépose le site à chaque merge ; ses secrets se saisissent comme indiqué dans [FONCTIONNEMENT.md](FONCTIONNEMENT.md#les-secrets-de-lenvironment-production).
 
 Ce qui est en place et pourquoi : [FONCTIONNEMENT.md](FONCTIONNEMENT.md). Ce README ne donne que les étapes.
 
 | Fichier | Rôle |
 | --- | --- |
-| `install.sh` | Installation root, idempotente : Caddy, utilisateur `deploy`, `/srv/etendard`, `etendard-receive`, clé à commande forcée ; durcissement (#113) |
-| `commun.sh` | Fonctions de `install.sh` et `verify.sh` : lecture du fichier local, garde-fou SSH, dépôts des mises à jour, logiciels exposés |
+| `install.sh` | Installation root, idempotente : Caddy, utilisateur `deploy`, `/srv/etendard`, `etendard-receive`, clé à commande forcée ; durcissement (#113) ; `cloudflared` et son service (#125) |
+| `commun.sh` | Fonctions de `install.sh` et `verify.sh` : lecture du fichier local et du jeton du tunnel, garde-fou SSH, dépôts des mises à jour, logiciels exposés |
 | `serveur.conf.exemple` | Format du fichier local `/etc/etendard/serveur.conf`, aux valeurs neutres |
-| `sshd-etendard.conf`, `isolation.conf`, `etendard-pare-feu.service` | SSH par clé uniquement, isolation systemd de Caddy, pare-feu d'entrée |
+| `sshd-etendard.conf`, `isolation.conf`, `etendard-pare-feu.service` | SSH par clé uniquement, isolation systemd de Caddy et du tunnel, pare-feu d'entrée |
+| `etendard-tunnel.service` | Service du tunnel : utilisateur sans privilèges, jeton passé par systemd, aucune écoute hors de la boucle locale |
 | `Caddyfile` | Caddy sur `127.0.0.1:8080` uniquement, racine `/srv/etendard/current`, pages sans extension, page 404, en-têtes de sécurité, cache de `/_expo/static/`, des pages HTML et de `version.txt`, journal d'accès |
 | `etendard-receive` | Seule commande de la clé de déploiement : réception (stdin), `rollback`, `restore <sha>`, `status` |
-| `verify.sh` | Preuves des critères 1 à 5 du ticket #4, des en-têtes et du journal (#25), du cache de `/_expo/static/` (#36), des pages HTML et de `version.txt` (#52), de HSTS sur le domaine public (#41), des pages sans extension (#106), de la page 404 (#114), du durcissement (#113) |
+| `verify.sh` | Preuves des critères 1 à 5 du ticket #4, des en-têtes et du journal (#25), du cache de `/_expo/static/` (#36), des pages HTML et de `version.txt` (#52), de HSTS sur le domaine public (#41), des pages sans extension (#106), de la page 404 (#114), du durcissement (#113), du tunnel et du site public (#125) |
 | `tailscale-policy.hujson`, `tailscale-checklist.md` | Critères 6 et 7 |
 | `test/etendard-receive.test.sh` | Tests locaux du script (archives saines et piégées) |
 | `test/verify-hsts.test.sh` | Tests locaux de `verify.sh hsts`, avec un faux `curl` |
-| `test/commun.test.sh`, `test/verify-pi.test.sh` | Tests locaux du fichier local, du garde-fou SSH et de la sortie de `verify.sh pi` (aucune valeur du serveur) |
+| `test/verify-public.test.sh` | Tests locaux de `verify.sh public`, avec un faux `curl` |
+| `test/commun.test.sh`, `test/verify-pi.test.sh` | Tests locaux du fichier local, du jeton du tunnel, du garde-fou SSH et de la sortie de `verify.sh pi` (aucune valeur du serveur) |
 
 ## Ordre des étapes
 
@@ -46,7 +48,7 @@ Ce qui est en place et pourquoi : [FONCTIONNEMENT.md](FONCTIONNEMENT.md). Ce REA
 
 ## Durcir le serveur (#113)
 
-Ce qui est appliqué et pourquoi : [FONCTIONNEMENT.md](FONCTIONNEMENT.md#le-durcissement-du-serveur-113). `install.sh` change SSH et le pare-feu en dernier, et s'arrête avant tout changement si le fichier local est absent ou invalide, si ton compte n'a aucune clé SSH autorisée, ou si un port est redirigé avant le pare-feu.
+Ce qui est appliqué et pourquoi : [FONCTIONNEMENT.md](FONCTIONNEMENT.md#le-durcissement-du-serveur-113). `install.sh` change SSH et le pare-feu en dernier, et s'arrête avant tout changement si le fichier local ou le jeton du tunnel ([Mettre en ligne](#mettre-en-ligne-125), étapes 1 et 2) est absent ou invalide, si ton compte n'a aucune clé SSH autorisée, ou si un port est redirigé avant le pare-feu.
 
 ### Avant d'appliquer
 
@@ -88,6 +90,52 @@ sudo rm /etc/apt/apt.conf.d/52etendard-maj-auto           # mises à jour automa
 **Sans réseau**, avec un clavier et un écran sur le Pi : connecte-toi sur la console (les mots de passe y restent acceptés : seul SSH les refuse) et lance les mêmes commandes.
 
 **Sans réseau ni écran** : éteins le Pi, branche son support sur un autre ordinateur et, dans sa partition système (Linux, ou un outil qui lit ext4), supprime `etc/systemd/system/sysinit.target.wants/etendard-pare-feu.service` (le pare-feu ne se charge plus) et `etc/ssh/sshd_config.d/00-etendard.conf` (SSH accepte de nouveau les mots de passe). Remets le support et redémarre.
+
+## Mettre en ligne (#125)
+
+Ce qui est en place et pourquoi : [FONCTIONNEMENT.md](FONCTIONNEMENT.md#cloudflare-tunnel-125). `install.sh` installe le tunnel en même temps que le reste : il s'arrête avant tout changement tant que le jeton manque. Le durcissement (#113) se fait donc dans le même passage, avec les précautions de [Durcir le serveur](#durcir-le-serveur-113).
+
+1. **Dans Cloudflare**, fais toute la [liste des réglages](FONCTIONNEMENT.md#réglages-dans-cloudflare) : le site sera public dès que le tunnel démarrera.
+2. **Le jeton**, sur le Pi : un fichier lisible par root seul, puis colle le jeton (seul, sans `sudo cloudflared service install`) dans l'éditeur. Il ne passe ainsi ni par l'historique du shell ni par une ligne de commande.
+   ```bash
+   sudo install -d -m 755 /etc/etendard
+   sudo install -m 600 /dev/null /etc/etendard/tunnel.jeton
+   sudo nano /etc/etendard/tunnel.jeton
+   ```
+3. **Appliquer**, depuis ce dossier sur le Pi : `sudo bash install.sh <clé publique de déploiement>` (étapes de [Appliquer](#appliquer) si #113 n'est pas encore en place). Le tunnel démarre en dernier, après le pare-feu. Note le score `systemd-analyze security` de `etendard-tunnel.service`, à coller dans le ticket.
+4. **Prouver** : sur le Pi, `sudo bash verify.sh pi` ; depuis le PC, dans le bash de Git, avec le nom qui sert le site seul (sans `https://` ni `/`, sous sa forme `xn--…` s'il a des accents) :
+   ```bash
+   bash infra/pi/verify.sh public <domaine>
+   ```
+   Les deux bilans doivent être sans ❌ ; leurs sorties se collent telles quelles dans le ticket (elles ne contiennent ni le domaine, ni adresse, ni jeton). En cas d'échec, `DETAIL=1` devant la commande affiche chaque requête et sa réponse (à ne pas coller).
+5. **Le test de fumée du déploiement** : crée la variable `SITE_URL` ([FONCTIONNEMENT.md](FONCTIONNEMENT.md#les-secrets-de-lenvironment-production)). Le déploiement suivant lit alors `version.txt` sur le domaine et revient en arrière s'il ne sert pas le nouveau SHA.
+
+**Après un changement de jeton** (« Refresh token » dans Cloudflare) : remplace-le dans `/etc/etendard/tunnel.jeton` (`sudo nano`), puis `sudo systemctl restart etendard-tunnel` ; le service ne le relit qu'à son démarrage.
+
+### Couper et relancer la mise en ligne
+
+```bash
+sudo systemctl disable --now etendard-tunnel   # site hors ligne, même après un redémarrage
+sudo systemctl enable --now etendard-tunnel    # site de nouveau en ligne
+```
+
+Pendant la coupure, Cloudflare répond par sa page d'erreur ; Caddy, les services existants et le déploiement par le tailnet continuent. Mais chaque déploiement échouerait au test de fumée public, puis reviendrait en arrière : supprime la variable le temps de la coupure (`gh variable delete SITE_URL --env production -R HSSRD/Etendard`), et recrée-la à la relance. `verify.sh pi` signale le tunnel arrêté, et `install.sh` le relance : ne le relance pas pendant une coupure voulue.
+
+### Retour arrière
+
+Pour retirer le tunnel du Pi (le site reste servi en local, comme avant #125) :
+
+```bash
+sudo systemctl disable --now etendard-tunnel
+sudo rm -r /etc/systemd/system/etendard-tunnel.service /etc/systemd/system/etendard-tunnel.service.d && sudo systemctl daemon-reload
+sudo apt-get purge -y cloudflared
+sudo rm /etc/apt/sources.list.d/cloudflared.list /usr/share/keyrings/cloudflare-public-v2.gpg /etc/etendard/tunnel.jeton
+gh variable delete SITE_URL --env production -R HSSRD/Etendard   # sur le PC
+```
+
+Puis supprime le tunnel dans Cloudflare (Zero Trust > Networks > Tunnels) : son jeton ne vaut plus rien. Tant que la version de `infra/pi/` qui l'installe reste dans `main`, `install.sh` s'arrête faute de jeton : reviens au commit d'avant #125 pour le relancer.
+
+**Si le tunnel ne démarre pas sous son isolation** (`journalctl -u etendard-tunnel` montre un appel ou une famille d'adresses refusés) : `sudo rm /etc/systemd/system/etendard-tunnel.service.d/etendard-isolation.conf && sudo systemctl daemon-reload && sudo systemctl restart etendard-tunnel`, puis signale la ligne du journal dans un ticket : `isolation.conf` est à ajuster. Un `install.sh` relancé remet l'isolation.
 
 ## À la mise en ligne : HSTS chez Cloudflare
 

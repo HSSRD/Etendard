@@ -50,6 +50,7 @@ conf "service SSH refusé" 'nécessaire à l.accès' $'SERVICE=ssh.service\n'"$c
 conf "socket SSH refusé" 'nécessaire à l.accès' $'SERVICE=ssh.socket\n'"$complet"
 conf "service de Tailscale refusé" 'nécessaire à l.accès' $'SERVICE=tailscaled\n'"$complet"
 conf "service isolé (Caddy) refusé" 'nécessaire à l.accès' $'SERVICE=caddy\n'"$complet"
+conf "service du tunnel refusé" 'nécessaire à l.accès' $'SERVICE=etendard-tunnel\n'"$complet"
 conf "dépôt avec guillemet" 'ligne 1 : DEPOT_EXCLU attend' $'DEPOT_EXCLU=secret"\n'"$complet"
 conf "dépôt avec virgule" 'ligne 1 : DEPOT_EXCLU attend' $'DEPOT_EXCLU=secret,x\n'"$complet"
 conf "dépôt suivi d'une espace" 'ligne 1 : DEPOT_EXCLU attend' $'DEPOT_EXCLU=secret \n'"$complet"
@@ -118,6 +119,62 @@ printf '#!/bin/bash\necho 6.1.0-temoin\n' > "$WORK/bin/uname"
 printf '#!/bin/bash\necho "noyau-temoin:arm64: /boot/vmlinuz-6.1.0-temoin"\n' > "$WORK/bin/dpkg"
 chmod +x "$WORK/bin/uname" "$WORK/bin/dpkg"
 [ "$(paquet_noyau)" = noyau-temoin:arm64 ] && ok "paquet du noyau avec son architecture" || ko "paquet du noyau : $(paquet_noyau)"
+
+# Jeton du tunnel (#125) : un faux stat donne le propriétaire et les droits (FAUX_DROITS), que le bash de
+# Git ne sait pas poser. Un message ne doit jamais recopier le jeton : JETON en sert de témoin.
+printf '#!/bin/bash\necho "$FAUX_DROITS"\n' > "$WORK/bin/stat"
+chmod +x "$WORK/bin/stat"
+JETON=eyJhIjoiamV0b24tdGVtb2luIn0aBcD0123456789
+export JETON_TUNNEL="$WORK/tunnel.jeton"
+jeton() { # <description> <motif attendu dans l'erreur, vide si le jeton est accepté> <droits>
+  local err code
+  err="$(FAUX_DROITS="$3" controler_jeton 2>&1)"; code=$?
+  if [ -z "$2" ]; then
+    [ "$code" -eq 0 ] && ok "$1" || ko "$1 : refusé ($err)"
+  elif [ "$code" -eq 0 ]; then
+    ko "$1 : accepté"
+  elif ! grep -q -- "$2" <<<"$err"; then
+    ko "$1 : message inattendu ($err)"
+  elif grep -qF "$JETON" <<<"$err"; then
+    ko "$1 : le jeton est recopié ($err)"
+  else
+    ok "$1"
+  fi
+}
+jeton "jeton absent : arrêt expliqué" 'jeton du tunnel absent' '0 600'
+mkdir "$JETON_TUNNEL"
+jeton "dossier au lieu d'un fichier" "n'est pas un fichier ordinaire" '0 600'
+rmdir "$JETON_TUNNEL"
+printf '%s\n' "$JETON" > "$JETON_TUNNEL"
+jeton "jeton à root, 600 : accepté" '' '0 600'
+jeton "jeton à root, 400 : accepté" '' '0 400'
+jeton "lisible par le groupe : arrêt" "n'être lisible que par lui" '0 640'
+jeton "lisible par tous : arrêt" "n'être lisible que par lui" '0 644'
+jeton "propriétaire autre que root : arrêt" "doit appartenir à root" '1000 600'
+printf 'sudo cloudflared service install %s\n' "$JETON" > "$JETON_TUNNEL"
+jeton "commande entière copiée : arrêt" 'sans la commande' '0 600'
+printf '%s\n%s\n' "$JETON" "$JETON" > "$JETON_TUNNEL"
+jeton "deux lignes : arrêt" 'sur une ligne' '0 600'
+printf '\r\n  %s \t\r\n\r\n' "$JETON" > "$JETON_TUNNEL"
+jeton "blancs autour, fins de ligne Windows et lignes vides tolérés (comme par cloudflared)" '' '0 600'
+: > "$JETON_TUNNEL"
+jeton "fichier vide : arrêt" 'sur une ligne' '0 600'
+
+# Relance après une mise à jour (#125) : un faux systemctl donne le PID de chaque service (42 pour le tunnel)
+# et note les relances ; un faux readlink marque « (deleted) » le binaire de FAUX_REMPLACE.
+printf '#!/bin/bash\nif [ "$1" = show ]; then [ "$5" = etendard-tunnel.service ] && echo 42 || echo 7; else echo "$*" >> "$WORK/relances"; fi\n' > "$WORK/bin/systemctl"
+printf '#!/bin/bash\n[ "$1" = "/proc/$FAUX_REMPLACE/exe" ] && echo "/usr/bin/x (deleted)" || echo /usr/bin/x\n' > "$WORK/bin/readlink"
+chmod +x "$WORK/bin/systemctl" "$WORK/bin/readlink"
+export WORK
+relance() { # <description> <PID au binaire remplacé> <relances attendues>
+  : > "$WORK/relances"
+  FAUX_REMPLACE="$2" sh -c "$RELANCE_APRES_MAJ" && [ "$(cat "$WORK/relances")" = "$3" ] \
+    && ok "$1" || ko "$1 : $(cat "$WORK/relances")"
+}
+relance "binaire du tunnel remplacé : tunnel relancé, lui seul" 42 'try-restart etendard-tunnel.service'
+relance "aucun binaire remplacé : aucune relance" 99 ''
+grep -q '["\\]' <<<"$RELANCE_APRES_MAJ" && ko "guillemet ou barre oblique inverse dans la commande de relance" \
+  || ok "commande de relance sans guillemet ni barre oblique inverse (chaîne d'apt.conf)"
 
 echo
 echo "$pass réussis, $fail échoués"

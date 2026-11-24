@@ -1,13 +1,15 @@
 #!/bin/bash
 # Produit les preuves des critères 1 à 5 du ticket #4, à coller en commentaire, du critère 4 du ticket #25,
 # du critère 2 du ticket #36, du critère 3 du ticket #52, des critères 1 et 2 du ticket #41, du ticket #106,
-# des critères 1 et 2 du ticket #114 et des critères 4 à 8 du ticket #113.
+# des critères 1 et 2 du ticket #114, des critères 4 à 8 du ticket #113 et des critères 3 et 6 du ticket #125.
 #   sudo bash verify.sh pi      sur le Pi, après install.sh (critères 1, 2, 3 et verrou ; en-têtes, journal, cache, page 404 ;
-#                               durcissement). Sortie sans adresse, nom de machine, port ni liste de logiciels :
+#                               durcissement ; tunnel). Sortie sans adresse, nom de machine, port ni liste de logiciels :
 #                               elle se colle telle quelle dans un ticket. « sudo DETAIL=1 bash verify.sh pi »
 #                               affiche aussi chaque commande et sa sortie, pour chercher une panne (à ne pas coller).
 #   HOST=… FLO=… bash verify.sh ssh   sur le PC, avec la clé privée (critères 1, 4 et 5)
 #   bash verify.sh hsts <domaine>   depuis n'importe quel poste, une fois le site en ligne (HSTS de Cloudflare)
+#   bash verify.sh public <domaine>   depuis n'importe quel poste : site servi par Cloudflare Tunnel (#125), sortie
+#                               sans le domaine, à coller telle quelle (DETAIL=1 : commandes et sorties)
 # Variables du mode ssh : KEY (clé privée, défaut ~/.ssh/github-deploy), HOST (nom du Pi dans le tailnet),
 # FLO (<login>@<ip-du-pi>), LAN_IP (défaut : l'adresse de FLO). HOST et FLO sont obligatoires :
 # le repo ne contient aucune valeur du réseau local (#31).
@@ -17,7 +19,13 @@ set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 source "$HERE/commun.sh"
 pass=0 fail=0
-show=1   # 0 (mode pi) : seulement la description et le verdict, sans commande ni sortie
+show=1   # 0 (modes pi et public) : seulement la description et le verdict, sans commande ni sortie
+# En-têtes de sécurité, lus dans le bloc « header { » du Caddyfile de ce dossier : un en-tête ajouté y est
+# contrôlé en local (mode pi) et en public sans autre modification.
+mapfile -t EN_TETES_SECURITE < <(awk '{ l = $0; sub(/^[[:space:]]+/, "", l) } l == "header {" { b = 1; next }
+  b && l == "}" { b = 0 } b && match(l, /^[A-Za-z-]+ "/) { print substr(l, 1, RLENGTH - 2) }' "$HERE/Caddyfile")
+# Une liste vide ne contrôlerait aucun en-tête, en silence (bloc renommé ou réécrit).
+[ "${#EN_TETES_SECURITE[@]}" -gt 0 ] || { echo "aucun en-tête de sécurité lu dans le bloc « header { » du Caddyfile" >&2; exit 1; }
 
 # probe <attendu|interdit> <description> <motif grep -E> <commande...> :
 # affiche la commande, sa sortie et le verdict.
@@ -43,8 +51,9 @@ verdict() {
 check() { probe attendu "$@"; }
 refute() { probe interdit "$@"; }
 
-# served <url> <nom> [options curl…] : la ligne de l'en-tête servi.
-served() { curl -sSI "${@:3}" "$1" | tr -d '\r' | grep -i "^$2:"; }
+# served <url> <nom> [options curl…] : la ligne de l'en-tête servi, son nom écrit comme demandé (en HTTP/2,
+# par Cloudflare, les noms arrivent en minuscules).
+served() { curl -sSI "${@:3}" "$1" | tr -d '\r' | grep -i "^$2:" | sed "s/^[^:]*:/$2:/"; }
 
 # header <url> <nom> [matcher [options curl…]] : affiche l'en-tête servi, puis « conforme » s'il est
 # identique à celui du bloc « header [matcher] { » du Caddyfile de ce dossier (une config modifiée
@@ -101,7 +110,7 @@ mode_pi() {
   # Chemins seuls dans la sortie : elle ne montre pas le port de Caddy (#113, critère 10).
   local missing=("$absent" "/projets$absent" "/_expo/static$absent.js")
   for url in / "${missing[@]}"; do
-    for name in Content-Security-Policy X-Content-Type-Options Referrer-Policy Permissions-Policy; do
+    for name in "${EN_TETES_SECURITE[@]}"; do
       check "$name sur $url, conforme au Caddyfile" '^conforme$' header "http://127.0.0.1:8080$url" "$name"
     done
   done
@@ -259,14 +268,18 @@ mode_pi() {
   [ -e /run/reboot-required ] && echo "  ⚠️ redémarrage en attente, pour appliquer une mise à jour"
 
   title "Ticket #113, critère 7 — isolation des services exposés"
-  local unit pid
+  local unit pid f
   for unit in "${!SERVICES_ISOLES[@]}"; do
-    for p in NoNewPrivileges=yes ProtectSystem=strict ProtectHome=yes PrivateDevices=yes 'ReadWritePaths=/' 'RestrictAddressFamilies=AF_'; do
+    # ReadWritePaths= : exactement les dossiers de SERVICES_ISOLES (aucun pour le tunnel).
+    for p in NoNewPrivileges=yes ProtectSystem=strict ProtectHome=yes PrivateDevices=yes "ReadWritePaths=${SERVICES_ISOLES[$unit]}\$" 'RestrictAddressFamilies=AF_'; do
       check "$unit : ${p%%=*}" "^$p" systemctl show -p "${p%%=*}" "$unit"
     done
     # Le processus en cours, pas seulement l'unité : prouve qu'il a redémarré avec son isolation.
     pid="$(systemctl show -p MainPID --value "$unit")"
     check "$unit : processus en cours isolé" '^NoNewPrivs:[[:space:]]+1$' grep NoNewPrivs "/proc/$pid/status"
+    # Un binaire remplacé par une mise à jour sans relance reste en mémoire, marqué « (deleted) » ; sans
+    # processus, rien à lire.
+    check "$unit : processus sur le binaire installé (mise à jour appliquée)" '^/[^[:space:]]+$' readlink "/proc/$pid/exe"
   done
 
   title "Ticket #113, critère 8 — services désactivés"
@@ -274,6 +287,81 @@ mode_pi() {
   for i in "${!SERVICES[@]}"; do
     check "service n°$((i + 1)) masqué" '^masked' systemctl is-enabled "${SERVICES[$i]}"
     refute "service n°$((i + 1)) arrêté" '^active' systemctl is-active "${SERVICES[$i]}"
+  done
+
+  # La règle du tunnel (domaine → serveur web local) est dans Cloudflare : verify.sh public la contrôle.
+  title "Ticket #125 — Cloudflare Tunnel"
+  controler_jeton
+  verdict $? "jeton à root, lisible par root seul, sans la commande qui l'entoure"
+  check "clé du dépôt de Cloudflare : empreinte attendue" "^$EMPREINTE_CLOUDFLARE\$" empreinte_cle "$CLE_CLOUDFLARE"
+  [ "$(cat /etc/apt/sources.list.d/cloudflared.list)" = "$DEPOT_CLOUDFLARE" ]
+  verdict $? "dépôt de Cloudflare signé par cette clé, et seulement par elle"
+  check "cloudflared installé" '^cloudflared version ' cloudflared --version
+  check "relance après une mise à jour qui remplace un binaire" '^ok$' \
+    sh -c "apt-config dump DPkg::Post-Invoke | grep -qF -- \"\$1\" && echo ok" sh "$RELANCE_APRES_MAJ"
+  check "service identique à ce dossier" '^ok$' sh -c "cmp /etc/systemd/system/etendard-tunnel.service '$HERE/etendard-tunnel.service' && echo ok"
+  check "démarre au boot" '^enabled$' systemctl is-enabled etendard-tunnel
+  check "actif" '^active$' systemctl is-active etendard-tunnel
+  pid="$(systemctl show -p MainPID --value etendard-tunnel)"
+  check "processus sous un utilisateur sans privilèges" '^Uid:([[:space:]]+[1-9][0-9]*){4}$' grep '^Uid:' "/proc/$pid/status"
+  # Le jeton passe à grep par un descripteur (printf est interne à bash) : jamais dans une ligne de commande.
+  # Seul le code 1 de grep (rien trouvé) vaut preuve : 2 dit qu'il n'a pas pu lire.
+  local jeton
+  jeton="$(lire_jeton)"
+  [ -n "$jeton" ] && grep -qaFf <(printf '%s\n' "$jeton") "/proc/$pid/cmdline" "/proc/$pid/environ"
+  [ $? -eq 1 ] && [ -n "$jeton" ]
+  verdict $? "jeton absent de la ligne de commande (ps) et de l'environnement du service"
+  # ss lit le processus de chaque port, filtré sur celui du tunnel (un autre cloudflared du Pi ne compte pas) :
+  # la première ligne prouve qu'il le voit, la seconde qu'aucun autre port.
+  check "métriques de cloudflared sur la boucle locale" '127\.0\.0\.1:[0-9]+ ' sh -c "ss -Hltnp | grep -F 'pid=$pid,'"
+  refute "cloudflared n'écoute sur aucune autre interface" '.' \
+    sh -c "ss -Hltnup | grep -F 'pid=$pid,' | grep -Ev '[[:space:]](127\.0\.0\.1|\[::1\]):[0-9]+[[:space:]]'"
+}
+
+# Site public, à travers Cloudflare (#125), depuis n'importe quel poste. Sortie sans le domaine : chemins
+# seuls. « DETAIL=1 bash verify.sh public <domaine> » affiche aussi chaque commande et sa sortie.
+mode_public() {
+  local base="https://$1" url name i absent="/absente-verify-sh-$(date +%s)"
+  show="${DETAIL:-0}"
+  # Les erreurs de curl citent le domaine ou une adresse.
+  [ "$show" = 1 ] || exec 2>/dev/null
+  echo "verify.sh public — $(date -Is)"
+
+  title "Ticket #125 — réponses du site"
+  check "/ répond 200" '^HTTP/[0-9.]+ 200([[:space:]]|$)' curl -sSI "$base/"
+  check "$absent répond 404" '^HTTP/[0-9.]+ 404([[:space:]]|$)' curl -sSI "$base$absent"
+  # La page 404 du site est aussi servie sous son nom : une page d'erreur de Cloudflare en diffère. Une page
+  # vide des deux côtés échoue plus bas (« charge ses scripts »).
+  meme_corps() { cmp -s <(curl -s "$1") <(curl -s "$2") && echo ok; }
+  check "corps de $absent identique à /+not-found.html" '^ok$' meme_corps "$base$absent" "$base/+not-found.html"
+
+  title "Ticket #125 — en-têtes de sécurité identiques à ceux du Caddyfile"
+  for url in / "$absent"; do
+    for name in "${EN_TETES_SECURITE[@]}"; do
+      check "$name sur $url, conforme au Caddyfile" '^conforme$' header "$base$url" "$name"
+    done
+  done
+
+  title "Ticket #125 — aucun script ajouté par Cloudflare (la CSP le bloquerait)"
+  # balises_script <url> : chaque balise <script …> ouvrante de la page, une par ligne ; hors_expo <url> :
+  # celles qui ne chargent pas un fichier de /_expo/static/.
+  balises_script() { curl -s "$1" | grep -oiE '<script[^>]*>'; }
+  hors_expo() { balises_script "$1" | grep -viE '[[:space:]]src="/_expo/static/[^"]+"'; }
+  for url in / "$absent"; do
+    # La page lue a bien des scripts : sans cette preuve, une page vide passerait le contrôle suivant.
+    check "$url charge ses scripts depuis /_expo/static/" '[[:space:]]src="/_expo/static/' balises_script "$base$url"
+    refute "aucun <script> hors de /_expo/static/ dans $url" '.' hors_expo "$base$url"
+  done
+
+  title "Ticket #125 — version.txt jamais servi depuis le cache de Cloudflare"
+  check "/version.txt répond 200" '^HTTP/[0-9.]+ 200([[:space:]]|$)' curl -sSI "$base/version.txt"
+  check "Cache-Control sur /version.txt, conforme au Caddyfile" '^conforme$' header "$base/version.txt" Cache-Control /version.txt
+  # Lu par GET, comme le test de fumée. Deux lectures : la première mettrait le fichier en cache, la seconde
+  # l'y lirait.
+  cache_cloudflare() { curl -sS -D - -o /dev/null "$1" | tr -d '\r' | grep -i '^cf-cache-status:' | sed 's/^[^:]*:/cf-cache-status:/'; }
+  for i in 1 2; do
+    refute "/version.txt hors du cache de Cloudflare (lecture $i)" '^cf-cache-status: (HIT|STALE|UPDATING|REVALIDATED)' \
+      cache_cloudflare "$base/version.txt"
   done
 }
 
@@ -356,9 +444,9 @@ case "${1:-}" in
   pi) mode_pi ;;
   ssh) mode_ssh ;;
   # Un seul nom de domaine : ni schéma, ni chemin, ni port.
-  hsts) [[ $# -eq 2 && "$2" =~ ^[A-Za-z0-9.-]+$ ]] || { echo "usage : bash verify.sh hsts <domaine>" >&2; exit 2; }
-    mode_hsts "$2" ;;
-  *) echo "usage : sudo bash verify.sh pi   |   HOST=<hote-du-pi> FLO=<login>@<ip-du-pi> bash verify.sh ssh   |   bash verify.sh hsts <domaine>" >&2; exit 2 ;;
+  hsts | public) [[ $# -eq 2 && "$2" =~ ^[A-Za-z0-9.-]+$ ]] || { echo "usage : bash verify.sh $1 <domaine>" >&2; exit 2; }
+    "mode_$1" "$2" ;;
+  *) echo "usage : sudo bash verify.sh pi   |   HOST=<hote-du-pi> FLO=<login>@<ip-du-pi> bash verify.sh ssh   |   bash verify.sh hsts <domaine>   |   bash verify.sh public <domaine>" >&2; exit 2 ;;
 esac
 
 echo "Bilan : $pass ✅, $fail ❌"

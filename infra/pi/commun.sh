@@ -5,10 +5,22 @@
 ETENDARD_CONF="${ETENDARD_CONF:-/etc/etendard/serveur.conf}"
 
 # Logiciels exposés : mises à jour automatiques (avec le noyau en cours) et isolation systemd, appliquées
-# par install.sh, contrôlées par verify.sh. Pour en ajouter un (cloudflared, ticket suivant) : son paquet
-# dans PAQUETS_MAJ_AUTO, son unité et les dossiers où elle écrit dans SERVICES_ISOLES.
-PAQUETS_MAJ_AUTO=(caddy tailscale)
-declare -A SERVICES_ISOLES=([caddy.service]="/var/lib/caddy /var/log/caddy")
+# par install.sh, contrôlées par verify.sh. Pour en ajouter un : son paquet dans PAQUETS_MAJ_AUTO, son unité
+# et les dossiers où elle écrit dans SERVICES_ISOLES (le tunnel n'écrit nulle part, #125). Un service isolé
+# est relancé après une mise à jour qui remplace son binaire (RELANCE_APRES_MAJ), même si son paquet ne le
+# fait pas (cloudflared).
+PAQUETS_MAJ_AUTO=(caddy tailscale cloudflared)
+declare -A SERVICES_ISOLES=([caddy.service]="/var/lib/caddy /var/log/caddy" [etendard-tunnel.service]="")
+
+# Commande lancée par apt après chaque passage de dpkg (DPkg::Post-Invoke, écrite par install.sh) : relance
+# chaque service isolé dont le processus tourne encore sur un binaire remplacé (« (deleted) »). Après dpkg,
+# pas avant : le nouveau binaire est alors en place. try-restart : un service arrêté exprès le reste.
+# Ni guillemet ni barre oblique inverse : la commande entre telle quelle dans une chaîne d'apt.conf.
+RELANCE_APRES_MAJ="for u in ${!SERVICES_ISOLES[*]}; do p=\$(systemctl show -p MainPID --value \$u); readlink /proc/\$p/exe | grep -q deleted && systemctl try-restart \$u; done; true"
+
+# Dépôt apt de Cloudflare (#125), écrit par install.sh dans /etc/apt/sources.list.d/cloudflared.list.
+CLE_CLOUDFLARE=/usr/share/keyrings/cloudflare-public-v2.gpg
+DEPOT_CLOUDFLARE="deb [signed-by=$CLE_CLOUDFLARE] https://pkg.cloudflare.com/cloudflared any main"
 # Nécessaires à l'accès de Flo ou au déploiement, en plus des services isolés : jamais masqués.
 SERVICES_PROTEGES=(ssh.service sshd.service ssh.socket tailscaled.service etendard-pare-feu.service)
 
@@ -69,6 +81,51 @@ lire_conf() {
       echo "$f : clé $key absente (écris « $key= » s'il n'y a aucune valeur)" >&2; return 1
     fi
   done
+}
+
+# Jeton du tunnel Cloudflare (#125), seul secret du tunnel, à côté du fichier local et comme lui hors du
+# repo. etendard-tunnel.service le reprend (LoadCredential=) : systemd le lit en root et le passe au service.
+JETON_TUNNEL="${JETON_TUNNEL:-/etc/etendard/tunnel.jeton}"
+
+# Clé de signature du dépôt apt de Cloudflare (cloudflare-public-v2.gpg, « CloudFlare Software Packaging
+# 2025 »), relevée le 2026-11-22 sur https://pkg.cloudflare.com/ : install.sh refuse toute autre clé.
+EMPREINTE_CLOUDFLARE=CC94B39C77AE7342A68B89628A682D308D4E5E73
+
+# empreinte_cle <fichier> : empreinte de la clé principale du trousseau, vide s'il en contient plusieurs
+# (une clé ajoutée signerait aussi des paquets acceptés par apt) ou aucune.
+empreinte_cle() {
+  gpg --show-keys --with-colons "$1" 2>/dev/null \
+    | awk -F: '$1 == "pub" { n++; p = 1; next } p && $1 == "fpr" { f = $10; p = 0 } END { if (n == 1) print f }'
+}
+
+# controler_jeton : réussit si $JETON_TUNNEL est un fichier ordinaire à root, lisible par root seul, qui ne
+# contient qu'un jeton. Sinon, écrit la raison sur stderr, jamais le contenu, et renvoie 1.
+controler_jeton() {
+  local f="$JETON_TUNNEL"
+  if [ ! -e "$f" ]; then
+    echo "jeton du tunnel absent ($f) : crée le tunnel dans Cloudflare, puis écris-y son jeton (README.md)" >&2
+    return 1
+  fi
+  # Un lien ferait lire un autre fichier que celui dont les droits sont contrôlés ici.
+  if [ -L "$f" ] || [ ! -f "$f" ]; then
+    echo "$f n'est pas un fichier ordinaire" >&2; return 1
+  fi
+  if ! [[ "$(stat -c '%u %a' "$f")" =~ ^0\ [46]00$ ]]; then
+    echo "$f doit appartenir à root et n'être lisible que par lui : sudo chown root:root $f && sudo chmod 600 $f" >&2
+    return 1
+  fi
+  # Le tableau de bord affiche le jeton dans une commande (« cloudflared service install <jeton> ») : seul le
+  # jeton doit être copié. Lu sans être affiché ; plusieurs lignes ne correspondent pas au motif.
+  if ! [[ "$(lire_jeton)" =~ ^[A-Za-z0-9+/_=-]{20,}$ ]]; then
+    echo "$f doit contenir le seul jeton du tunnel, sur une ligne, sans la commande qui l'entoure" >&2
+    return 1
+  fi
+}
+
+# lire_jeton : le jeton sans les blancs autour (espaces, fins de ligne Windows, lignes vides), comme le lit
+# cloudflared. À garder dans une variable : jamais affiché, jamais dans une ligne de commande.
+lire_jeton() {
+  sed 's/^[[:space:]]*//; s/[[:space:]]*$//' "$JETON_TUNNEL" | grep .
 }
 
 # cle_admin_autorisee <compte> <dossier personnel> : réussit si sshd accepterait au moins une clé publique

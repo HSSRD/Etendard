@@ -1,8 +1,9 @@
 #!/bin/bash
-# Prépare et durcit le Pi qui sert Étendard (tickets #4 et #113, ADR 0002, 0006 et 0017).
+# Prépare, durcit et met en ligne le Pi qui sert Étendard (tickets #4, #113 et #125, ADR 0002, 0006 et 0017).
 # À lancer en root sur le Pi, par sudo depuis le compte d'administration, dans ce dossier :
 #   sudo bash install.sh github-deploy.pub
-# Lit les valeurs propres au serveur dans /etc/etendard/serveur.conf (format : serveur.conf.exemple).
+# Lit les valeurs propres au serveur dans /etc/etendard/serveur.conf (format : serveur.conf.exemple), et le
+# jeton du tunnel Cloudflare dans /etc/etendard/tunnel.jeton (README.md), sans jamais l'afficher.
 # Idempotent : peut être relancé sans dommage, sur ce Pi comme sur un système neuf.
 # Ne modifie pas les services existants du Pi, sauf ceux que le fichier local demande de désactiver.
 # SSH et le pare-feu changent en dernier : garde une session ouverte jusqu'au bout (README.md).
@@ -38,6 +39,7 @@ read -r key_type key_b64 _ < "$PUBKEY_FILE" || true   # pas d'erreur si la ligne
 ssh-keygen -l -f "$PUBKEY_FILE" >/dev/null || die "clé publique illisible par ssh-keygen"
 
 lire_conf || die "fichier local invalide, rien n'a été modifié"
+controler_jeton || die "jeton du tunnel refusé, rien n'a été modifié"
 
 # Garde-fou contre le verrouillage : sans clé autorisée, couper les mots de passe fermerait la porte à Flo.
 admin="${SUDO_USER:-}"
@@ -133,11 +135,42 @@ fi
 systemctl is-enabled caddy
 systemctl is-active caddy
 
+# --- Cloudflare Tunnel (#125) --------------------------------------------------
+step "Paquet cloudflared (dépôt apt officiel de Cloudflare, clé vérifiée par son empreinte)"
+# Selon le dépôt, pas le paquet : un cloudflared installé d'ailleurs reçoit ainsi aussi les mises à jour. Une
+# autre clé ou une autre ligne (anciennes instructions de Cloudflare) est remplacée.
+if [ "$(empreinte_cle "$CLE_CLOUDFLARE")" != "$EMPREINTE_CLOUDFLARE" ] \
+  || [ "$(cat /etc/apt/sources.list.d/cloudflared.list 2>/dev/null)" != "$DEPOT_CLOUDFLARE" ]; then
+  paquets curl gpg
+  curl -fsSL https://pkg.cloudflare.com/cloudflare-public-v2.gpg -o "$CLE_CLOUDFLARE.new"
+  if [ "$(empreinte_cle "$CLE_CLOUDFLARE.new")" != "$EMPREINTE_CLOUDFLARE" ]; then
+    rm -f "$CLE_CLOUDFLARE.new"
+    die "la clé servie par pkg.cloudflare.com n'est pas celle attendue (EMPREINTE_CLOUDFLARE de commun.sh) : dépôt non ajouté"
+  fi
+  chmod 644 "$CLE_CLOUDFLARE.new"
+  mv -f "$CLE_CLOUDFLARE.new" "$CLE_CLOUDFLARE"
+  echo "$DEPOT_CLOUDFLARE" > /etc/apt/sources.list.d/cloudflared.list
+  # Relu même si cloudflared est déjà installé : sans lui, les mises à jour automatiques ignoreraient ce dépôt.
+  apt-get update
+  apt_a_jour=1
+fi
+paquets cloudflared
+cloudflared --version
+
+step "Service du tunnel (démarré en dernier, une fois le serveur durci)"
+tunnel_changed=0
+if ! cmp -s "$HERE/etendard-tunnel.service" /etc/systemd/system/etendard-tunnel.service; then
+  install -o root -g root -m 644 "$HERE/etendard-tunnel.service" /etc/systemd/system/etendard-tunnel.service
+  systemctl daemon-reload
+  tunnel_changed=1
+fi
+
 # --- Isolation des services exposés (#113, critère 7) -------------------------
 # score <unité> : niveau d'exposition de systemd-analyze security (0 : isolé, 10 : aucune isolation).
 score() { systemd-analyze security --no-pager "$1" 2>/dev/null | awk '/Overall exposure level/ { for (i = 1; i <= NF; i++) if ($i ~ /^[0-9]+\.[0-9]+$/) print $i }'; }
 
-# isoler <unité> <dossiers où elle écrit…> : surcharge systemd d'isolation.conf, appliquée par un redémarrage.
+# isoler <unité> <dossiers où elle écrit…> : surcharge systemd d'isolation.conf, appliquée par un redémarrage
+# s'il tourne (le tunnel, arrêté à sa première installation, ne démarre qu'à la fin).
 isoler() {
   local unit="$1" d="/etc/systemd/system/$1.d" avant
   avant="$(score "$unit")"
@@ -150,7 +183,7 @@ isoler() {
   fi
   mv -f "$d/etendard-isolation.conf.new" "$d/etendard-isolation.conf"
   systemctl daemon-reload
-  if ! systemctl restart "$unit"; then
+  if ! systemctl try-restart "$unit"; then
     # Comme pour sshd : la surcharge refusée est retirée, le service repart sans elle (le site reste servi).
     rm -f "$d/etendard-isolation.conf"
     systemctl daemon-reload
@@ -180,6 +213,8 @@ maj=/etc/apt/apt.conf.d/52etendard-maj-auto
   echo 'APT::Periodic::Unattended-Upgrade "1";'
   echo '// Pas de redémarrage automatique : verify.sh pi signale celui qui est en attente.'
   echo 'Unattended-Upgrade::Automatic-Reboot "false";'
+  echo '// Services isolés relancés quand une mise à jour remplace leur binaire (#125 : cloudflared ne le fait pas seul).'
+  echo "DPkg::Post-Invoke { \"$RELANCE_APRES_MAJ\"; };"
   echo 'Unattended-Upgrade::Origins-Pattern {'
   maj_paquets=("$noyau" "${PAQUETS_MAJ_AUTO[@]}")
   mapfile -t motifs < <(origines_maj "${maj_paquets[@]}")
@@ -279,5 +314,16 @@ systemctl enable etendard-pare-feu
 systemctl reload-or-restart etendard-pare-feu
 systemctl is-active etendard-pare-feu
 
+# --- Mise en ligne (#125) ------------------------------------------------------
+# En dernier : un arrêt plus haut (die) laisse le site hors ligne plutôt que public sur un serveur à moitié durci.
+step "Tunnel Cloudflare (mise en ligne)"
+systemctl enable etendard-tunnel
+if [ "$tunnel_changed" = 1 ] || ! systemctl is-active --quiet etendard-tunnel; then
+  # Type=notify : le redémarrage ne réussit qu'une fois le tunnel connecté à Cloudflare.
+  systemctl restart etendard-tunnel \
+    || die "le tunnel ne se connecte pas à Cloudflare : journalctl -u etendard-tunnel (jeton révoqué ? réseau ? Si le journal montre un refus du système, essaie sans isolation : README.md, « Retour arrière »)"
+fi
+systemctl is-active etendard-tunnel
+
 step "Terminé. Avant de fermer cette session, ouvre-en une nouvelle depuis le réseau local et depuis le tailnet (README.md)."
-echo "Preuves : sudo bash verify.sh pi (sur le Pi), puis HOST=<hote-du-pi> FLO=<login>@<ip-du-pi> bash verify.sh ssh (sur le PC)."
+echo "Preuves : sudo bash verify.sh pi (sur le Pi), puis HOST=<hote-du-pi> FLO=<login>@<ip-du-pi> bash verify.sh ssh et bash verify.sh public <domaine> (sur le PC)."
