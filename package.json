@@ -20,7 +20,7 @@
       "expo-status-bar"
     ]
   },
-  "packageManager": "pnpm@12.22.0",
+  "packageManager": "pnpm@12.23.0",
   "engines": {
     "node": ">=26 <27"
   },
@@ -63,12 +63,12 @@
     "@playwright/test": "1.65.1",
     "@types/node": "26.6.6",
     "@types/react": "~19.3.0",
-    "dependency-cruiser": "18.8.0",
+    "dependency-cruiser": "18.9.0",
     "eslint": "10.15.0",
     "eslint-plugin-react-hooks": "7.1.1",
     "globals": "17.14.0",
     "html-validate": "11.21.1",
-    "knip": "6.47.0",
+    "knip": "6.48.0",
     "prettier": "3.10.1",
     "typescript": "~6.0.3",
     "typescript-eslint": "8.73.0",
