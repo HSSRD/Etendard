@@ -77,6 +77,7 @@ run "" "$WORK/v1.tar.gz" && ok "réception v1 ($out)" || ko "réception v1 : $ou
   && ok "current est un lien vers releases/aaaaaaa" || ko "lien current"
 grep -q 'page aaaaaaa' "$ETENDARD_ROOT/current/index.html" && ok "index.html servi" || ko "index.html"
 [ -f "$ETENDARD_ROOT/current/_astro/a.js" ] && ok "sous-dossiers extraits" || ko "sous-dossiers"
+expect_refused "rollback sans previous (premier envoi) : refusé" /dev/null "aucun envoi à défaire" rollback
 
 sleep 1; run "" "$WORK/v2.tar.gz" && ok "réception v2 (SHA de 40 caractères)" || ko "réception v2 : $out"
 run status; [ "$out" = bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb ] && ok "status = v2" || ko "status : $out"

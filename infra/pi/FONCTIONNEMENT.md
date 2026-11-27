@@ -324,7 +324,7 @@ La Release est publiée par un job séparé, après le déploiement : le job `bu
 gh workflow run deploy.yml -R HSSRD/Etendard --ref main -f rollback=true
 ```
 
-Après l'annulation d'un déploiement, vérifie d'abord la version servie dans l'e-mail de résultat. Si le rollback automatique a défait l'envoi, un rollback manuel est refusé (`aucun envoi à défaire`). Si l'envoi n'avait pas encore basculé, un rollback manuel défait le dernier envoi réussi : la version servie recule alors d'un déploiement.
+Après l'annulation d'un déploiement, vérifie d'abord la version servie dans l'e-mail de résultat. Si le rollback automatique a défait l'envoi, un rollback manuel est refusé (`aucun envoi à défaire`). Si l'envoi n'avait pas encore basculé, `previous` n'a pas changé : un rollback manuel défait l'envoi d'avant, comme s'il avait été lancé avant ce déploiement.
 
 Pour revenir ensuite à la dernière version, relance le workflow sans cocher la case : le site est reconstruit depuis `main`, le Pi réactive la version qu'il a déjà, et la Release existante est gardée telle quelle.
 
