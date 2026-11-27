@@ -34,7 +34,6 @@ releases_by_date() {
     | sort -rn | cut -d' ' -f2
 }
 
-# link_to <lien> <sha> : fait pointer <lien> vers releases/<sha>.
 link_to() {
   ln -sfn "releases/$2" "$1.tmp"
   mv -T "$1.tmp" "$1"   # rename(2) : bascule atomique

@@ -101,7 +101,7 @@ run "restore 3333333"   # la plus ancienne gardée est servie
 site k8 8888888; run "" "$WORK/k8.tar.gz"
 [ -d "$ETENDARD_ROOT/releases/3333333" ] && ok "ménage : la version remplacée est gardée, même ancienne" \
   || ko "ménage : version remplacée supprimée ($(ls "$ETENDARD_ROOT/releases" | tr '\n' ' '))"
-sleep 1; run "" "$WORK/k8.tar.gz"   # renvoi de la version servie : previous ne change pas
+run "" "$WORK/k8.tar.gz"   # renvoi de la version servie : previous ne change pas
 [ -d "$ETENDARD_ROOT/releases/3333333" ] && ok "ménage : la version de previous est gardée après un renvoi" \
   || ko "ménage après renvoi : $(ls "$ETENDARD_ROOT/releases" | tr '\n' ' ')"
 run rollback; run status
