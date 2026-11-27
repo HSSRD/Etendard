@@ -4,7 +4,7 @@
 # command="/usr/local/bin/etendard-receive",restrict). L'action vient de
 # SSH_ORIGINAL_COMMAND :
 #   (vide)    lit une archive .tar.gz sur l'entrée standard et la publie
-#   rollback       revient à la version précédente
+#   rollback       revient à la version que le dernier envoi a remplacée
 #   restore <sha>  attend la fin d'un déploiement en cours, puis sert <sha>
 #   status         affiche le SHA servi
 set -euo pipefail
@@ -13,12 +13,14 @@ umask 022
 ROOT="${ETENDARD_ROOT:-/srv/etendard}"   # surchargé uniquement par les tests
 RELEASES="$ROOT/releases"
 CURRENT="$ROOT/current"
+PREVIOUS="$ROOT/previous"   # version remplacée par le dernier envoi, que rollback rétablit
 KEEP=5
 LOCK_WAIT="${ETENDARD_LOCK_WAIT:-120}"   # secondes ; surchargé uniquement par les tests
 
 die() { echo "etendard-receive: $*" >&2; exit 1; }
 
-served_or_empty() { basename "$(readlink "$CURRENT" 2>/dev/null)"; }
+target_or_empty() { basename "$(readlink "$1" 2>/dev/null)"; }
+served_or_empty() { target_or_empty "$CURRENT"; }
 valid_sha() { [[ "$1" =~ ^[0-9a-f]{7,40}$ ]]; }
 
 current_sha() {
@@ -26,16 +28,19 @@ current_sha() {
   served_or_empty
 }
 
-# Versions publiées, de la plus récente à la plus ancienne (date de publication).
+# Versions publiées, de la plus récente à la plus ancienne (date de publication), pour le ménage.
 releases_by_date() {
   find "$RELEASES" -mindepth 1 -maxdepth 1 -type d ! -name '.*' -printf '%T@ %f\n' \
     | sort -rn | cut -d' ' -f2
 }
 
-switch_to() {
-  ln -sfn "releases/$1" "$CURRENT.tmp"
-  mv -T "$CURRENT.tmp" "$CURRENT"   # rename(2) : bascule atomique
+# link_to <lien> <sha> : fait pointer <lien> vers releases/<sha>.
+link_to() {
+  ln -sfn "releases/$2" "$1.tmp"
+  mv -T "$1.tmp" "$1"   # rename(2) : bascule atomique
 }
+
+switch_to() { link_to "$CURRENT" "$1"; }
 
 # lock -n : refuse si le verrou est pris ; lock -w <s> : l'attend au plus <s> secondes.
 lock() {
@@ -73,12 +78,15 @@ receive() {
   else
     mv -T "$site" "$RELEASES/$sha"
   fi
-  touch "$RELEASES/$sha"   # date de publication, utilisée par rollback et le ménage
+  touch "$RELEASES/$sha"   # date de publication, utilisée par le ménage
+  # Écrit avant la bascule : si elle échoue, previous désigne la version servie et rollback n'y change rien.
+  if [ -n "$replaced" ] && [ "$replaced" != "$sha" ]; then link_to "$PREVIOUS" "$replaced"; fi
   switch_to "$sha"
 
-  # La version remplacée est gardée, même ancienne : restore doit pouvoir y revenir.
+  # La version de previous est gardée, même ancienne : rollback et restore doivent pouvoir y revenir.
+  kept="$(target_or_empty "$PREVIOUS")"
   releases_by_date | tail -n +$((KEEP + 1)) | while read -r old; do
-    [ "$old" = "$sha" ] || [ "$old" = "$replaced" ] || rm -rf "${RELEASES:?}/$old"
+    [ "$old" = "$sha" ] || [ "$old" = "$kept" ] || rm -rf "${RELEASES:?}/$old"
   done
   echo "version $sha publiée"
 }
@@ -86,8 +94,10 @@ receive() {
 rollback() {
   lock -n
   current="$(current_sha)"
-  previous="$(releases_by_date | grep -A1 -x "$current" | sed -n 2p)" || true
-  [ -n "$previous" ] || die "aucune version antérieure à $current"
+  previous="$(target_or_empty "$PREVIOUS")"
+  [ -n "$previous" ] || die "aucune version à rétablir depuis $current : le dernier envoi est déjà défait"
+  # Retiré avant la bascule : un second rollback ne ressert jamais la version défaite.
+  rm -f "$PREVIOUS"
   switch_to "$previous"
   echo "retour à la version $previous (depuis $current)"
 }
@@ -103,6 +113,7 @@ restore() {
   if [ "$current" = "$1" ]; then
     echo "version $1 déjà servie"
   else
+    rm -f "$PREVIOUS"   # l'envoi est défait : rollback ne doit pas resservir la version en échec
     switch_to "$1"
     echo "retour à la version $1 (depuis ${current:-aucune})"
   fi
