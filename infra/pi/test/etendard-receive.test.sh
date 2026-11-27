@@ -82,7 +82,7 @@ sleep 1; run "" "$WORK/v2.tar.gz" && ok "réception v2 (SHA de 40 caractères)" 
 run status; [ "$out" = bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb ] && ok "status = v2" || ko "status : $out"
 run rollback && ok "rollback ($out)" || ko "rollback : $out"
 run status; [ "$out" = aaaaaaa ] && ok "status = v1 après rollback" || ko "status après rollback : $out"
-run rollback && ko "second rollback : $out" || ok "second rollback : erreur, la version défaite n'est pas resservie"
+! run rollback && grep -q "aucun envoi à défaire" <<<"$out" && ok "second rollback : refusé, la version défaite n'est pas resservie" || ko "second rollback : $out"
 
 sleep 1; run "" "$WORK/v2.tar.gz" && grep -q 'déjà présente' <<<"$out" \
   && ok "renvoi d'une version existante : réactivée" || ko "renvoi v2 : $out"
@@ -101,7 +101,7 @@ run "restore 3333333"   # la plus ancienne gardée est servie
 site k8 8888888; run "" "$WORK/k8.tar.gz"
 [ -d "$ETENDARD_ROOT/releases/3333333" ] && ok "ménage : la version remplacée est gardée, même ancienne" \
   || ko "ménage : version remplacée supprimée ($(ls "$ETENDARD_ROOT/releases" | tr '\n' ' '))"
-run "" "$WORK/k8.tar.gz"   # renvoi de la version servie : previous ne change pas
+run "" "$WORK/k8.tar.gz" && grep -q "déjà présente" <<<"$out" || ko "renvoi de k8 : $out"   # previous ne change pas
 [ -d "$ETENDARD_ROOT/releases/3333333" ] && ok "ménage : la version de previous est gardée après un renvoi" \
   || ko "ménage après renvoi : $(ls "$ETENDARD_ROOT/releases" | tr '\n' ' ')"
 run rollback; run status
@@ -202,7 +202,7 @@ reset
 site v4 ddddddd
 run "" "$WORK/v1.tar.gz"; sleep 1; run "" "$WORK/v2.tar.gz"; run rollback
 sleep 1; run "" "$WORK/v3.tar.gz"; run "restore aaaaaaa"
-run rollback && ko "rollback après restore : $out" || ok "rollback après restore : erreur, la version en échec n'est pas resservie"
+! run rollback && grep -q "aucun envoi à défaire" <<<"$out" && ok "rollback après restore : refusé, la version en échec n'est pas resservie" || ko "rollback après restore : $out"
 sleep 1; run "" "$WORK/v4.tar.gz"
 run rollback && grep -q 'retour à la version aaaaaaa (depuis ddddddd)' <<<"$out" \
   && ok "rollback depuis D ($out)" || ko "rollback depuis D : $out"

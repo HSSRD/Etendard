@@ -78,7 +78,7 @@ receive() {
     mv -T "$site" "$RELEASES/$sha"
   fi
   touch "$RELEASES/$sha"   # date de publication, utilisée par le ménage
-  # Écrit avant la bascule : si elle échoue, previous désigne la version servie et rollback n'y change rien.
+  # Écrit avant la bascule : si elle échoue, previous désigne la version servie et rollback est refusé.
   if [ -n "$replaced" ] && [ "$replaced" != "$sha" ]; then link_to "$PREVIOUS" "$replaced"; fi
   switch_to "$sha"
 
@@ -94,9 +94,8 @@ rollback() {
   lock -n
   current="$(current_sha)"
   previous="$(target_or_empty "$PREVIOUS")"
-  [ -n "$previous" ] || die "aucune version à rétablir depuis $current : le dernier envoi est déjà défait"
-  # Retiré avant la bascule : un second rollback ne ressert jamais la version défaite.
-  rm -f "$PREVIOUS"
+  # previous déjà servie : le dernier envoi a été défait (rollback, restore) ou n'a pas basculé.
+  [ -n "$previous" ] && [ "$previous" != "$current" ] || die "aucun envoi à défaire depuis $current"
   switch_to "$previous"
   echo "retour à la version $previous (depuis $current)"
 }
@@ -112,7 +111,6 @@ restore() {
   if [ "$current" = "$1" ]; then
     echo "version $1 déjà servie"
   else
-    rm -f "$PREVIOUS"   # l'envoi est défait : rollback ne doit pas resservir la version en échec
     switch_to "$1"
     echo "retour à la version $1 (depuis ${current:-aucune})"
   fi

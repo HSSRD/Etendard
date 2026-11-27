@@ -163,14 +163,14 @@ Le script n'accepte que quatre demandes. Tout le reste est refusé.
 
 - **attend le verrou** jusqu'à 2 minutes (`flock -w 120`) au lieu d'échouer : après l'annulation d'un job, l'envoi peut encore tourner sur le Pi. La version servie n'est lue qu'une fois cet envoi fini, jamais pendant. Au bout de 2 minutes, `restore` abandonne sans rien changer et le job finit en erreur. L'envoi encore en cours peut alors basculer plus tard : vérifie la version servie à la main ;
 - **sert exactement `<sha>`**, que `deploy.yml` a lu avant l'envoi, et non la version précédente par date : après un rollback manuel, la version la plus récente n'est pas forcément celle d'avant ;
-- **ne fait rien si `<sha>` est déjà servie** (`version <sha> déjà servie`) ; sinon, bascule, retire le lien `previous` (voir `rollback`) et affiche `retour à la version <sha> (depuis <servie>)` ;
+- **ne fait rien si `<sha>` est déjà servie** (`version <sha> déjà servie`) ; sinon, bascule et affiche `retour à la version <sha> (depuis <servie>)` ;
 - refuse un SHA mal formé (même contrôle que `version.txt`) ou une version absente de `releases/`.
 
 `rollback` défait le dernier envoi, et seulement lui :
 
 - chaque envoi qui change la version servie écrit le lien `previous` vers la version qu'il remplace ; `rollback` sert cette version, quelle que soit sa date ;
-- `rollback` et `restore` retirent `previous` en basculant : un second `rollback` est refusé (`aucune version à rétablir`) au lieu de resservir la version défaite ou celle d'un envoi en échec. Le workflow ne recule donc jamais de plus d'un envoi ;
-- juste après l'installation du script, `previous` n'existe pas encore : `rollback` est refusé jusqu'au prochain envoi.
+- `rollback` est refusé (`aucun envoi à défaire`) quand `previous` est déjà servie : après un `rollback`, après un `restore` qui a défait l'envoi, ou si la bascule de l'envoi a échoué. Il ne ressert donc jamais la version défaite ni celle d'un envoi en échec, et le workflow ne recule jamais de plus d'un envoi ;
+- il est refusé aussi tant que `previous` n'existe pas : juste après l'installation du script, jusqu'au prochain envoi qui change la version servie.
 
 Une publication se déroule ainsi :
 
@@ -324,7 +324,7 @@ La Release est publiée par un job séparé, après le déploiement : le job `bu
 gh workflow run deploy.yml -R HSSRD/Etendard --ref main -f rollback=true
 ```
 
-Après l'annulation d'un déploiement, vérifie d'abord la version servie dans l'e-mail de résultat : le rollback automatique a pu s'en charger. Un rollback manuel est alors refusé (`aucune version à rétablir`) : il ne ressert pas la version en échec.
+Après l'annulation d'un déploiement, vérifie d'abord la version servie dans l'e-mail de résultat. Si le rollback automatique a défait l'envoi, un rollback manuel est refusé (`aucun envoi à défaire`). Si l'envoi n'avait pas encore basculé, un rollback manuel défait le dernier envoi réussi : la version servie recule alors d'un déploiement.
 
 Pour revenir ensuite à la dernière version, relance le workflow sans cocher la case : le site est reconstruit depuis `main`, le Pi réactive la version qu'il a déjà, et la Release existante est gardée telle quelle.
 
