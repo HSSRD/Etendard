@@ -82,7 +82,7 @@ sleep 1; run "" "$WORK/v2.tar.gz" && ok "réception v2 (SHA de 40 caractères)" 
 run status; [ "$out" = bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb ] && ok "status = v2" || ko "status : $out"
 run rollback && ok "rollback ($out)" || ko "rollback : $out"
 run status; [ "$out" = aaaaaaa ] && ok "status = v1 après rollback" || ko "status après rollback : $out"
-! run rollback && grep -q "aucun envoi à défaire" <<<"$out" && ok "second rollback : refusé, la version défaite n'est pas resservie" || ko "second rollback : $out"
+expect_refused "second rollback : la version défaite n'est pas resservie" /dev/null "aucun envoi à défaire" rollback
 
 sleep 1; run "" "$WORK/v2.tar.gz" && grep -q 'déjà présente' <<<"$out" \
   && ok "renvoi d'une version existante : réactivée" || ko "renvoi v2 : $out"
@@ -99,10 +99,8 @@ kept="$(ls "$ETENDARD_ROOT/releases" | sort | tr '\n' ' ')"
 [ "$kept" = "3333333 4444444 5555555 6666666 7777777 " ] && ok "5 dernières versions gardées" || ko "versions gardées : $kept"
 run "restore 3333333"   # la plus ancienne gardée est servie
 site k8 8888888; run "" "$WORK/k8.tar.gz"
-[ -d "$ETENDARD_ROOT/releases/3333333" ] && ok "ménage : la version remplacée est gardée, même ancienne" \
-  || ko "ménage : version remplacée supprimée ($(ls "$ETENDARD_ROOT/releases" | tr '\n' ' '))"
 run "" "$WORK/k8.tar.gz" && grep -q "déjà présente" <<<"$out" || ko "renvoi de k8 : $out"   # previous ne change pas
-[ -d "$ETENDARD_ROOT/releases/3333333" ] && ok "ménage : la version de previous est gardée après un renvoi" \
+[ -d "$ETENDARD_ROOT/releases/3333333" ] && ok "ménage : la version remplacée est gardée, même ancienne, même après un renvoi" \
   || ko "ménage après renvoi : $(ls "$ETENDARD_ROOT/releases" | tr '\n' ' ')"
 run rollback; run status
 [ "$out" = 3333333 ] && ok "rollback vers la version remplacée, même ancienne" || ko "rollback vers la version remplacée : $out"
@@ -202,7 +200,7 @@ reset
 site v4 ddddddd
 run "" "$WORK/v1.tar.gz"; sleep 1; run "" "$WORK/v2.tar.gz"; run rollback
 sleep 1; run "" "$WORK/v3.tar.gz"; run "restore aaaaaaa"
-! run rollback && grep -q "aucun envoi à défaire" <<<"$out" && ok "rollback après restore : refusé, la version en échec n'est pas resservie" || ko "rollback après restore : $out"
+expect_refused "rollback après restore : la version en échec n'est pas resservie" /dev/null "aucun envoi à défaire" rollback
 sleep 1; run "" "$WORK/v4.tar.gz"
 run rollback && grep -q 'retour à la version aaaaaaa (depuis ddddddd)' <<<"$out" \
   && ok "rollback depuis D ($out)" || ko "rollback depuis D : $out"
