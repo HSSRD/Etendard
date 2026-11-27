@@ -169,8 +169,7 @@ Le script n'accepte que quatre demandes. Tout le reste est refusé.
 `rollback` défait le dernier envoi, et seulement lui :
 
 - chaque envoi qui change la version servie écrit le lien `previous` vers la version qu'il remplace ; `rollback` sert cette version, quelle que soit sa date ;
-- `rollback` est refusé (`aucun envoi à défaire`) quand `previous` est déjà servie : après un `rollback`, après un `restore` qui a défait l'envoi, ou si la bascule de l'envoi a échoué. Le workflow ne recule donc jamais de plus d'un envoi ;
-- il est refusé aussi tant que `previous` n'existe pas : juste après l'installation du script, jusqu'au prochain envoi qui change la version servie.
+- `rollback` est refusé (`aucun envoi à défaire`) quand `previous` est absent (juste après l'installation du script, jusqu'au prochain envoi) ou déjà servie : après un `rollback`, après un `restore` qui a défait l'envoi, ou si la bascule de l'envoi a échoué. Le workflow ne recule donc jamais de plus d'un envoi.
 
 Une publication se déroule ainsi :
 
