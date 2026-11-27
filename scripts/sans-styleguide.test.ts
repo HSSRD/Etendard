@@ -10,7 +10,11 @@ test('trouve une clé de route du styleguide, même dans un sous-dossier', () =>
   mkdirSync(path.join(dir, 'ios'));
   const bundle = path.join(dir, 'ios', 'entry.hbc');
   writeFileSync(bundle, 'route\0./styleguide/hero.tsx\0');
-  writeFileSync(path.join(dir, 'index.js'), 'route("./projets/dragon.tsx")');
+  // Une adresse du styleguide n'est pas une route : BaseLayout.web.tsx en reconnaît une.
+  writeFileSync(
+    path.join(dir, 'index.js'),
+    'route("./projets/dragon.tsx");j=/^\\/styleguide(\\/|$)/;h="/styleguide/hero"',
+  );
 
   expect(styleguideRoutes(dir)).toEqual([bundle]);
 });

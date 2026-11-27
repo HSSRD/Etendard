@@ -19,6 +19,7 @@ if (import.meta.main) {
     console.error(
       `Route du styleguide hors STYLEGUIDE=1 :\n${files.join('\n')}`,
     );
-    process.exit(1);
+    // Pas de process.exit : sous Windows, il couperait la liste écrite dans le terminal.
+    process.exitCode = 1;
   }
 }
