@@ -3,15 +3,8 @@
 //   l'empreinte de son contenu : la CSP du Caddyfile n'autorise que les fichiers du site ('self').
 //   Un <style> garde son id sur le <link> : react-native-web retrouve ainsi sa feuille
 //   (#react-native-stylesheet) et y ajoute ses règles par le CSSOM, que la CSP ne bloque pas.
-// - Sans STYLEGUIDE=1, les pages /styleguide sont retirées (ADR 0003).
 import { createHash } from 'node:crypto';
-import {
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 /** Dossiers de /_expo/static/ des fichiers sortis des pages, par extension. */
@@ -44,9 +37,6 @@ const pages = (/** @type {string} */ dir) =>
 
 const main = (/** @type {string | undefined} */ dir) => {
   if (!dir) throw new Error('usage : node scripts/export-web.js <dossier>');
-  if (process.env['STYLEGUIDE'] !== '1') {
-    rmSync(path.join(dir, 'styleguide'), { recursive: true, force: true });
-  }
   for (const folder of Object.values(folders)) {
     mkdirSync(path.join(dir, folder), { recursive: true });
   }

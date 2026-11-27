@@ -9,8 +9,8 @@ Lis `docs/adr/` avant toute modification structurelle. Ne contredis jamais un AD
 - `pnpm dev` : serveur de développement Expo (`w` : web, styleguide sur `/styleguide` ; Expo Go : iOS et Android).
 - `pnpm build` : valide le contenu (Zod), exporte le web dans `dist/`, sort les styles et scripts en ligne en fichiers.
 - `pnpm verify:fast` : `tsc`, ESLint, Prettier, Vitest. Lance-la après chaque modification.
-- `pnpm verify` : `verify:fast`, `pnpm test:infra`, Knip, dependency-cruiser, build, `html-validate`, `pnpm build:natif`, Playwright,
-  `html-validate` du styleguide.
+- `pnpm verify` : `verify:fast`, `pnpm test:infra`, Knip, dependency-cruiser, build, `html-validate`, `pnpm build:natif`,
+  absence de route du styleguide dans `dist/` et `dist-natif/`, Playwright, `html-validate` du styleguide.
 - `pnpm build:natif` : exporte les bundles iOS et Android dans `dist-natif/` (jamais livré) ; échoue si Metro ou Hermes
   ne construit pas un bundle natif. Il n'attrape pas un import de `react-dom` ni `window` dans un composant commun.
   `pnpm dlx expo-doctor` (réseau) se lance à la main, hors de `pnpm verify`.
@@ -68,7 +68,7 @@ Chaque composant est un trio colocalisé :
 - `src/app/styleguide/x.tsx` : chaque état du composant, lien ajouté dans `src/app/styleguide/index.tsx`.
 
 Une partie propre à un composant et à une plateforme (`HeroVideo.tsx` / `.web.tsx` pour `Hero`) n'a pas de trio :
-elle est testée par la spec de son composant. Les pages `/styleguide` ne sont publiées que si `STYLEGUIDE=1`.
+elle est testée par la spec de son composant. Les routes `/styleguide` n'entrent dans un export que si `STYLEGUIDE=1` (`metro.config.js`).
 Un composant n'importe jamais une page.
 Les tests visent les rôles, les textes et les `testID` (rendus en `data-testid`), pas les classes générées.
 

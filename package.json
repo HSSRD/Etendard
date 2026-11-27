@@ -37,7 +37,7 @@
     "captures:ci": "node scripts/captures-ci.js",
     "dragon:ecart": "node scripts/dragon-ecart.ts",
     "verify:fast": "pnpm check && pnpm lint && pnpm test",
-    "verify": "pnpm verify:fast && pnpm test:infra && knip && depcruise src && pnpm build && html-validate \"dist/**/*.html\" && pnpm build:natif && pnpm test:e2e && html-validate \"dist-styleguide/styleguide/**/*.html\""
+    "verify": "pnpm verify:fast && pnpm test:infra && knip && depcruise src && pnpm build && html-validate \"dist/**/*.html\" && pnpm build:natif && node scripts/sans-styleguide.js dist dist-natif && pnpm test:e2e && html-validate \"dist-styleguide/styleguide/**/*.html\""
   },
   "dependencies": {
     "@expo/metro-runtime": "~58.0.17",
