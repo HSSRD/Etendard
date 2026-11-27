@@ -11,7 +11,7 @@ export const styleguideRoutes = (/** @type {string} */ dir) =>
   readdirSync(dir, { recursive: true, withFileTypes: true })
     .filter((entry) => entry.isFile())
     .map((entry) => path.join(entry.parentPath, entry.name))
-    .filter((file) => readFileSync(file).includes('styleguide/'));
+    .filter((file) => readFileSync(file).includes('./styleguide/'));
 
 if (import.meta.main) {
   const files = process.argv.slice(2).flatMap(styleguideRoutes);
