@@ -21,8 +21,8 @@ const freePort = () =>
     });
   });
 process.env['E2E_PORT'] ??= String(await freePort());
-const port = process.env['E2E_PORT'];
-const baseURL = `http://localhost:${port}`;
+export const port = process.env['E2E_PORT'];
+export const baseURL = `http://localhost:${port}`;
 
 /**
  * Les captures ne sont fiables que dans l'image Docker officielle de Playwright (ADR 0003),
@@ -39,6 +39,8 @@ const widths = [375, 768, 1280];
 
 export default defineConfig({
   testMatch: ['src/**/*.spec.ts', 'tests/**/*.spec.ts'],
+  // Tourne sur dist/, sans styleguide : playwright.publie.config.ts.
+  testIgnore: 'tests/site-publie.spec.ts',
   forbidOnly: ci,
   // En CI, rapport.json va dans test-results/, donc dans l'artefact « playwright » de ci.yml :
   // pnpm captures:ci y lit, pour chaque capture en écart, l'image produite et sa référence.
