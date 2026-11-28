@@ -26,8 +26,8 @@ const open = async (page: Page, url: string) => {
       errors.push(message.text());
   });
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.route('**/*', async (route) => {
-    if (route.request().resourceType() !== 'document') return route.fallback();
+  // Seul le document ouvert : les fichiers d'Expo ne passent pas par le test.
+  await page.route(url, async (route) => {
     const response = await route.fetch();
     if (response.status() !== 404) return route.fulfill({ response });
     const fallback = await route.fetch({

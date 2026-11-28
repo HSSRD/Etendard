@@ -10,6 +10,7 @@ export default defineConfig({
   ...base,
   testMatch: 'tests/site-publie.spec.ts',
   testIgnore: [],
+  fullyParallel: true,
   projects: [{ name: 'publie', use: devices['Desktop Chrome'] }],
   webServer: {
     command: `pnpm exec expo serve dist --port ${port}`,
