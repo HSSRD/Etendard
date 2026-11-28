@@ -9,13 +9,16 @@ Lis `docs/adr/` avant toute modification structurelle. Ne contredis jamais un AD
 - `pnpm dev` : serveur de développement Expo (`w` : web, styleguide sur `/styleguide` ; Expo Go : iOS et Android).
 - `pnpm build` : valide le contenu (Zod), exporte le web dans `dist/`, sort les styles et scripts en ligne en fichiers.
 - `pnpm verify:fast` : `tsc`, ESLint, Prettier, Vitest. Lance-la après chaque modification.
-- `pnpm verify` : `verify:fast`, `pnpm test:infra`, Knip, dependency-cruiser, build, `html-validate`, `pnpm build:natif`, Playwright,
+- `pnpm verify` : `verify:fast`, `pnpm test:infra`, Knip, dependency-cruiser, build, `html-validate`, `pnpm build:natif`,
+  absence de route du styleguide dans `dist/` et `dist-natif/`, `pnpm test:publie`, Playwright,
   `html-validate` du styleguide.
 - `pnpm build:natif` : exporte les bundles iOS et Android dans `dist-natif/` (jamais livré) ; échoue si Metro ou Hermes
   ne construit pas un bundle natif. Il n'attrape pas un import de `react-dom` ni `window` dans un composant commun.
   `pnpm dlx expo-doctor` (réseau) se lance à la main, hors de `pnpm verify`.
 - `pnpm test:infra` : tests de `infra/pi/test/*.test.sh` (sous Windows, le script prend lui-même le bash de Git).
 - `pnpm exec playwright test src/components/X.spec.ts` : boucle courte sur un composant.
+- `pnpm test:publie` : `tests/site-publie.spec.ts` sur `dist/`, le site publié sans styleguide, tel que le dernier
+  `pnpm build` l'a laissé (`playwright.publie.config.ts`, ADR 0003) : `/`, une page 404 et le styleguide absent.
 - `pnpm captures:maj [fichiers]` : régénère les captures de référence dans Docker.
 - `pnpm captures:ci <id du run>` : installe les captures produites par un run `ci.yml` en échec (sans Docker).
 - `pnpm dragon:ecart` : compare le SHA relevé de chaque source de `src/content/projets/` à la dernière version du
@@ -68,7 +71,7 @@ Chaque composant est un trio colocalisé :
 - `src/app/styleguide/x.tsx` : chaque état du composant, lien ajouté dans `src/app/styleguide/index.tsx`.
 
 Une partie propre à un composant et à une plateforme (`HeroVideo.tsx` / `.web.tsx` pour `Hero`) n'a pas de trio :
-elle est testée par la spec de son composant. Les pages `/styleguide` ne sont publiées que si `STYLEGUIDE=1`.
+elle est testée par la spec de son composant. Les routes `/styleguide` n'entrent dans un export que si `STYLEGUIDE=1` (`metro.config.js`).
 Un composant n'importe jamais une page.
 Les tests visent les rôles, les textes et les `testID` (rendus en `data-testid`), pas les classes générées.
 
