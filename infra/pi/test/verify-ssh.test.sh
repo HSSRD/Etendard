@@ -30,6 +30,9 @@ done
 dest="$1"; shift
 case "$dest" in
   deploy@*)
+    # COUPURE=<fichier> : le premier rollback échoue (connexion coupée), comme une panne passagère.
+    [ "$*" = rollback ] && [ -n "${COUPURE:-}" ] && [ ! -e "$COUPURE" ] \
+      && { touch "$COUPURE"; echo "Connection reset by peer" >&2; exit 255; }
     [ -n "$w" ] && { echo "channel 0: open failed: administratively prohibited" >&2; exit 1; }
     # PTY refusé : sshd ne relaie pas l'erreur de la commande forcée (voir verify.sh).
     [ -n "$tt" ] && { echo "PTY allocation request failed on channel 0" >&2; exec 2>/dev/null; }
@@ -104,6 +107,12 @@ servie "critère 2 : rollback du déploiement suivant → 2222222"
 rm -rf "$ETENDARD_ROOT"; cp -a "$WORK/apres-verify" "$ETENDARD_ROOT"
 run "" "$WORK/3333333.tar.gz"; run "restore 2222222"
 servie "critère 2 : restore du déploiement suivant → 2222222"
+
+# Une étape échoue en cours de route : verify.sh ssh le signale, mais finit quand même sur la version du départ.
+reset; run "" "$WORK/1111111.tar.gz"; run "" "$WORK/2222222.tar.gz"
+COUPURE="$WORK/coupure" verify_ssh && ko "coupure : verify.sh ssh sans échec" || ok "coupure : échec signalé"
+servie "coupure : 2222222 servie à la fin"
+run rollback; grep -q 'aucun envoi à défaire' <<<"$out" && ok "coupure : rollback refusé" || ko "coupure : rollback : $out"
 
 # Précondition : sans vraie version servie, rien n'est envoyé.
 for etat in vide test; do

@@ -381,7 +381,7 @@ mode_ssh() {
   done
   echo "Depuis : $(hostname) — $(date -Iseconds) — clé $(ssh-keygen -l -f "$key" | cut -d' ' -f2)"
   # Version servie au départ, rétablie à la fin (#135). Chaque envoi qui change la version servie la remplace, elle :
-  # previous la désigne jusqu'au bout (le ménage la garde) et, après le rollback final, un rollback manuel est refusé.
+  # previous la désigne (le ménage la garde), et chaque rollback revient à elle.
   depart="$("${ssh[@]}" "deploy@$host" status </dev/null)"   # stdout seul : ssh peut avertir sur stderr
   [[ "$depart" =~ ^[0-9a-f]{7,40}$ && "$depart" != "$a" && "$depart" != "$b" ]] \
     || { echo "status n'a pas lu une vraie version${depart:+ ($depart)} : vérifie la connexion, ou déploie le site avant verify.sh ssh" >&2; exit 1; }
@@ -418,16 +418,20 @@ mode_ssh() {
   check "status = $b après restore" "^$b\$" "${ssh[@]}" "deploy@$host" status </dev/null
 
   title "Durcissement — deux déploiements simultanés"
-  # Les deux envois renvoient $b, déjà servie : quel que soit celui qui prend le verrou, previous désigne toujours
-  # $depart.
+  # Les deux envois portent $b et partent de $depart : quel que soit celui qui prend le verrou, previous la désigne.
+  check "restore $depart" "retour à la version $depart" "${ssh[@]}" "deploy@$host" restore "$depart" </dev/null
   ( sleep 5; cat "$d/$b.tar.gz" ) | "${ssh[@]}" "deploy@$host" > "$d/first.log" 2>&1 &
   sleep 2
   check "2e envoi refusé pendant le 1er" 'autre déploiement' "${ssh[@]}" "deploy@$host" < "$d/$b.tar.gz"
   wait
   check "le 1er envoi a abouti" "version $b" cat "$d/first.log"
-  check "rollback final vers $depart" "retour à la version $depart" "${ssh[@]}" "deploy@$host" rollback </dev/null
 
-  title "Ticket #135 — état laissé : la version du départ, servie et seule cible d'un rollback"
+  title "Ticket #135 — retour à la version du départ, servie et seule cible d'un rollback"
+  # Toujours rejoué, même après un échec plus haut : restore la sert, l'envoi qui la remplace la met dans previous,
+  # le rollback la rétablit.
+  check "restore $depart" "version $depart" "${ssh[@]}" "deploy@$host" restore "$depart" </dev/null
+  check "envoi de la version $b" "version $b" "${ssh[@]}" "deploy@$host" < "$d/$b.tar.gz"
+  check "rollback final vers $depart" "retour à la version $depart" "${ssh[@]}" "deploy@$host" rollback </dev/null
   check "status = $depart" "^$depart\$" "${ssh[@]}" "deploy@$host" status </dev/null
   check "version $depart servie sur le Pi" "^$depart\$" ssh "$flo" curl -s http://127.0.0.1:8080/version.txt
   check "rollback manuel refusé" "aucun envoi à défaire" "${ssh[@]}" "deploy@$host" rollback </dev/null
