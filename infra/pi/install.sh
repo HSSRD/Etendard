@@ -326,4 +326,4 @@ fi
 systemctl is-active etendard-tunnel
 
 step "Terminé. Avant de fermer cette session, ouvre-en une nouvelle depuis le réseau local et depuis le tailnet (README.md)."
-echo "Preuves : sudo bash verify.sh pi (sur le Pi), puis HOST=<hote-du-pi> FLO=<login>@<ip-du-pi> bash verify.sh ssh et bash verify.sh public <domaine> (sur le PC)."
+echo "Preuves : sudo bash verify.sh pi (sur le Pi), puis, après un premier déploiement, HOST=<hote-du-pi> FLO=<login>@<ip-du-pi> bash verify.sh ssh et bash verify.sh public <domaine> (sur le PC)."

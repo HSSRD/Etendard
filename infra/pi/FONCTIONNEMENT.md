@@ -102,7 +102,7 @@ Expo exporte la route `projets/dragon/materiel` en `projets/dragon/materiel.html
 
 **`try_files` et le matcher `@html` sont dans un même `route`.** Hors d'un `route`, Caddy range lui-même ses directives et passe `header` avant `try_files` : `@html` verrait le chemin demandé, sans `.html`, et ces pages perdraient `Cache-Control: no-cache`. Dans `route`, les directives s'appliquent dans l'ordre écrit : `@html` voit le chemin réécrit.
 
-`verify.sh pi` demande, sans extension, une page HTML du site servi autre qu'un `index.html`, la première que `find` rencontre (aujourd'hui `+not-found.html`, la seule), puis un sous-dossier sans barre oblique finale : 200 et `Cache-Control` conforme. Il lui faut une vraie version dans `current`, pas la version de test de `verify.sh ssh`.
+`verify.sh pi` demande, sans extension, une page HTML du site servi autre qu'un `index.html`, la première que `find` rencontre (aujourd'hui `+not-found.html`, la seule), puis un sous-dossier sans barre oblique finale : 200 et `Cache-Control` conforme. Il lui faut une vraie version dans `current`, pas une version de test de `verify.sh ssh`.
 
 #### La page 404 (#114)
 
@@ -120,7 +120,7 @@ Expo exporte `src/app/+not-found.tsx` en `+not-found.html`. Pour une adresse san
 
 Une autre erreur (405 d'un `POST`, par exemple) garde son corps vide.
 
-`verify.sh pi` demande une adresse sans fichier à la racine, dans un dossier du site et sous `/_expo/static/` : 404, `Content-Type: text/html`, corps identique à `+not-found.html`, y compris avec chacun de ces cinq en-têtes, en-têtes de sécurité et `Cache-Control` conformes. Il lui faut une vraie version dans `current` : celle de `verify.sh ssh` n'a pas de `+not-found.html`.
+`verify.sh pi` demande une adresse sans fichier à la racine, dans un dossier du site et sous `/_expo/static/` : 404, `Content-Type: text/html`, corps identique à `+not-found.html`, y compris avec chacun de ces cinq en-têtes, en-têtes de sécurité et `Cache-Control` conformes. Il lui faut une vraie version dans `current` : celles de test de `verify.sh ssh` n'ont pas de `+not-found.html`.
 
 #### Le journal d'accès
 
@@ -385,6 +385,7 @@ gh variable set SITE_URL --env production -R HSSRD/Etendard --body 'https://<dom
 
 - **`test/etendard-receive.test.sh`** : tests locaux sur des archives saines et piégées, le verrou, `rollback` et `restore`. Ils n'ont pas besoin du Pi.
 - **`verify.sh pi`**, sur le Pi, et **`verify.sh ssh`**, depuis le PC : ils rejouent les critères des tickets et affichent ✅ ou ❌ ; `verify.sh pi` contrôle aussi le durcissement (#113) et le tunnel (#125). Le 2026-11-07, le bilan était de 20/0 et 21/0. Les sorties complètes sont dans le ticket #4.
+- **État laissé par `verify.sh ssh` (#135)** : il publie les versions de test `e7e7e7a` et `e7e7e7b` sur le serveur de production, puis finit sur la version servie au départ, qu'il lit par `status` : chaque envoi de test part d'elle (`restore <départ>` avant), même après un contrôle en échec, et la remplace. Il finit toujours par `restore <départ>`, un envoi de test puis un rollback ; seule une interruption (Ctrl-C, coupure) l'en empêche (#142). Ensuite, elle est servie et `previous` la désigne : un rollback manuel est refusé (`aucun envoi à défaire`), et le déploiement suivant, s'il est défait (rollback ou `restore`), revient à elle. `e7e7e7a` et `e7e7e7b` restent dans `releases/`, comme les plus récentes : elles prennent deux des 5 places du ménage, jusqu'à ce que de nouveaux déploiements les en chassent. Sans vraie version servie (serveur neuf, ou version de test laissée par un `verify.sh` d'avant #135), il s'arrête avant tout envoi : déploie d'abord le site. `test/verify-ssh.test.sh` le rejoue avec un faux `ssh` et le vrai `etendard-receive`, sans le Pi.
 - **`verify.sh hsts <domaine>`**, depuis n'importe quel poste une fois le site en ligne : HSTS posé par Cloudflare (#41). `test/verify-hsts.test.sh` le teste sans le site.
 - **`verify.sh public <domaine>`**, depuis n'importe quel poste : le site à travers Cloudflare (#125). `/` répond 200 ; une page absente répond 404 avec la page 404 du site ; chaque en-tête de sécurité est identique à celui du `Caddyfile` (une valeur modifiée ou ajoutée par Cloudflare le fait échouer) ; aucun `<script>` hors de `/_expo/static/` (Rocket Loader, obfuscation des e-mails ou Web Analytics en ajoutent un) ; `version.txt` jamais lu depuis le cache de Cloudflare (`cf-cache-status`, sur deux lectures). Sa sortie ne contient que des chemins, pas le domaine. `test/verify-public.test.sh` le teste avec un faux `curl`, et `test/commun.test.sh` la lecture du jeton.
 - **Tests Tailscale** : ils sont rejoués par la console à chaque modification de la politique.
