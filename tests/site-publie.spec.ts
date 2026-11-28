@@ -11,7 +11,7 @@ const caddyfile = await readFile(
   new URL('../infra/pi/Caddyfile', import.meta.url),
   'utf8',
 );
-// Première réécriture du bloc, même précédée de commentaires ou d'autres directives.
+// Première réécriture du bloc, même précédée de commentaires ou de directives sans accolade.
 const notFoundPage =
   /^\s*handle_errors 404 \{[^}]*?^\s*rewrite \* (\S+)$/m.exec(caddyfile)?.[1];
 if (!notFoundPage)
