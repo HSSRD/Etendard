@@ -108,10 +108,14 @@ rm -rf "$ETENDARD_ROOT"; cp -a "$WORK/apres-verify" "$ETENDARD_ROOT"
 run "" "$WORK/3333333.tar.gz"; run "restore 2222222"
 servie "critère 2 : restore du déploiement suivant → 2222222"
 
-# Une étape échoue en cours de route : verify.sh ssh le signale, mais finit quand même sur la version du départ.
-reset; run "" "$WORK/1111111.tar.gz"; run "" "$WORK/2222222.tar.gz"
+# Une étape échoue en cours de route : verify.sh ssh le signale, mais finit quand même sur la version du départ,
+# ici la plus ancienne des 5 gardées (servie par restore) : sans previous, le ménage la supprimerait.
+reset
+for v in 1111111 4444444 5555555 6666666 7777777; do site "$v"; run "" "$WORK/$v.tar.gz"; sleep 1; done
+run "restore 1111111"
 COUPURE="$WORK/coupure" verify_ssh && ko "coupure : verify.sh ssh sans échec" || ok "coupure : échec signalé"
-servie "coupure : 2222222 servie à la fin"
+run status; [ "$out" = 1111111 ] && ok "coupure : 1111111 servie à la fin" || ko "coupure : status = $out"
+[ -d "$ETENDARD_ROOT/releases/1111111" ] && ok "coupure : 1111111 gardée par le ménage" || ko "coupure : 1111111 supprimée"
 run rollback; grep -q 'aucun envoi à défaire' <<<"$out" && ok "coupure : rollback refusé" || ko "coupure : rollback : $out"
 
 # Précondition : sans vraie version servie, rien n'est envoyé.
