@@ -80,36 +80,43 @@ reset() { rm -rf "$ETENDARD_ROOT"; mkdir -p "$ETENDARD_ROOT/releases"; }
 
 # Deux vraies versions : 2222222 servie, 1111111 en cible du rollback.
 site 1111111; site 2222222; site 3333333
-reset; run "" "$WORK/1111111.tar.gz"; sleep 1; run "" "$WORK/2222222.tar.gz"
+reset; run "" "$WORK/1111111.tar.gz"; run "" "$WORK/2222222.tar.gz"
 
 verify_ssh && grep -q 'Bilan : [0-9]* ✅, 0 ❌' <<<"$out" \
   && ok "verify.sh ssh sans échec" || ko "verify.sh ssh : $(grep -E '❌|Bilan|déploie' <<<"$out")"
 grep -q 'aucune page de test servie' <<<"$out" && ok "verify.sh ssh contrôle l'état laissé" || ko "contrôle de l'état laissé absent"
 cp -a "$ETENDARD_ROOT" "$WORK/apres-verify"
 
+# servie <description> : la version du départ, 2222222, est servie.
+servie() { run status; [ "$out" = 2222222 ] && ok "$1" || ko "$1 : status = $out"; }
+
 # Critère 1 : la version du départ est servie.
-run status; [ "$out" = 2222222 ] && ok "critère 1 : 2222222 servie" || ko "critère 1 : status = $out"
+servie "critère 1 : 2222222 servie"
 grep -q 'Site 2222222' "$ETENDARD_ROOT/current/index.html" && ok "critère 1 : sa page est servie" || ko "critère 1 : page servie"
 
 # Critère 3 : un rollback manuel, avant tout déploiement, ne sert pas une version de test.
 run rollback; grep -q 'aucun envoi à défaire' <<<"$out" && ok "critère 3 : rollback refusé ($out)" || ko "critère 3 : rollback : $out"
-run status; [ "$out" = 2222222 ] && ok "critère 3 : 2222222 toujours servie" || ko "critère 3 : status = $out"
+servie "critère 3 : 2222222 toujours servie"
 
 # Critère 2 : le déploiement suivant défait, par rollback manuel ou par restore (deploy.yml).
-run "" "$WORK/3333333.tar.gz"; run rollback; run status
-[ "$out" = 2222222 ] && ok "critère 2 : rollback du déploiement suivant → 2222222" || ko "critère 2, rollback : status = $out"
+run "" "$WORK/3333333.tar.gz"; run rollback
+servie "critère 2 : rollback du déploiement suivant → 2222222"
 rm -rf "$ETENDARD_ROOT"; cp -a "$WORK/apres-verify" "$ETENDARD_ROOT"
-run "" "$WORK/3333333.tar.gz"; run "restore 2222222"; run status
-[ "$out" = 2222222 ] && ok "critère 2 : restore du déploiement suivant → 2222222" || ko "critère 2, restore : status = $out"
+run "" "$WORK/3333333.tar.gz"; run "restore 2222222"
+servie "critère 2 : restore du déploiement suivant → 2222222"
 
 # Précondition : sans vraie version servie, rien n'est envoyé.
 for etat in vide test; do
   reset
   [ "$etat" = test ] && { mkdir "$ETENDARD_ROOT/releases/e7e7e7a"; ln -s releases/e7e7e7a "$ETENDARD_ROOT/current"; }
-  verify_ssh && ko "serveur $etat : verify.sh ssh accepté" \
-    || { grep -q 'déploie le site avant verify.sh ssh' <<<"$out" \
-      && [ "$(ls "$ETENDARD_ROOT/releases" | tr '\n' ' ')" = "$([ "$etat" = test ] && echo 'e7e7e7a ')" ] \
-      && ok "serveur $etat : refusé sans rien envoyer" || ko "serveur $etat : $out"; }
+  avant="$(ls "$ETENDARD_ROOT/releases")"
+  if verify_ssh; then
+    ko "serveur $etat : verify.sh ssh accepté"
+  elif grep -q 'déploie le site avant verify.sh ssh' <<<"$out" && [ "$(ls "$ETENDARD_ROOT/releases")" = "$avant" ]; then
+    ok "serveur $etat : refusé sans rien envoyer"
+  else
+    ko "serveur $etat : $out"
+  fi
 done
 
 echo
