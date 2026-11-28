@@ -15,7 +15,7 @@ export RECEIVE="$HERE/../etendard-receive"
 mkdir "$WORK/bin"
 
 # Faux ssh : la clé de déploiement (deploy@…) passe par la commande forcée, comme avec authorized_keys
-# (restrict : ni terminal, ni redirection) ; le compte de Flo ne sert qu'à lire la page servie.
+# (restrict : ni terminal, ni redirection) ; le compte de Flo ne sert qu'à lire les fichiers servis.
 cat > "$WORK/bin/ssh" <<'SH'
 #!/bin/bash
 tt= w=
@@ -34,7 +34,7 @@ case "$dest" in
     # PTY refusé : sshd ne relaie pas l'erreur de la commande forcée (voir verify.sh).
     [ -n "$tt" ] && { echo "PTY allocation request failed on channel 0" >&2; exec 2>/dev/null; }
     SSH_ORIGINAL_COMMAND="$*" exec "$RECEIVE" ;;
-  *) cat "$ETENDARD_ROOT/current/index.html" ;;
+  *) url="${!#}"; f="${url#http://127.0.0.1:8080/}"; cat "$ETENDARD_ROOT/current/${f:-index.html}" ;;   # ssh <flo> curl -s <url>
 esac
 SH
 printf '#!/bin/sh\necho "Connection closed" >&2; exit 1\n' > "$WORK/bin/sftp"
@@ -84,7 +84,7 @@ reset; run "" "$WORK/1111111.tar.gz"; run "" "$WORK/2222222.tar.gz"
 
 verify_ssh && grep -q 'Bilan : [0-9]* ✅, 0 ❌' <<<"$out" \
   && ok "verify.sh ssh sans échec" || ko "verify.sh ssh : $(grep -E '❌|Bilan|déploie' <<<"$out")"
-grep -q 'aucune page de test servie' <<<"$out" && ok "verify.sh ssh contrôle l'état laissé" || ko "contrôle de l'état laissé absent"
+grep -q '✅ rollback manuel refusé' <<<"$out" && ok "verify.sh ssh contrôle l'état laissé" || ko "contrôle de l'état laissé absent"
 cp -a "$ETENDARD_ROOT" "$WORK/apres-verify"
 
 # servie <description> : la version du départ, 2222222, est servie.

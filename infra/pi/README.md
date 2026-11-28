@@ -13,7 +13,7 @@ Ce qui est en place et pourquoi : [FONCTIONNEMENT.md](FONCTIONNEMENT.md). Ce REA
 | `etendard-tunnel.service` | Service du tunnel : utilisateur sans privilèges, jeton passé par systemd, aucune écoute hors de la boucle locale |
 | `Caddyfile` | Caddy sur `127.0.0.1:8080` uniquement, racine `/srv/etendard/current`, pages sans extension, page 404, en-têtes de sécurité, cache de `/_expo/static/`, des pages HTML et de `version.txt`, journal d'accès |
 | `etendard-receive` | Seule commande de la clé de déploiement : réception (stdin), `rollback`, `restore <sha>`, `status` |
-| `verify.sh` | Preuves des critères 1 à 5 du ticket #4, des en-têtes et du journal (#25), du cache de `/_expo/static/` (#36), des pages HTML et de `version.txt` (#52), de HSTS sur le domaine public (#41), des pages sans extension (#106), de la page 404 (#114), du durcissement (#113), du tunnel et du site public (#125) |
+| `verify.sh` | Preuves des critères 1 à 5 du ticket #4, des en-têtes et du journal (#25), du cache de `/_expo/static/` (#36), des pages HTML et de `version.txt` (#52), de HSTS sur le domaine public (#41), des pages sans extension (#106), de la page 404 (#114), du durcissement (#113), du tunnel et du site public (#125), de l'état laissé par `verify.sh ssh` (#135) |
 | `tailscale-policy.hujson`, `tailscale-checklist.md` | Critères 6 et 7 |
 | `test/etendard-receive.test.sh` | Tests locaux du script (archives saines et piégées) |
 | `test/verify-hsts.test.sh` | Tests locaux de `verify.sh hsts`, avec un faux `curl` |
@@ -39,12 +39,12 @@ Ce qui est en place et pourquoi : [FONCTIONNEMENT.md](FONCTIONNEMENT.md). Ce REA
    ```bash
    ssh -t <login>@<ip-du-pi> 'cd ~/etendard-pi && sudo bash verify.sh pi'
    ```
-5. **Preuves côté PC** (critères 1, 4 et 5), dans le bash de Git, une fois le site déployé par `deploy.yml` (sans vraie version servie, il s'arrête sans rien envoyer) :
+5. **Tailscale, étapes 4 à 6** : politique `tag:ci` (critère 7 vérifié par le bloc `tests` à l'enregistrement), client OAuth ou fédération d'identité.
+6. **Preuves côté PC** (critères 1, 4 et 5), dans le bash de Git, une fois le site déployé par `deploy.yml` (sans vraie version servie, il s'arrête sans rien envoyer) :
    ```bash
    HOST=<hote-du-pi> FLO=<login>@<ip-du-pi> bash infra/pi/verify.sh ssh
    ```
    Puis à la main : `ssh -L 8080:127.0.0.1:8080 <login>@<ip-du-pi>` et http://localhost:8080 affiche le site.
-6. **Tailscale, étapes 4 à 6** : politique `tag:ci` (critère 7 vérifié par le bloc `tests` à l'enregistrement), client OAuth ou fédération d'identité.
 7. Coller les sorties des étapes 4 à 6 dans le ticket ; pour celles des étapes 5 et 6, après avoir remplacé le nom du Pi, ses adresses, ton login et ton identifiant Tailscale par `<hote-du-pi>`, `<ip-du-pi>`, `<login>`… : le repo est public (#31).
 
 ## Durcir le serveur (#113)
