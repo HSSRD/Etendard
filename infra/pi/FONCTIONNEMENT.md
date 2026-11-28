@@ -108,7 +108,7 @@ Expo exporte la route `projets/dragon/materiel` en `projets/dragon/materiel.html
 
 Expo exporte `src/app/+not-found.tsx` en `+not-found.html`. Pour une adresse sans fichier, `file_server` lève une erreur 404 ; `handle_errors 404` sert alors cette page à la place d'un corps vide, **avec le statut 404** : ni redirection vers l'accueil, ni 200 qui ferait indexer une adresse fausse.
 
-**La page charge le JavaScript du site.** Expo Router y affiche la route qui correspond à l'adresse s'il en connaît une, toujours sous le statut 404 : `/projets/dragon/materiel/` (barre oblique finale, que `try_files` ne sert pas) montre la page Matériel, et `/styleguide` le styleguide tant que ses routes restent dans le JavaScript de production (#85).
+**La page charge le JavaScript du site.** Expo Router y affiche la route qui correspond à l'adresse s'il en connaît une, toujours sous le statut 404 : `/projets/dragon/materiel/` (barre oblique finale, que `try_files` ne sert pas) montre la page Matériel. `/styleguide` montre la page 404 : ses routes ne sont pas dans le JavaScript de production (#85).
 
 **Ses en-têtes :**
 

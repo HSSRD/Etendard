@@ -6,3 +6,4 @@ dist-natif/
 expo-env.d.ts
 test-results/
 playwright-report/
+.env*.local
