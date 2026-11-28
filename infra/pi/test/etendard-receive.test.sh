@@ -77,12 +77,13 @@ run "" "$WORK/v1.tar.gz" && ok "réception v1 ($out)" || ko "réception v1 : $ou
   && ok "current est un lien vers releases/aaaaaaa" || ko "lien current"
 grep -q 'page aaaaaaa' "$ETENDARD_ROOT/current/index.html" && ok "index.html servi" || ko "index.html"
 [ -f "$ETENDARD_ROOT/current/_astro/a.js" ] && ok "sous-dossiers extraits" || ko "sous-dossiers"
+expect_refused "rollback sans previous (premier envoi) : refusé" /dev/null "aucun envoi à défaire" rollback
 
 sleep 1; run "" "$WORK/v2.tar.gz" && ok "réception v2 (SHA de 40 caractères)" || ko "réception v2 : $out"
 run status; [ "$out" = bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb ] && ok "status = v2" || ko "status : $out"
 run rollback && ok "rollback ($out)" || ko "rollback : $out"
 run status; [ "$out" = aaaaaaa ] && ok "status = v1 après rollback" || ko "status après rollback : $out"
-run rollback && ko "rollback au-delà de la plus ancienne" || ok "rollback au-delà de la plus ancienne : erreur"
+expect_refused "second rollback : la version défaite n'est pas resservie" /dev/null "aucun envoi à défaire" rollback
 
 sleep 1; run "" "$WORK/v2.tar.gz" && grep -q 'déjà présente' <<<"$out" \
   && ok "renvoi d'une version existante : réactivée" || ko "renvoi v2 : $out"
@@ -97,14 +98,13 @@ for i in 1 2 3 4 5 6 7; do
 done
 kept="$(ls "$ETENDARD_ROOT/releases" | sort | tr '\n' ' ')"
 [ "$kept" = "3333333 4444444 5555555 6666666 7777777 " ] && ok "5 dernières versions gardées" || ko "versions gardées : $kept"
-run rollback; run rollback; run status
-[ "$out" = 5555555 ] && ok "deux rollbacks : 5555555" || ko "deux rollbacks : $out"
-run rollback; run rollback   # 3333333 servie, la plus ancienne gardée
+run "restore 3333333"   # la plus ancienne gardée est servie
 site k8 8888888; run "" "$WORK/k8.tar.gz"
-[ -d "$ETENDARD_ROOT/releases/3333333" ] && ok "ménage : la version remplacée est gardée, même ancienne" \
-  || ko "ménage : version remplacée supprimée ($(ls "$ETENDARD_ROOT/releases" | tr '\n' ' '))"
-run "restore 3333333"; run status
-[ "$out" = 3333333 ] && ok "restore de la version remplacée" || ko "restore de la version remplacée : $out"
+run "" "$WORK/k8.tar.gz" && grep -q "déjà présente" <<<"$out" || ko "renvoi de k8 : $out"   # previous ne change pas
+[ -d "$ETENDARD_ROOT/releases/3333333" ] && ok "ménage : la version remplacée est gardée, même ancienne, même après un renvoi" \
+  || ko "ménage après renvoi : $(ls "$ETENDARD_ROOT/releases" | tr '\n' ' ')"
+run rollback; run status
+[ "$out" = 3333333 ] && ok "rollback vers la version remplacée, même ancienne" || ko "rollback vers la version remplacée : $out"
 
 # --- Commandes refusées ------------------------------------------------------
 for cmd in "id" "bash" "status; id" "rollback x" "restore" "restore;id" "sh -c status" "scp -t /tmp" "internal-sftp"; do
@@ -193,6 +193,25 @@ if [ -n "$real_flock" ]; then
 else
   echo "note - restore pendant un vrai receive : testé avec le vrai flock seulement (CI Linux)"
 fi
+
+# --- rollback : défait le dernier envoi (#63) --------------------------------
+# A est servie après un rollback depuis B, l'envoi de C échoue (restore A), D
+# réussit : par date, l'ordre est D, C, B, A, mais rollback doit servir A.
+reset
+site v4 ddddddd
+run "" "$WORK/v1.tar.gz"; sleep 1; run "" "$WORK/v2.tar.gz"; run rollback
+sleep 1; run "" "$WORK/v3.tar.gz"; run "restore aaaaaaa"
+expect_refused "rollback après restore : la version en échec n'est pas resservie" /dev/null "aucun envoi à défaire" rollback
+sleep 1; run "" "$WORK/v4.tar.gz"
+run rollback && grep -q 'retour à la version aaaaaaa (depuis ddddddd)' <<<"$out" \
+  && ok "rollback depuis D ($out)" || ko "rollback depuis D : $out"
+run status; [ "$out" = aaaaaaa ] && ok "status = A, la version remplacée par D" || ko "status après rollback depuis D : $out"
+
+# La version de previous a été supprimée à la main sur le serveur.
+reset
+run "" "$WORK/v1.tar.gz"; run "" "$WORK/v2.tar.gz"
+rm -rf "$ETENDARD_ROOT/releases/aaaaaaa"
+expect_refused "rollback vers une version supprimée : refusé" /dev/null "version aaaaaaa absente" rollback
 
 echo
 echo "$pass réussis, $fail échoués"

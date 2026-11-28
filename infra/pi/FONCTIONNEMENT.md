@@ -155,7 +155,7 @@ Le script n'accepte que quatre demandes. Tout le reste est refusé.
 | Demande | Effet |
 |---|---|
 | aucune, archive sur l'entrée standard : `ssh deploy@<hote-du-pi> < site.tar.gz` | publie une nouvelle version |
-| `rollback` | revient à la version publiée juste avant celle servie (rollback manuel) |
+| `rollback` | revient à la version que le dernier envoi a remplacée (rollback manuel, #63) |
 | `restore <sha>` | attend la fin d'un déploiement en cours, puis sert la version `<sha>` (rollback automatique, #54) |
 | `status` | affiche le SHA servi |
 
@@ -165,6 +165,12 @@ Le script n'accepte que quatre demandes. Tout le reste est refusé.
 - **sert exactement `<sha>`**, que `deploy.yml` a lu avant l'envoi, et non la version précédente par date : après un rollback manuel, la version la plus récente n'est pas forcément celle d'avant ;
 - **ne fait rien si `<sha>` est déjà servie** (`version <sha> déjà servie`) ; sinon, bascule et affiche `retour à la version <sha> (depuis <servie>)` ;
 - refuse un SHA mal formé (même contrôle que `version.txt`) ou une version absente de `releases/`.
+
+`rollback` défait le dernier envoi, et seulement lui :
+
+- chaque envoi qui change la version servie écrit le lien `previous` vers la version qu'il remplace ; `rollback` sert cette version, quelle que soit sa date ;
+- `rollback` est refusé (`aucun envoi à défaire`) quand `previous` est absent (juste après l'installation du script, jusqu'au prochain envoi qui change la version servie) ou déjà servie : après un `rollback`, après un `restore` qui a défait l'envoi, ou si la bascule de l'envoi a échoué. Le workflow ne recule donc jamais de plus d'un envoi.
+- `rollback` est aussi refusé (`version <sha> absente`) si le dossier de `previous` a été supprimé à la main dans `releases/` : `current` ne désigne jamais un dossier absent.
 
 Une publication se déroule ainsi :
 
@@ -177,12 +183,12 @@ Une publication se déroule ainsi :
    Un lien pourrait faire servir `/etc/passwd` par Caddy. Un `..` permettrait d'écrire hors du dossier.
 3. **Extraction**, avec des droits remis à plat : lecture pour tous, écriture pour `deploy` seul.
 4. **Lecture de `version.txt`**, validé par `^[0-9a-f]{7,40}$`, c'est-à-dire un SHA git. Ce SHA devient le nom du dossier `releases/<sha>`, d'où cette rigueur.
-5. **Bascule atomique** : le lien `current.tmp` est renommé en `current`. Caddy sert l'ancienne version ou la nouvelle, jamais un état intermédiaire.
-6. **Ménage** : les 5 versions les plus récentes sont gardées. Ni la version publiée ni celle qu'elle remplace ne sont supprimées, même plus anciennes (après des rollbacks manuels) : `restore` doit pouvoir y revenir. Il peut donc rester 6 versions.
+5. **Bascule atomique** : le lien `previous` désigne la version remplacée, puis le lien `current.tmp` est renommé en `current`. Caddy sert l'ancienne version ou la nouvelle, jamais un état intermédiaire.
+6. **Ménage** : les 5 versions les plus récentes sont gardées. Ni la version publiée ni celle de `previous` ne sont supprimées, même plus anciennes (après un rollback) : `rollback` et `restore` doivent pouvoir y revenir. Il peut donc rester 6 versions.
 
 En cas d'erreur, rien ne change : le dossier temporaire est supprimé et `current` ne bouge pas.
 
-L'ordre des versions repose sur leur date de publication, c'est-à-dire la date de modification du dossier, que le script met à jour. Ne modifie donc pas les dossiers de `releases/` à la main.
+Le ménage repose sur la date de publication des versions, c'est-à-dire la date de modification du dossier, que le script met à jour. Ne modifie donc pas les dossiers de `releases/` à la main.
 
 ### Tailscale
 
@@ -304,7 +310,7 @@ HSTS s'active ensuite, une fois le site vérifié ([README](README.md#à-la-mise
 | `build` | construit le site et son archive, avec `version.txt` (SHA du commit) | lecture du code |
 | `deploy` | Environment `production` : envoie l'archive au Pi par le tailnet et vérifie la version servie, par SSH puis à travers Cloudflare | aucun droit GitHub |
 | `release` | publie la Release `deploy-<sha court>`, seulement si `deploy` a réussi | écriture du code (tags, Releases) |
-| `rollback` | seulement avec l'entrée `rollback` : revient à la version précédente | aucun droit GitHub |
+| `rollback` | seulement avec l'entrée `rollback` : revient à la version que le dernier envoi a remplacée | aucun droit GitHub |
 | `message` | dans tous les cas : compose l'e-mail de résultat (#32), sans aucun secret | lecture du code et des PR |
 | `notify` | Environment `production` : envoie cet e-mail par Brevo, sans exécuter de code du repo | aucun droit GitHub |
 
@@ -318,7 +324,7 @@ La Release est publiée par un job séparé, après le déploiement : le job `bu
 gh workflow run deploy.yml -R HSSRD/Etendard --ref main -f rollback=true
 ```
 
-Après l'annulation d'un déploiement, vérifie d'abord la version servie dans l'e-mail de résultat : le rollback automatique a pu s'en charger, et un rollback manuel reculerait alors d'une version de plus.
+Après l'annulation d'un déploiement, vérifie d'abord la version servie dans l'e-mail de résultat. Si le rollback automatique a défait l'envoi, un rollback manuel est refusé (`aucun envoi à défaire`). Si l'envoi n'avait pas encore basculé, `previous` n'a pas changé : un rollback manuel défait l'envoi d'avant, comme s'il avait été lancé avant ce déploiement.
 
 Pour revenir ensuite à la dernière version, relance le workflow sans cocher la case : le site est reconstruit depuis `main`, le Pi réactive la version qu'il a déjà, et la Release existante est gardée telle quelle.
 
@@ -377,7 +383,7 @@ gh variable set SITE_URL --env production -R HSSRD/Etendard --body 'https://<dom
 
 ## Comment on sait que ça marche
 
-- **`test/etendard-receive.test.sh`** : tests locaux sur des archives saines et piégées, le verrou et `restore`. Ils n'ont pas besoin du Pi.
+- **`test/etendard-receive.test.sh`** : tests locaux sur des archives saines et piégées, le verrou, `rollback` et `restore`. Ils n'ont pas besoin du Pi.
 - **`verify.sh pi`**, sur le Pi, et **`verify.sh ssh`**, depuis le PC : ils rejouent les critères des tickets et affichent ✅ ou ❌ ; `verify.sh pi` contrôle aussi le durcissement (#113) et le tunnel (#125). Le 2026-11-07, le bilan était de 20/0 et 21/0. Les sorties complètes sont dans le ticket #4.
 - **`verify.sh hsts <domaine>`**, depuis n'importe quel poste une fois le site en ligne : HSTS posé par Cloudflare (#41). `test/verify-hsts.test.sh` le teste sans le site.
 - **`verify.sh public <domaine>`**, depuis n'importe quel poste : le site à travers Cloudflare (#125). `/` répond 200 ; une page absente répond 404 avec la page 404 du site ; chaque en-tête de sécurité est identique à celui du `Caddyfile` (une valeur modifiée ou ajoutée par Cloudflare le fait échouer) ; aucun `<script>` hors de `/_expo/static/` (Rocket Loader, obfuscation des e-mails ou Web Analytics en ajoutent un) ; `version.txt` jamais lu depuis le cache de Cloudflare (`cf-cache-status`, sur deux lectures). Sa sortie ne contient que des chemins, pas le domaine. `test/verify-public.test.sh` le teste avec un faux `curl`, et `test/commun.test.sh` la lecture du jeton.
