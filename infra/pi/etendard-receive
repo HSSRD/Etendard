@@ -22,6 +22,8 @@ die() { echo "etendard-receive: $*" >&2; exit 1; }
 target_or_empty() { basename "$(readlink "$1" 2>/dev/null)"; }
 served_or_empty() { target_or_empty "$CURRENT"; }
 valid_sha() { [[ "$1" =~ ^[0-9a-f]{7,40}$ ]]; }
+# Avant une bascule : une version supprimée à la main ferait désigner un dossier absent à current.
+require_release() { [ -d "$RELEASES/$1" ] || die "version $1 absente"; }
 
 current_sha() {
   [ -L "$CURRENT" ] || die "aucune version servie"
@@ -96,6 +98,7 @@ rollback() {
   previous="$(target_or_empty "$PREVIOUS")"
   # previous déjà servie : le dernier envoi a été défait (rollback, restore) ou n'a pas basculé.
   [ -n "$previous" ] && [ "$previous" != "$current" ] || die "aucun envoi à défaire depuis $current"
+  require_release "$previous"
   switch_to "$previous"
   echo "retour à la version $previous (depuis $current)"
 }
@@ -106,7 +109,7 @@ rollback() {
 restore() {
   valid_sha "$1" || die "SHA invalide : $1"
   lock -w "$LOCK_WAIT"
-  [ -d "$RELEASES/$1" ] || die "version $1 absente"
+  require_release "$1"
   current="$(served_or_empty)"
   if [ "$current" = "$1" ]; then
     echo "version $1 déjà servie"

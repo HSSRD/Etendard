@@ -207,6 +207,12 @@ run rollback && grep -q 'retour à la version aaaaaaa (depuis ddddddd)' <<<"$out
   && ok "rollback depuis D ($out)" || ko "rollback depuis D : $out"
 run status; [ "$out" = aaaaaaa ] && ok "status = A, la version remplacée par D" || ko "status après rollback depuis D : $out"
 
+# La version de previous a été supprimée à la main sur le serveur.
+reset
+run "" "$WORK/v1.tar.gz"; run "" "$WORK/v2.tar.gz"
+rm -rf "$ETENDARD_ROOT/releases/aaaaaaa"
+expect_refused "rollback vers une version supprimée : refusé" /dev/null "version aaaaaaa absente" rollback
+
 echo
 echo "$pass réussis, $fail échoués"
 [ "$fail" -eq 0 ]

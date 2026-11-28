@@ -170,6 +170,7 @@ Le script n'accepte que quatre demandes. Tout le reste est refusé.
 
 - chaque envoi qui change la version servie écrit le lien `previous` vers la version qu'il remplace ; `rollback` sert cette version, quelle que soit sa date ;
 - `rollback` est refusé (`aucun envoi à défaire`) quand `previous` est absent (juste après l'installation du script, jusqu'au prochain envoi qui change la version servie) ou déjà servie : après un `rollback`, après un `restore` qui a défait l'envoi, ou si la bascule de l'envoi a échoué. Le workflow ne recule donc jamais de plus d'un envoi.
+- `rollback` est aussi refusé (`version <sha> absente`) si le dossier de `previous` a été supprimé à la main dans `releases/` : `current` ne désigne jamais un dossier absent.
 
 Une publication se déroule ainsi :
 
