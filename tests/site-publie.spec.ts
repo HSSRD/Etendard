@@ -11,19 +11,22 @@ const caddyfile = await readFile(
   new URL('../infra/pi/Caddyfile', import.meta.url),
   'utf8',
 );
-const notFoundPage = /^\s*handle_errors 404 \{\s*rewrite \* (\S+)$/m.exec(
-  caddyfile,
-)?.[1];
+// Première réécriture du bloc, même précédée de commentaires ou d'autres directives.
+const notFoundPage =
+  /^\s*handle_errors 404 \{[^}]*?^\s*rewrite \* (\S+)$/m.exec(caddyfile)?.[1];
 if (!notFoundPage)
   throw new Error('réécriture des 404 introuvable dans infra/pi/Caddyfile');
 
-/** Ouvre `url` servi comme par Caddy, attend l'hydratation et renvoie le statut. */
+/** Ouvre `url` avec la page 404 de Caddy, attend l'hydratation et renvoie le statut. */
 const open = async (page: Page, url: string) => {
   const errors: string[] = [];
   page.on('console', (message) => {
+    if (message.type() !== 'error') return;
     // Chromium signale le statut 404 du document lui-même : attendu ici.
-    if (message.type() === 'error' && message.location().url !== page.url())
-      errors.push(message.text());
+    const documentStatus =
+      message.location().url === page.url() &&
+      /status of 404/.test(message.text());
+    if (!documentStatus) errors.push(message.text());
   });
   page.on('pageerror', (error) => errors.push(error.message));
   // Seul le document ouvert : les fichiers d'Expo ne passent pas par le test.
@@ -33,6 +36,7 @@ const open = async (page: Page, url: string) => {
     const fallback = await route.fetch({
       url: new URL(notFoundPage, route.request().url()).href,
     });
+    expect(fallback.status(), notFoundPage).toBe(200);
     await route.fulfill({ response: fallback, status: 404 });
   });
 
