@@ -18,6 +18,7 @@ Ce qui est en place et pourquoi : [FONCTIONNEMENT.md](FONCTIONNEMENT.md). Ce REA
 | `test/etendard-receive.test.sh` | Tests locaux du script (archives saines et piégées) |
 | `test/verify-hsts.test.sh` | Tests locaux de `verify.sh hsts`, avec un faux `curl` |
 | `test/verify-public.test.sh` | Tests locaux de `verify.sh public`, avec un faux `curl` |
+| `test/verify-ssh.test.sh` | Tests locaux de `verify.sh ssh`, avec un faux `ssh` et le vrai `etendard-receive` : l'état qu'il laisse (#135) |
 | `test/commun.test.sh`, `test/verify-pi.test.sh` | Tests locaux du fichier local, du jeton du tunnel, du garde-fou SSH et de la sortie de `verify.sh pi` (aucune valeur du serveur) |
 
 ## Ordre des étapes
@@ -38,11 +39,11 @@ Ce qui est en place et pourquoi : [FONCTIONNEMENT.md](FONCTIONNEMENT.md). Ce REA
    ```bash
    ssh -t <login>@<ip-du-pi> 'cd ~/etendard-pi && sudo bash verify.sh pi'
    ```
-5. **Preuves côté PC** (critères 1, 4 et 5), dans le bash de Git :
+5. **Preuves côté PC** (critères 1, 4 et 5), dans le bash de Git, une fois le site déployé par `deploy.yml` (sans vraie version servie, il s'arrête sans rien envoyer) :
    ```bash
    HOST=<hote-du-pi> FLO=<login>@<ip-du-pi> bash infra/pi/verify.sh ssh
    ```
-   Puis à la main : `ssh -L 8080:127.0.0.1:8080 <login>@<ip-du-pi>` et http://localhost:8080 affiche « Page de test e7e7e7a ».
+   Il finit sur la version servie au départ ([FONCTIONNEMENT.md](FONCTIONNEMENT.md#comment-on-sait-que-ça-marche)). Puis à la main : `ssh -L 8080:127.0.0.1:8080 <login>@<ip-du-pi>` et http://localhost:8080 affiche le site.
 6. **Tailscale, étapes 4 à 6** : politique `tag:ci` (critère 7 vérifié par le bloc `tests` à l'enregistrement), client OAuth ou fédération d'identité.
 7. Coller les sorties des étapes 4 à 6 dans le ticket ; pour celles des étapes 5 et 6, après avoir remplacé le nom du Pi, ses adresses, ton login et ton identifiant Tailscale par `<hote-du-pi>`, `<ip-du-pi>`, `<login>`… : le repo est public (#31).
 

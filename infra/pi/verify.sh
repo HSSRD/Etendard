@@ -6,14 +6,14 @@
 #                               durcissement ; tunnel). Sortie sans adresse, nom de machine, port ni liste de logiciels :
 #                               elle se colle telle quelle dans un ticket. « sudo DETAIL=1 bash verify.sh pi »
 #                               affiche aussi chaque commande et sa sortie, pour chercher une panne (à ne pas coller).
-#   HOST=… FLO=… bash verify.sh ssh   sur le PC, avec la clé privée (critères 1, 4 et 5)
+#   HOST=… FLO=… bash verify.sh ssh   sur le PC, avec la clé privée (critères 1, 4 et 5), après un premier déploiement
 #   bash verify.sh hsts <domaine>   depuis n'importe quel poste, une fois le site en ligne (HSTS de Cloudflare)
 #   bash verify.sh public <domaine>   depuis n'importe quel poste : site servi par Cloudflare Tunnel (#125), sortie
 #                               sans le domaine, à coller telle quelle (DETAIL=1 : commandes et sorties)
 # Variables du mode ssh : KEY (clé privée, défaut ~/.ssh/github-deploy), HOST (nom du Pi dans le tailnet),
 # FLO (<login>@<ip-du-pi>), LAN_IP (défaut : l'adresse de FLO). HOST et FLO sont obligatoires :
 # le repo ne contient aucune valeur du réseau local (#31).
-# Lecture seule, sauf en mode ssh : publie deux versions de test puis revient à la première.
+# Lecture seule, sauf en mode ssh : publie deux versions de test puis revient à la version servie au départ (#135).
 set -uo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -372,13 +372,19 @@ mode_ssh() {
   [ -f "$key" ] || { echo "clé privée introuvable : $key (variable KEY)" >&2; exit 1; }
   local ssh=(ssh -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10)
   d="$(mktemp -d)"; trap 'rm -rf "$d"' EXIT
-  local a=e7e7e7a b=e7e7e7b
+  local a=e7e7e7a b=e7e7e7b served
   for v in $a $b; do
     mkdir -p "$d/$v"; echo "$v" > "$d/$v/version.txt"
     printf '<!doctype html><meta charset="utf-8"><title>Étendard</title><h1>Page de test %s</h1>\n' "$v" > "$d/$v/index.html"
     tar -czf "$d/$v.tar.gz" -C "$d/$v" .
   done
   echo "Depuis : $(hostname) — $(date -Iseconds) — clé $(ssh-keygen -l -f "$key" | cut -d' ' -f2)"
+  # Version servie au départ, rétablie à la fin (#135). Chaque envoi de test la remplace, elle : previous la désigne
+  # donc jusqu'au bout (le ménage la garde) et, après le rollback final, un rollback manuel est refusé.
+  served="$("${ssh[@]}" "deploy@$host" status </dev/null)"   # stdout seul : ssh peut avertir sur stderr
+  [[ "$served" =~ ^[0-9a-f]{7,40}$ && "$served" != "$a" && "$served" != "$b" ]] \
+    || { echo "aucune vraie version servie${served:+ ($served)} : déploie le site avant verify.sh ssh" >&2; exit 1; }
+  echo "Version servie au départ : $served"
 
   title "Critère 1 — Caddy injoignable hors du Pi"
   refute "pas de site sur $lan:8080" '^HTTP' curl -sSI --connect-timeout 3 "http://$lan:8080/"
@@ -400,25 +406,31 @@ mode_ssh() {
   check "envoi de la version $a" "version $a" "${ssh[@]}" "deploy@$host" < "$d/$a.tar.gz"
   check "status = $a" "^$a\$" "${ssh[@]}" "deploy@$host" status </dev/null
   check "page $a servie sur le Pi" "Page de test $a" ssh "$flo" curl -s http://127.0.0.1:8080/
+  check "rollback" "retour à la version $served" "${ssh[@]}" "deploy@$host" rollback </dev/null
+  check "status = $served après rollback" "^$served\$" "${ssh[@]}" "deploy@$host" status </dev/null
+  refute "page de test retirée" "Page de test" ssh "$flo" curl -s http://127.0.0.1:8080/
   check "envoi de la version $b" "version $b" "${ssh[@]}" "deploy@$host" < "$d/$b.tar.gz"
   check "status = $b" "^$b\$" "${ssh[@]}" "deploy@$host" status </dev/null
   check "page $b servie" "Page de test $b" ssh "$flo" curl -s http://127.0.0.1:8080/
-  check "rollback" "retour à la version $a" "${ssh[@]}" "deploy@$host" rollback </dev/null
-  check "status = $a après rollback" "^$a\$" "${ssh[@]}" "deploy@$host" status </dev/null
-  check "page $a de nouveau servie" "Page de test $a" ssh "$flo" curl -s http://127.0.0.1:8080/
-  check "restore $b" "retour à la version $b" "${ssh[@]}" "deploy@$host" restore "$b" </dev/null
   check "restore $a" "retour à la version $a" "${ssh[@]}" "deploy@$host" restore "$a" </dev/null
-  check "status = $a après restore" "^$a\$" "${ssh[@]}" "deploy@$host" status </dev/null
+  check "restore $b" "retour à la version $b" "${ssh[@]}" "deploy@$host" restore "$b" </dev/null
+  check "status = $b après restore" "^$b\$" "${ssh[@]}" "deploy@$host" status </dev/null
 
   title "Durcissement — deux déploiements simultanés"
+  # Le 1er envoi renvoie $b, déjà servie : previous désigne toujours $served.
   ( sleep 5; cat "$d/$b.tar.gz" ) | "${ssh[@]}" "deploy@$host" > "$d/first.log" 2>&1 &
   sleep 2
   check "2e envoi refusé pendant le 1er" 'autre déploiement' "${ssh[@]}" "deploy@$host" < "$d/$a.tar.gz"
   wait
   check "le 1er envoi a abouti" "version $b" cat "$d/first.log"
-  check "rollback final vers $a" "retour à la version $a" "${ssh[@]}" "deploy@$host" rollback </dev/null
+  check "rollback final vers $served" "retour à la version $served" "${ssh[@]}" "deploy@$host" rollback </dev/null
 
-  echo "Reste à faire à la main : ssh -L 8080:127.0.0.1:8080 $flo puis http://localhost:8080 → « Page de test $a »."
+  title "Ticket #135 — état laissé : la version du départ, servie et seule cible d'un rollback"
+  check "status = $served" "^$served\$" "${ssh[@]}" "deploy@$host" status </dev/null
+  refute "aucune page de test servie" "Page de test" ssh "$flo" curl -s http://127.0.0.1:8080/
+  check "rollback manuel refusé" "aucun envoi à défaire" "${ssh[@]}" "deploy@$host" rollback </dev/null
+
+  echo "Reste à faire à la main : ssh -L 8080:127.0.0.1:8080 $flo puis http://localhost:8080 → le site (version $served)."
 }
 
 # HSTS est posé par Cloudflare, pas par Caddy (FONCTIONNEMENT.md) : on le lit sur le domaine public.
